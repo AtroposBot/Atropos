@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Gradle Imported" enabled="true">
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$PROJECT_DIR$/../.gradle/caches/modules-2/files-2.1/org.checkerframework/checker/3.11.0/a2422fa431a81a3df68c88253eb066e407619850/checker-3.11.0.jar" />
+          <entry name="$PROJECT_DIR$/../.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-util/3.11.0/555a93099b420bc1a0ff4199d9419544ddbdb974/checker-util-3.11.0.jar" />
+          <entry name="$PROJECT_DIR$/../.gradle/caches/modules-2/files-2.1/org.checkerframework/checker-qual/3.11.0/897ba3aab19f0008c21e53c3d1e66d8452ebd5ed/checker-qual-3.11.0.jar" />
+        </processorPath>
+        <module name="Icicle.test" />
+        <module name="Icicle.main" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel target="11" />
+  </component>
+</project>
