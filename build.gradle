@@ -3,7 +3,10 @@ plugins {
     id'application'
     id'com.github.johnrengelman.shadow' version '6.1.0'
     id "org.checkerframework" version "0.5.17"
+    id 'de.schablinski.activejdbc-gradle-plugin' version '1.5.2'
 }
+
+// activejdbc.toolVersion = '2.3'
 
 mainClassName = 'dev.laarryy.Icicle.Icicle'
 group 'dev.laarryy'
@@ -19,6 +22,8 @@ repositories {
     jcenter()
 }
 
+
+
 dependencies {
     implementation "net.dv8tion:JDA:$jdaVersion"
     implementation("org.spongepowered:configurate-yaml:4.0.0")
@@ -33,12 +38,11 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.10.3'
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.10.3'
     implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.10.3'
-
-
 }
 
 shadowJar {
     exclude "**/Log4j2Plugins.dat"
+    exclude "org.apache.logging.log4j:log4j-slf4j-impl:2.13.2"
 }
 
 compileJava.options.encoding = 'UTF-8'
