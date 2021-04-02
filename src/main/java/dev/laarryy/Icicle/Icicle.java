@@ -1,7 +1,7 @@
 package dev.laarryy.Icicle;
 
-import dev.laarryy.Icicle.config.ConfigLoader;
-import dev.laarryy.Icicle.config.ConfigSettings;
+import dev.laarryy.Icicle.commands.AddUserToDatabase;
+import dev.laarryy.Icicle.config.ConfigManager;
 import dev.laarryy.Icicle.listeners.Logging;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import net.dv8tion.jda.api.JDA;
@@ -9,9 +9,7 @@ import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.spongepowered.configurate.ConfigurateException;
 
-import java.io.File;
 import java.util.EnumSet;
 
 
@@ -21,7 +19,9 @@ public class Icicle {
 
     public static void main(String[] args) throws Exception {
         // Print token and other args to console
-        for (String arg : args) { logger.debug(arg); }
+        for (String arg : args) {
+            logger.debug(arg);
+        }
 
         if (args.length != 1) {
             logger.error("Invalid Arguments. Allowed Number Of Arguments is 1");
@@ -37,20 +37,16 @@ public class Icicle {
 
         // Load Config and Connect to DB
 
+        ConfigManager manager = new ConfigManager();
+        manager.loadDatabaseConfig();
+
         DatabaseLoader loader = new DatabaseLoader();
-        try {
-            loader.loadDatabaseConfig();
-            loader.openConnection();
-        } catch (ConfigurateException e) {
-            logger.error("Error loading database config: " + e.getMessage());
-            System.exit(1);
-        }
+        loader.openConnection();
 
         // Add Listeners:
 
         api.addEventListener(new Logging(api));
-
+        api.addEventListener(new AddUserToDatabase());
 
     }
-
 }

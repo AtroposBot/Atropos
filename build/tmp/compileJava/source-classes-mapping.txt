@@ -1,3 +1,5 @@
+dev/laarryy/Icicle/commands/AddUserToDatabase.java
+ dev.laarryy.Icicle.commands.AddUserToDatabase
 dev/laarryy/Icicle/commands/SetLogChannel.java
  dev.laarryy.Icicle.commands.SetLogChannel
 dev/laarryy/Icicle/guilds/ServerManager.java
@@ -12,6 +14,8 @@ dev/laarryy/Icicle/listeners/Logging.java
  dev.laarryy.Icicle.listeners.Logging
 dev/laarryy/Icicle/models/Server.java
  dev.laarryy.Icicle.models.Server
+dev/laarryy/Icicle/config/ConfigManager.java
+ dev.laarryy.Icicle.config.ConfigManager
 dev/laarryy/Icicle/commands/cloud/CommandManagerFactory.java
  dev.laarryy.Icicle.commands.cloud.CommandManagerFactory
 dev/laarryy/Icicle/Icicle.java
