@@ -16,12 +16,18 @@ public class AddUserToDatabase extends ListenerAdapter {
 
     public void onMessageReceived(@NotNull MessageReceivedEvent event) {
 
-        DatabaseLoader.openConnectionIfClosed();
-        User user = new User();
         if (event.getMessage().getContentRaw().equals("!adduser")) {
-            user.set("id", event.getAuthor().getIdLong());
-            user.set("creation_time", event.getAuthor().getTimeCreated().toEpochSecond());
-            logger.debug("Addded!!!");
+
+            DatabaseLoader.openConnectionIfClosed();
+
+            User user = User.findOrCreateIt("id", event.getAuthor().getIdLong());
+
+            if (!user.exists()) { user.insert(); }
+
+            user.set("creation_time", event.getAuthor().getTimeCreated().toInstant().toEpochMilli());
+
+            user.saveIt();
+
             DatabaseLoader.closeConnectionifOpen();
         }
     }
