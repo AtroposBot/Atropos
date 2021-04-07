@@ -9,6 +9,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
 
+import java.time.Instant;
+
 public class AddUserToDatabase extends ListenerAdapter {
     private final Logger logger = LogManager.getLogger(this);
     private final IcicleMemberHandler handler = new IcicleMemberHandler();
@@ -25,13 +27,14 @@ public class AddUserToDatabase extends ListenerAdapter {
                 return;
             }
 
-            DiscordUser discordUser = DiscordUser.findOrCreateIt(handler.getDiscordUser(event.getMember()));
-
             DatabaseLoader.openConnectionIfClosed();
+
+            DiscordUser discordUser = DiscordUser.findOrCreateIt(handler.getDiscordUserFromSnowflake(event.getMember()));
 
             if (!discordUser.exists()) { discordUser.insert(); }
 
-            discordUser.set("date", event.getAuthor().getTimeCreated().toInstant().toEpochMilli());
+            discordUser.setDateEntry(Instant.now());
+            discordUser.setUserIdSnowflake(event.getMember().getUser().getIdLong());
 
             discordUser.saveIt();
 

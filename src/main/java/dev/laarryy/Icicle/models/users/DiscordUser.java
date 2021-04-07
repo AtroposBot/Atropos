@@ -18,8 +18,20 @@ public class DiscordUser extends Model {
         return getLong("user_id_snowflake");
     }
 
+    public void setUserIdSnowflake(@NonNull Long snowflake) {
+        set("user_id_snowflake", snowflake);
+    }
+
     public @NonNull Instant getDateEntry() {
         return Instant.ofEpochMilli(getLong("date"));
+    }
+
+    public void setDateEntry(@NonNull Instant instant) {
+        set("date", instant.toEpochMilli());
+    }
+
+    public void setDateEntry(@NonNull Long epochMilli) {
+        set("date", epochMilli);
     }
 
     public @Nullable String getUserCommandPrefix() {

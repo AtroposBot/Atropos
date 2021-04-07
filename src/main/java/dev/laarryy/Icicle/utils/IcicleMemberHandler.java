@@ -6,7 +6,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 
 public class IcicleMemberHandler {
 
-    public DiscordUser getDiscordUser(@NonNull Member member) {
+    public DiscordUser getDiscordUserFromSnowflake(@NonNull Member member) {
         return DiscordUser.findFirst("user_id_snowflake = ?", member.getUser().getIdLong());
     }
 }
