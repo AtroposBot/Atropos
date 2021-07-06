@@ -8,6 +8,6 @@ public interface SlashCommand {
 
     Mono<Void> execute(SlashCommandEvent event);
 
-    ApplicationCommandRequest createRequest();
+    ApplicationCommandRequest getRequest();
 
 }
