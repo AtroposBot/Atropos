@@ -1,37 +1,30 @@
 package dev.laarryy.Icicle.listeners;
 
-import dev.laarryy.Icicle.models.guilds.DiscordServer;
-import dev.laarryy.Icicle.storage.DatabaseLoader;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
-import net.dv8tion.jda.api.events.message.MessageDeleteEvent;
-import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import discord4j.core.GatewayDiscordClient;
+import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.object.entity.channel.TextChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.spongepowered.configurate.serialize.SerializationException;
+import reactor.core.publisher.Mono;
 
-import java.time.Instant;
+public class Logging {
 
-public class Logging extends ListenerAdapter {
-
-    JDA api;
     private final Logger logger = LogManager.getLogger(this);
+    private GatewayDiscordClient client = null;
 
-    public Logging(JDA api) throws SerializationException {
-        this.api = api;
+    private Logging(GatewayDiscordClient client) {
+        this.client = client;
     }
 
-    public void onMessageDelete(MessageDeleteEvent event) {
 
-    }
-
-    public void onGuildJoin(GuildJoinEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
-
-        DiscordServer server = DiscordServer.findOrCreateIt("server_id", event.getGuild().getIdLong());
-        server.set("name", event.getGuild().getName());
-        server.set("date", Instant.now().toEpochMilli());
-
-        server.saveIt();
-    }
+    //    public void onGuildJoin(GuildJoinEvent event) {
+//        DatabaseLoader.openConnectionIfClosed();
+//
+//        DiscordServer server = DiscordServer.findOrCreateIt("server_id", event.getGuild().getIdLong());
+//        server.set("name", event.getGuild().getName());
+//        server.set("date", Instant.now().toEpochMilli());
+//
+//        server.saveIt();
+//    }
 }

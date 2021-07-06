@@ -7,7 +7,7 @@ import org.javalite.activejdbc.Base;
 
 public class DatabaseLoader {
 
-    private static Logger logger = LogManager.getLogger(DatabaseLoader.class);
+    private static final Logger logger = LogManager.getLogger(DatabaseLoader.class);
 
     public static void openConnection() {
         Base.open("com.mysql.cj.jdbc.Driver", ConfigManager.getAddress(), ConfigManager.getUsername(), ConfigManager.getPassword());

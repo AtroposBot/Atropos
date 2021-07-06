@@ -8,12 +8,12 @@ import java.io.File;
 
 public class ConfigManager {
 
-    private static Logger logger = LogManager.getLogger(ConfigManager.class);
+    private static final Logger logger = LogManager.getLogger(ConfigManager.class);
     String address;
     String username;
     String password;
 
-    private static ConfigLoader configLoader = new ConfigLoader();
+    private static final ConfigLoader configLoader = new ConfigLoader();
     private static ConfigSettings configSettings;
 
 

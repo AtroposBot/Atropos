@@ -3,39 +3,40 @@ plugins {
     id 'application'
     id 'com.github.johnrengelman.shadow' version '6.1.0'
     id "org.checkerframework" version "0.5.17"
-    id "de.schablinski.activejdbc-gradle-plugin" version "1.5.2"
+    id "de.schablinski.activejdbc-gradle-plugin" version "2.0"
 }
 
 mainClassName = 'dev.laarryy.Icicle.Icicle'
 group 'dev.laarryy'
 version '1.0-SNAPSHOT'
 def log4j2Version = '2.14.1'
-def jdaVersion = '4.2.0_247'
-def cloudVersion = '1.4.0'
 def activejdbcVersion = '2.5-j8'
 def mysqlconnectorjavaVersion = '8.0.23'
 def activeJdbcGradePluginVersion = '2.2'
+def reflectionsVersion = "0.9.12"
+def discord4jVersion = '3.1.6'
 
 repositories {
     mavenCentral()
-    jcenter()
+    maven {
+        url 'https://jitpack.io'
+    }
 }
 
 dependencies {
-    implementation "net.dv8tion:JDA:$jdaVersion"
-    implementation("org.spongepowered:configurate-yaml:4.0.0")
+    implementation "com.discord4j:discord4j-core:$discord4jVersion"
+    implementation "org.spongepowered:configurate-yaml:4.0.0"
     testImplementation "org.junit.jupiter:junit-jupiter-api:5.6.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine"
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: "$log4j2Version"
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: "$log4j2Version"
-    implementation "cloud.commandframework:cloud-core:$cloudVersion"
-    implementation "cloud.commandframework:cloud-jda:$cloudVersion"
     implementation "org.javalite:activejdbc:$activejdbcVersion"
     implementation "mysql:mysql-connector-java:$mysqlconnectorjavaVersion"
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.10.3'
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.10.3'
     implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.10.3'
     implementation "org.javalite:activejdbc-gradle-plugin:$activeJdbcGradePluginVersion"
+    implementation "org.reflections:reflections:$reflectionsVersion"
 }
 
 shadowJar {
