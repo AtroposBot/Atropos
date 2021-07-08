@@ -10,11 +10,11 @@ import java.time.Instant;
 @Table("server_properties")
 public class DiscordServerProperties extends Model {
 
-    public @NonNull int getServerPropertiesId() {
+    public @NonNull Integer getServerPropertiesId() {
         return getInteger("id");
     }
 
-    public @NonNull int getServerId() {
+    public @NonNull Integer getServerId() {
         return getInteger("server_id");
     }
 
@@ -22,23 +22,31 @@ public class DiscordServerProperties extends Model {
         return getLong("server_id_snowflake");
     }
 
+    public void setServerIdSnowflake(long serverIdSnowflake) {
+        set("server_id_snowflake", serverIdSnowflake);
+    }
+
     public @Nullable String getServerName() {
         return getString("server_name");
     }
 
-    public @NonNull Instant getServerCreationDate() {
-        return Instant.ofEpochMilli(getLong("server_creation_date"));
+    public void setServerName(@NonNull String serverName) {
+        set("server_name", serverName);
     }
 
     public @NonNull Instant getServerJoinDate() {
         return Instant.ofEpochMilli(getLong("icicle_join_server_date"));
     }
 
+    public void setServerJoinDate(@NonNull Instant serverJoinDate) {
+        set("icicle_join_server_date", serverJoinDate);
+    }
+
     public @NonNull String getServerCommandPrefix() {
         return getString("server_command_prefix");
     }
 
-    public void setServerCommandPrefix(String serverCommandPrefix) {
+    public void setServerCommandPrefix(@NonNull String serverCommandPrefix) {
         set("server_command_prefix", serverCommandPrefix);
     }
 

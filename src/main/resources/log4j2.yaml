@@ -30,12 +30,12 @@ Configutation:
 
   Loggers:
     Root:
-      level: debug
+      level: info
       AppenderRef:
         ref: Console
     Logger:
       - name: dev.laarryy.Icicle
-        level: debug
+        level: info
         AppenderRef:
           - ref: File_Appender
             level: error

@@ -1,7 +1,8 @@
 package dev.laarryy.Icicle;
 
-import dev.laarryy.Icicle.commands.SlashCommand;
+import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.config.ConfigManager;
+import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.listeners.EventListener;
 import discord4j.common.util.Snowflake;
@@ -10,6 +11,7 @@ import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.Event;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
+import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.presence.Activity;
 import discord4j.core.object.presence.Presence;
@@ -22,14 +24,12 @@ import org.apache.logging.log4j.Logger;
 import org.reflections.Reflections;
 import org.reflections.scanners.MethodAnnotationsScanner;
 import org.reflections.scanners.SubTypesScanner;
-import org.reflections.scanners.TypeAnnotationsScanner;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.lang.reflect.Type;
 import java.time.Duration;
 import java.util.*;
 
@@ -37,7 +37,7 @@ import java.util.*;
 public class Icicle {
 
     private static final Logger logger = LogManager.getLogger(Icicle.class);
-    private static final List<SlashCommand> slashCommands = new ArrayList<>();
+    private static final List<Command> COMMANDS = new ArrayList<>();
 
     public static void main(String[] args) throws Exception {
 
@@ -90,13 +90,13 @@ public class Icicle {
 
         // Register slash commands with Discord
         Reflections reflections = new Reflections("dev.laarryy.Icicle.commands", new SubTypesScanner());
-        Set<Class<? extends SlashCommand>> commandsToRegister = reflections.getSubTypesOf(SlashCommand.class);
+        Set<Class<? extends Command>> commandsToRegister = reflections.getSubTypesOf(Command.class);
 
-        for (Class<? extends SlashCommand> registerableCommand : commandsToRegister) {
-          final SlashCommand command = registerableCommand.getDeclaredConstructor().newInstance();
+        for (Class<? extends Command> registerableCommand : commandsToRegister) {
+          final Command command = registerableCommand.getDeclaredConstructor().newInstance();
 
             // Add to commands map
-            slashCommands.add(command);
+            COMMANDS.add(command);
 
             // Register the command with discord
             long applicationId = client.getRestClient().getApplicationId().block();
@@ -110,13 +110,28 @@ public class Icicle {
 
         client.getEventDispatcher().on(SlashCommandEvent.class)
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
-                        .flatMap(content -> Flux.fromIterable(slashCommands)
+                        .flatMap(content -> Flux.fromIterable(COMMANDS)
                                 .filter(entry ->  event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
                                 .flatMap(entry -> entry.execute(event))
                                 .next()))
                 .subscribe();
 
         logger.info("Registered Slash Commands!");
+
+        // Register 'normal' commands
+
+        client.getEventDispatcher().on(MessageCreateEvent.class)
+                .flatMap(event -> Mono.just(event.getMessage().getContent())
+                        .flatMap(content -> Flux.fromIterable(COMMANDS)
+                                .filter(entry -> event.getGuildId().isPresent())
+                                .filter(entry ->  event.getMessage().getContent().startsWith(
+                                        DiscordServer.findOrCreateIt(event.getGuildId().get())
+                                                .get("server_command_prefix") + entry.getRequest().name()))
+                                .flatMap(entry -> entry.execute(event))
+                                .next()))
+                .subscribe();
+
+        logger.info("Registered Commands!");
 
         // Register event listeners
         Reflections reflections2 = new Reflections("dev.laarryy.Icicle.listeners",
@@ -144,7 +159,6 @@ public class Icicle {
                         }
                         return Mono.empty();
                     })
-                    .retry(3)
                     .subscribe(logger::error);
         }
 
