@@ -21,8 +21,10 @@ public class DatabaseLoader {
         }
     }
 
-    public static void closeConnectionifOpen() {
-        if (Base.hasConnection())
-        Base.close();
+    public static void closeConnectionIfOpen() {
+        if (Base.hasConnection()) {
+            logger.info("Disconnecting from database!");
+            Base.close();
+        }
     }
 }

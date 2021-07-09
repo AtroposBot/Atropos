@@ -17,27 +17,27 @@ public class GuildJoinListener {
     private final Logger logger = LogManager.getLogger(this);
 
     @EventListener
-    Mono<Void> on(GuildCreateEvent event) {
+    public Mono<Void> on(GuildCreateEvent event) {
 
         logger.info("Joining Guild: " + event.getGuild().getName());
 
-        long guildId = event.getGuild().getId().asLong();
+        Long guildId = event.getGuild().getId().asLong();
 
         DatabaseLoader.openConnectionIfClosed();
         DiscordServer server = DiscordServer.findOrCreateIt("server_id", guildId);
 
-        server.set("date", Instant.now().toEpochMilli());
+        server.setDateEntry(Instant.now().toEpochMilli());
 
-        DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", server.getServerId());
+        int serverId = server.getServerId();
 
-        if (properties.getServerJoinDate().toEpochMilli() == 0) {
+        DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", event.getGuild().getId().asLong());
+
+        if (properties.getLong("icicle_join_server_date") == 0) {
             properties.setServerJoinDate(Instant.now());
         }
 
         properties.setServerName(event.getGuild().getName());
         properties.setServerIdSnowflake(event.getGuild().getId().asLong());
-
-        DiscordServerRoles serverRoles = DiscordServerRoles.findOrCreateIt("server_id", server.getServerId());
 
         Flux<Role> roleFlux = event.getGuild().getRoles();
 

@@ -9,6 +9,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 
+import java.util.LinkedList;
 import java.util.Random;
 
 
@@ -32,8 +33,11 @@ public class TestCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
+
+        logger.info("Test command (slash) executed");
+
         if (event.getOption("random").isPresent() && Boolean.parseBoolean(String.valueOf(event.getOption("random")))) {
-            event.replyEphemeral("Random number request understood. Your number is " + getRandom().nextInt(25))
+            event.replyEphemeral("Random number request understood. Your number is " + new Random().nextInt(25))
                     .retry(3)
                     .subscribe();
             return Mono.empty();
@@ -44,32 +48,38 @@ public class TestCommand implements Command {
     }
 
     public Mono<Void> execute(MessageCreateEvent event) {
-        CommandData commandData = new CommandDataConverter(request).getCommandData();
-        String[] args = event.getMessage().getContent().split(" ");
 
-        logger.info(commandData.name());
-        logger.info(commandData.description());
+        logger.info("Test command (normal) executed");
 
-        if (args.length >= 2 && Boolean.parseBoolean(args[1]) == commandData.options().get().) {
-            Mono.just(event.getMessage().getChannel()
-                    .flatMap(messageChannel -> messageChannel.createMessage("Test command execution (normal) succeeded. " +
-                            "Your random number is " + getRandom().nextInt(25))))
-                    .retry(3)
-                    .subscribe();
-                return Mono.empty();
-        }
+        CommandInfo commandInfo = new CommandInfo(event, request);
+        LinkedList<String> args = commandInfo.getArgs();
 
-        Mono.just(event.getMessage().getChannel()
-                .flatMap(messageChannel -> messageChannel.createMessage("Test command execution (normal) succeeded.")))
-                .retry(3)
-                .subscribe();
+        doTestCommand(commandInfo, args);
 
-        commandData.options().get().isEmpty();
+
         return Mono.empty();
     }
 
-    private Random getRandom() {
-        return new Random();
+    private void doTestCommand(CommandInfo commandInfo, LinkedList<String> args) {
+
+        commandInfo.getEvent().getMessage().getChannel().subscribe(messageChannel ->
+                messageChannel.createMessage("Test Command Successful!")
+                        .subscribe());
+
+        if (!args.get(0).isEmpty() && Boolean.parseBoolean(args.get(0))) {
+
+            commandInfo.getEvent().getMessage().getChannel().subscribe(messageChannel ->
+                    messageChannel.createMessage("You have chosen true!")
+                            .subscribe());
+        }
+
+        if (!args.get(0).isEmpty() && !Boolean.parseBoolean(args.get(0))) {
+
+            commandInfo.getEvent().getMessage().getChannel().subscribe(messageChannel ->
+                    messageChannel.createMessage("You have chosen false!")
+                            .subscribe());
+        }
+
     }
 
 }

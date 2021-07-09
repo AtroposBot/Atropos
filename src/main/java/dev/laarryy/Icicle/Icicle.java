@@ -3,6 +3,7 @@ package dev.laarryy.Icicle;
 import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.config.ConfigManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
+import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.listeners.EventListener;
 import discord4j.common.util.Snowflake;
@@ -88,7 +89,7 @@ public class Icicle {
         logger.info("Connected to Database!");
 
 
-        // Register slash commands with Discord
+        // Register slash and 'normal' commands with Discord
         Reflections reflections = new Reflections("dev.laarryy.Icicle.commands", new SubTypesScanner());
         Set<Class<? extends Command>> commandsToRegister = reflections.getSubTypesOf(Command.class);
 
@@ -107,6 +108,7 @@ public class Icicle {
         }
 
         // Listen for command event and execute from map
+        logger.info(COMMANDS.get(1).getRequest().name());
 
         client.getEventDispatcher().on(SlashCommandEvent.class)
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
@@ -120,15 +122,19 @@ public class Icicle {
 
         // Register 'normal' commands
 
+        //TODO: Learn reactor so that I can make this next bit work as intended.
+
         client.getEventDispatcher().on(MessageCreateEvent.class)
                 .flatMap(event -> Mono.just(event.getMessage().getContent())
-                        .flatMap(content -> Flux.fromIterable(COMMANDS)
-                                .filter(entry -> event.getGuildId().isPresent())
-                                .filter(entry ->  event.getMessage().getContent().startsWith(
-                                        DiscordServer.findOrCreateIt(event.getGuildId().get())
-                                                .get("server_command_prefix") + entry.getRequest().name()))
-                                .flatMap(entry -> entry.execute(event))
-                                .next()))
+                                    .flatMap(content ->
+                                            Flux.fromIterable(COMMANDS)
+                                                    .filter(entry ->  event.getMessage().getContent().startsWith(
+                                                            DiscordServerProperties.findOrCreateIt("server_id_snowflake", event.getGuildId())
+                                                                    .getString("server_command_prefix") + entry.getRequest().name()))
+                                                    .flatMap(entry -> entry.execute(event))
+                                                    .retry(3)
+                                                    .doOnError(Throwable::printStackTrace)
+                                                    .next()))
                 .subscribe();
 
         logger.info("Registered Commands!");

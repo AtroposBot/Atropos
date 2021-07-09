@@ -16,4 +16,16 @@ public class DiscordServer extends Model {
         return Instant.ofEpochMilli(getLong("date"));
     }
 
+    public void setDateEntry(Long epochMilli) {
+        setLong("date", epochMilli);
+    }
+
+    public Long getServerSnowflake() {
+        return getLong("server_id");
+    }
+
+    public void setServerSnowflake(Long snowflake) {
+        setLong("server_id", snowflake);
+    }
+
 }
