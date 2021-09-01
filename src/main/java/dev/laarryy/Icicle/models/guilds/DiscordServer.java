@@ -12,8 +12,8 @@ public class DiscordServer extends Model {
         return getInteger("id");
     }
 
-    public Instant getDateEntry() {
-        return Instant.ofEpochMilli(getLong("date"));
+    public long getDateEntry() {
+        return getLong("date");
     }
 
     public void setDateEntry(Long epochMilli) {
