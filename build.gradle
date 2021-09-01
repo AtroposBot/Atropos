@@ -10,24 +10,28 @@ mainClassName = 'dev.laarryy.Icicle.Icicle'
 group 'dev.laarryy'
 version '1.0-SNAPSHOT'
 def log4j2Version = '2.14.1'
-def activejdbcVersion = '2.5-j8'
-def mysqlconnectorjavaVersion = '8.0.23'
+def activejdbcVersion = '3.0-SNAPSHOT'
+def mysqlconnectorjavaVersion = '8.0.25'
 def activeJdbcGradePluginVersion = '2.2'
 def reflectionsVersion = "0.9.12"
-def discord4jVersion = '3.1.6'
+def discord4jVersion = '3.2.0-RC2'
+def configurateVersion = '4.1.1'
 
 repositories {
     mavenCentral()
     maven {
         url 'https://jitpack.io'
     }
+    maven {
+        url 'https://oss.sonatype.org/content/repositories/snapshots/'
+    }
 }
 
 dependencies {
     implementation "com.discord4j:discord4j-core:$discord4jVersion"
-    implementation "org.spongepowered:configurate-yaml:4.0.0"
-    testImplementation "org.junit.jupiter:junit-jupiter-api:5.6.0"
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine"
+    implementation "org.spongepowered:configurate-yaml:$configurateVersion"
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: "$log4j2Version"
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: "$log4j2Version"
     implementation "org.javalite:activejdbc:$activejdbcVersion"

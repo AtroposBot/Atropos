@@ -2,7 +2,6 @@ package dev.laarryy.Icicle;
 
 import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.config.ConfigManager;
-import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.listeners.EventListener;
@@ -14,10 +13,8 @@ import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.User;
-import discord4j.core.object.presence.Activity;
-import discord4j.core.object.presence.Presence;
+import discord4j.core.object.presence.*;
 import discord4j.core.shard.ShardingStrategy;
-import discord4j.discordjson.json.ActivityUpdateRequest;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.util.AllowedMentions;
 import org.apache.logging.log4j.LogManager;
@@ -32,6 +29,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.*;
 
 
@@ -59,9 +60,11 @@ public class Icicle {
                 .gateway()
                 .setEnabledIntents(IntentSet.all())
                 .setSharding(ShardingStrategy.recommended())
-                .setInitialPresence(shardInfo -> Presence.doNotDisturb(ActivityUpdateRequest
-                        .builder()
-                        .from(Activity.playing("Shard: " + (shardInfo.getIndex() + 1)  + " | DM for ModMail")).build()))
+                .setInitialPresence(shardInfo -> ClientPresence.of(Status.DO_NOT_DISTURB,
+                        ClientActivity.playing("Shard " + (shardInfo.getIndex() + 1)  + " of " + shardInfo.getCount()
+                                + " | DM for ModMail | Last Activated "
+                                + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.FULL).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(Instant.now())))
+                )
                 .login()
                 .block(Duration.ofSeconds(30));
 
@@ -87,6 +90,8 @@ public class Icicle {
         DatabaseLoader.openConnection();
 
         logger.info("Connected to Database!");
+
+
 
 
         // Register slash and 'normal' commands with Discord
@@ -119,25 +124,6 @@ public class Icicle {
                 .subscribe();
 
         logger.info("Registered Slash Commands!");
-
-        // Register 'normal' commands
-
-        //TODO: Learn reactor so that I can make this next bit work as intended.
-
-        client.getEventDispatcher().on(MessageCreateEvent.class)
-                .flatMap(event -> Mono.just(event.getMessage().getContent())
-                                    .flatMap(content ->
-                                            Flux.fromIterable(COMMANDS)
-                                                    .filter(entry ->  event.getMessage().getContent().startsWith(
-                                                            DiscordServerProperties.findOrCreateIt("server_id_snowflake", event.getGuildId())
-                                                                    .getString("server_command_prefix") + entry.getRequest().name()))
-                                                    .flatMap(entry -> entry.execute(event))
-                                                    .retry(3)
-                                                    .doOnError(Throwable::printStackTrace)
-                                                    .next()))
-                .subscribe();
-
-        logger.info("Registered Commands!");
 
         // Register event listeners
         Reflections reflections2 = new Reflections("dev.laarryy.Icicle.listeners",

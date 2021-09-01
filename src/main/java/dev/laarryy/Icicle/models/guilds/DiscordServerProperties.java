@@ -38,7 +38,7 @@ public class DiscordServerProperties extends Model {
         return Instant.ofEpochMilli(getLong("icicle_join_server_date"));
     }
 
-    public void setServerJoinDate(@NonNull Instant serverJoinDate) {
+    public void setServerJoinDate(@NonNull Long serverJoinDate) {
         set("icicle_join_server_date", serverJoinDate);
     }
 
