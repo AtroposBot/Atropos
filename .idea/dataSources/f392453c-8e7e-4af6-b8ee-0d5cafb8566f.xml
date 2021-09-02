@@ -1307,21 +1307,25 @@ sys|schema||mysql.sys|localhost|TRIGGER|G</Grants>
       <Position>3</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
+      <DefaultExpression>0</DefaultExpression>
     </column>
     <column id="347" parent="292" name="server_id_snowflake">
       <Position>4</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
+      <DefaultExpression>0</DefaultExpression>
     </column>
     <column id="348" parent="292" name="user_id">
       <Position>5</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
+      <DefaultExpression>0</DefaultExpression>
     </column>
     <column id="349" parent="292" name="user_id_snowflake">
       <Position>6</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
+      <DefaultExpression>0</DefaultExpression>
     </column>
     <column id="350" parent="292" name="date">
       <Position>7</Position>
@@ -1395,336 +1399,324 @@ sys|schema||mysql.sys|localhost|TRIGGER|G</Grants>
       <DataType>varchar(255)|0s</DataType>
       <DefaultExpression>&apos;default_server_name&apos;</DefaultExpression>
     </column>
-    <column id="364" parent="293" name="icicle_join_server_date">
+    <column id="364" parent="293" name="member_count_on_icicle_join">
       <Position>5</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
       <DefaultExpression>0</DefaultExpression>
     </column>
-    <column id="365" parent="293" name="member_count_on_icicle_join">
+    <column id="365" parent="293" name="server_log_channel_snowflake">
       <Position>6</Position>
       <DataType>bigint|0s</DataType>
-      <NotNull>1</NotNull>
       <DefaultExpression>0</DefaultExpression>
     </column>
-    <column id="366" parent="293" name="server_log_channel_snowflake">
-      <Position>7</Position>
-      <DataType>bigint|0s</DataType>
-      <DefaultExpression>0</DefaultExpression>
-    </column>
-    <column id="367" parent="293" name="server_slash_command_toggle">
-      <Position>8</Position>
-      <DataType>tinyint(1)|0s</DataType>
-      <NotNull>1</NotNull>
-      <DefaultExpression>0</DefaultExpression>
-    </column>
-    <index id="368" parent="293" name="id">
+    <index id="366" parent="293" name="id">
       <ColNames>id</ColNames>
       <Unique>1</Unique>
       <Type>btree</Type>
     </index>
-    <index id="369" parent="293" name="server_properties_servers_id_fk">
+    <index id="367" parent="293" name="server_properties_servers_id_fk">
       <ColNames>server_id</ColNames>
       <Type>btree</Type>
     </index>
-    <index id="370" parent="293" name="server_properties_servers_server_id_fk">
+    <index id="368" parent="293" name="server_properties_servers_server_id_fk">
       <ColNames>server_id_snowflake</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="371" parent="293" name="PRIMARY">
+    <key id="369" parent="293" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <key id="372" parent="293" name="id">
+    <key id="370" parent="293" name="id">
       <ColNames>id</ColNames>
       <UnderlyingIndexName>id</UnderlyingIndexName>
     </key>
-    <foreign-key id="373" parent="293" name="server_properties_servers_id_fk">
+    <foreign-key id="371" parent="293" name="server_properties_servers_id_fk">
       <ColNames>server_id</ColNames>
       <RefTableName>servers</RefTableName>
       <RefColNames>id</RefColNames>
       <OnUpdate>cascade</OnUpdate>
     </foreign-key>
-    <column id="374" parent="294" name="id">
+    <column id="372" parent="294" name="id">
       <Position>1</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
       <SequenceIdentity>null</SequenceIdentity>
     </column>
-    <column id="375" parent="294" name="server_id">
+    <column id="373" parent="294" name="server_id">
       <Position>2</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <column id="376" parent="294" name="permission_id">
+    <column id="374" parent="294" name="permission_id">
       <Position>3</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <column id="377" parent="294" name="role_id">
+    <column id="375" parent="294" name="role_id">
       <Position>4</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <index id="378" parent="294" name="server_id">
+    <index id="376" parent="294" name="server_id">
       <ColNames>server_id</ColNames>
       <Type>btree</Type>
     </index>
-    <index id="379" parent="294" name="permission_id">
+    <index id="377" parent="294" name="permission_id">
       <ColNames>permission_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="380" parent="294" name="PRIMARY">
+    <key id="378" parent="294" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <foreign-key id="381" parent="294" name="server_role_permissions_ibfk_1">
+    <foreign-key id="379" parent="294" name="server_role_permissions_ibfk_1">
       <ColNames>server_id</ColNames>
       <RefTableName>servers</RefTableName>
       <RefColNames>id</RefColNames>
       <OnUpdate>cascade</OnUpdate>
     </foreign-key>
-    <foreign-key id="382" parent="294" name="server_role_permissions_ibfk_2">
+    <foreign-key id="380" parent="294" name="server_role_permissions_ibfk_2">
       <ColNames>permission_id</ColNames>
       <RefTableName>permissions</RefTableName>
       <RefColNames>id</RefColNames>
       <OnUpdate>cascade</OnUpdate>
     </foreign-key>
-    <column id="383" parent="295" name="id">
+    <column id="381" parent="295" name="id">
       <Position>1</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
       <SequenceIdentity>null</SequenceIdentity>
     </column>
-    <column id="384" parent="295" name="role_id_snowflake">
+    <column id="382" parent="295" name="role_id_snowflake">
       <Position>2</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <column id="385" parent="295" name="server_id">
+    <column id="383" parent="295" name="server_id">
       <Position>3</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <index id="386" parent="295" name="id">
+    <index id="384" parent="295" name="id">
       <ColNames>id</ColNames>
       <Unique>1</Unique>
       <Type>btree</Type>
     </index>
-    <index id="387" parent="295" name="role_id_snowflake">
+    <index id="385" parent="295" name="role_id_snowflake">
       <ColNames>role_id_snowflake</ColNames>
       <Unique>1</Unique>
       <Type>btree</Type>
     </index>
-    <index id="388" parent="295" name="server_id">
+    <index id="386" parent="295" name="server_id">
       <ColNames>server_id</ColNames>
       <Unique>1</Unique>
       <Type>btree</Type>
     </index>
-    <key id="389" parent="295" name="PRIMARY">
+    <key id="387" parent="295" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <key id="390" parent="295" name="id">
+    <key id="388" parent="295" name="id">
       <ColNames>id</ColNames>
       <UnderlyingIndexName>id</UnderlyingIndexName>
     </key>
-    <key id="391" parent="295" name="role_id_snowflake">
+    <key id="389" parent="295" name="role_id_snowflake">
       <ColNames>role_id_snowflake</ColNames>
       <UnderlyingIndexName>role_id_snowflake</UnderlyingIndexName>
     </key>
-    <key id="392" parent="295" name="server_id">
+    <key id="390" parent="295" name="server_id">
       <ColNames>server_id</ColNames>
       <UnderlyingIndexName>server_id</UnderlyingIndexName>
     </key>
-    <foreign-key id="393" parent="295" name="server_roles_ibfk_1">
+    <foreign-key id="391" parent="295" name="server_roles_ibfk_1">
       <ColNames>server_id</ColNames>
       <RefTableName>servers</RefTableName>
       <RefColNames>id</RefColNames>
     </foreign-key>
-    <column id="394" parent="296" name="id">
+    <column id="392" parent="296" name="id">
       <Position>1</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
       <SequenceIdentity>null</SequenceIdentity>
     </column>
-    <column id="395" parent="296" name="user_id">
+    <column id="393" parent="296" name="user_id">
       <Position>2</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <column id="396" parent="296" name="server_id">
+    <column id="394" parent="296" name="server_id">
       <Position>3</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <column id="397" parent="296" name="date">
+    <column id="395" parent="296" name="date">
       <Position>4</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <index id="398" parent="296" name="id">
+    <index id="396" parent="296" name="id">
       <ColNames>id</ColNames>
       <Unique>1</Unique>
       <Type>btree</Type>
     </index>
-    <index id="399" parent="296" name="server_user_ibfk_1">
+    <index id="397" parent="296" name="server_user_ibfk_1">
       <ColNames>user_id</ColNames>
       <Type>btree</Type>
     </index>
-    <index id="400" parent="296" name="server_user_ibfk_2">
+    <index id="398" parent="296" name="server_user_ibfk_2">
       <ColNames>server_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="401" parent="296" name="PRIMARY">
+    <key id="399" parent="296" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <key id="402" parent="296" name="id">
+    <key id="400" parent="296" name="id">
       <ColNames>id</ColNames>
       <UnderlyingIndexName>id</UnderlyingIndexName>
     </key>
-    <foreign-key id="403" parent="296" name="server_user_ibfk_1">
+    <foreign-key id="401" parent="296" name="server_user_ibfk_1">
       <ColNames>user_id</ColNames>
       <RefTableName>users</RefTableName>
       <RefColNames>id</RefColNames>
       <OnUpdate>cascade</OnUpdate>
     </foreign-key>
-    <foreign-key id="404" parent="296" name="server_user_ibfk_2">
+    <foreign-key id="402" parent="296" name="server_user_ibfk_2">
       <ColNames>server_id</ColNames>
       <RefTableName>servers</RefTableName>
       <RefColNames>id</RefColNames>
       <OnUpdate>cascade</OnUpdate>
     </foreign-key>
-    <column id="405" parent="297" name="id">
+    <column id="403" parent="297" name="id">
       <Position>1</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
       <SequenceIdentity>null</SequenceIdentity>
     </column>
-    <column id="406" parent="297" name="server_id">
+    <column id="404" parent="297" name="server_id">
       <Position>2</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <column id="407" parent="297" name="user_id">
+    <column id="405" parent="297" name="user_id">
       <Position>3</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <column id="408" parent="297" name="regex_trigger">
+    <column id="406" parent="297" name="regex_trigger">
       <Position>4</Position>
       <DataType>varchar(255)|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <column id="409" parent="297" name="response">
+    <column id="407" parent="297" name="response">
       <Position>5</Position>
       <DataType>varchar(255)|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <column id="410" parent="297" name="date">
+    <column id="408" parent="297" name="date">
       <Position>6</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <index id="411" parent="297" name="server_id">
+    <index id="409" parent="297" name="server_id">
       <ColNames>server_id</ColNames>
       <Type>btree</Type>
     </index>
-    <index id="412" parent="297" name="user_id">
+    <index id="410" parent="297" name="user_id">
       <ColNames>user_id</ColNames>
       <Type>btree</Type>
     </index>
-    <key id="413" parent="297" name="PRIMARY">
+    <key id="411" parent="297" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <foreign-key id="414" parent="297" name="server_user_autoresponses_ibfk_1">
+    <foreign-key id="412" parent="297" name="server_user_autoresponses_ibfk_1">
       <ColNames>server_id</ColNames>
       <RefTableName>servers</RefTableName>
       <RefColNames>id</RefColNames>
       <OnUpdate>cascade</OnUpdate>
     </foreign-key>
-    <foreign-key id="415" parent="297" name="server_user_autoresponses_ibfk_2">
+    <foreign-key id="413" parent="297" name="server_user_autoresponses_ibfk_2">
       <ColNames>user_id</ColNames>
       <RefTableName>users</RefTableName>
       <RefColNames>id</RefColNames>
       <OnUpdate>cascade</OnUpdate>
     </foreign-key>
-    <column id="416" parent="298" name="id">
+    <column id="414" parent="298" name="id">
       <Position>1</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
       <SequenceIdentity>null</SequenceIdentity>
     </column>
-    <column id="417" parent="298" name="date">
+    <column id="415" parent="298" name="date">
       <Position>2</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
       <DefaultExpression>0</DefaultExpression>
     </column>
-    <column id="418" parent="298" name="server_id">
+    <column id="416" parent="298" name="server_id">
       <Position>3</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
     </column>
-    <index id="419" parent="298" name="servers_server_id_uindex">
+    <index id="417" parent="298" name="servers_server_id_uindex">
       <ColNames>server_id</ColNames>
       <Unique>1</Unique>
       <Type>btree</Type>
     </index>
-    <key id="420" parent="298" name="PRIMARY">
+    <key id="418" parent="298" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <key id="421" parent="298" name="servers_server_id_uindex">
+    <key id="419" parent="298" name="servers_server_id_uindex">
       <ColNames>server_id</ColNames>
       <UnderlyingIndexName>servers_server_id_uindex</UnderlyingIndexName>
     </key>
-    <column id="422" parent="299" name="id">
+    <column id="420" parent="299" name="id">
       <Position>1</Position>
       <DataType>int|0s</DataType>
       <NotNull>1</NotNull>
       <SequenceIdentity>null</SequenceIdentity>
     </column>
-    <column id="423" parent="299" name="user_id_snowflake">
+    <column id="421" parent="299" name="user_id_snowflake">
       <Position>2</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
       <DefaultExpression>0</DefaultExpression>
     </column>
-    <column id="424" parent="299" name="date">
+    <column id="422" parent="299" name="date">
       <Position>3</Position>
       <DataType>bigint|0s</DataType>
       <NotNull>1</NotNull>
       <DefaultExpression>0</DefaultExpression>
     </column>
-    <index id="425" parent="299" name="id_UNIQUE">
+    <index id="423" parent="299" name="id_UNIQUE">
       <ColNames>id</ColNames>
       <Unique>1</Unique>
       <Type>btree</Type>
     </index>
-    <index id="426" parent="299" name="user_id_UNIQUE">
+    <index id="424" parent="299" name="user_id_UNIQUE">
       <ColNames>user_id_snowflake</ColNames>
       <Unique>1</Unique>
       <Type>btree</Type>
     </index>
-    <key id="427" parent="299" name="PRIMARY">
+    <key id="425" parent="299" name="PRIMARY">
       <NameSurrogate>1</NameSurrogate>
       <ColNames>id</ColNames>
       <Primary>1</Primary>
     </key>
-    <key id="428" parent="299" name="id_UNIQUE">
+    <key id="426" parent="299" name="id_UNIQUE">
       <ColNames>id</ColNames>
       <UnderlyingIndexName>id_UNIQUE</UnderlyingIndexName>
     </key>
-    <key id="429" parent="299" name="user_id_UNIQUE">
+    <key id="427" parent="299" name="user_id_UNIQUE">
       <ColNames>user_id_snowflake</ColNames>
       <UnderlyingIndexName>user_id_UNIQUE</UnderlyingIndexName>
     </key>

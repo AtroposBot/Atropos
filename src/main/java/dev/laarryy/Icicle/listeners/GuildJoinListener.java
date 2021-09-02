@@ -32,10 +32,6 @@ public class GuildJoinListener {
 
         DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", event.getGuild().getId().asLong());
 
-        if (properties.getLong("icicle_join_server_date") == 0) {
-            properties.setServerJoinDate(Instant.now().toEpochMilli());
-        }
-
         properties.setServerName(event.getGuild().getName());
         properties.setServerIdSnowflake(event.getGuild().getId().asLong());
         properties.saveIt();
