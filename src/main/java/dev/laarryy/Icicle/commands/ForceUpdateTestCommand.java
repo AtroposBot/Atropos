@@ -42,10 +42,6 @@ public class ForceUpdateTestCommand implements Command {
 
         DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", event.getInteraction().getGuild().block().getId().asLong());
 
-        if (properties.getLong("icicle_join_server_date") == 0) {
-            properties.setServerJoinDate(Instant.now().toEpochMilli());
-        }
-
         properties.setServerName(event.getInteraction().getGuild().block().getName());
         properties.setServerIdSnowflake(event.getInteraction().getGuild().block().getId().asLong());
         properties.saveIt();

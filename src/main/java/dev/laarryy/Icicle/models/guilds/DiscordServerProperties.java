@@ -34,20 +34,12 @@ public class DiscordServerProperties extends Model {
         set("server_name", serverName);
     }
 
-    public @NonNull Instant getServerJoinDate() {
-        return Instant.ofEpochMilli(getLong("icicle_join_server_date"));
+    public int getMembersOnFirstJoin() {
+        return getInteger("member_count_on_icicle_join");
     }
 
-    public void setServerJoinDate(@NonNull Long serverJoinDate) {
-        set("icicle_join_server_date", serverJoinDate);
-    }
-
-    public @NonNull String getServerCommandPrefix() {
-        return getString("server_command_prefix");
-    }
-
-    public void setServerCommandPrefix(@NonNull String serverCommandPrefix) {
-        set("server_command_prefix", serverCommandPrefix);
+    public void setMembersOnFirstJoin(int membersonFirstJoin) {
+        setInteger("member_count_on_icicle_join", membersonFirstJoin);
     }
 
     public @Nullable Long getServerLogChannelSnowflake() {

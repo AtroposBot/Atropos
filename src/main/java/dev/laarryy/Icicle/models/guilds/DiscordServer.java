@@ -3,8 +3,6 @@ package dev.laarryy.Icicle.models.guilds;
 import org.javalite.activejdbc.Model;
 import org.javalite.activejdbc.annotations.Table;
 
-import java.time.Instant;
-
 @Table("servers")
 public class DiscordServer extends Model {
 
@@ -12,7 +10,7 @@ public class DiscordServer extends Model {
         return getInteger("id");
     }
 
-    public long getDateEntry() {
+    public Long getDateEntry() {
         return getLong("date");
     }
 
