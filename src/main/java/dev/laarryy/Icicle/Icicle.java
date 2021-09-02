@@ -2,12 +2,12 @@ package dev.laarryy.Icicle;
 
 import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.config.ConfigManager;
+import dev.laarryy.Icicle.listeners.EventListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.joins.ServerUser;
 import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
-import dev.laarryy.Icicle.listeners.EventListener;
 import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClientBuilder;
 import discord4j.core.GatewayDiscordClient;
@@ -17,7 +17,9 @@ import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.User;
-import discord4j.core.object.presence.*;
+import discord4j.core.object.presence.ClientActivity;
+import discord4j.core.object.presence.ClientPresence;
+import discord4j.core.object.presence.Status;
 import discord4j.core.shard.ShardingStrategy;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.util.AllowedMentions;
@@ -37,7 +39,10 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 
 public class Icicle {
@@ -168,7 +173,7 @@ public class Icicle {
         client.onDisconnect().block();
     }
 
-    private static boolean addServerToDatabase(Guild guild) {
+    public static boolean addServerToDatabase(Guild guild) {
 
         long serverIdSnowflake = guild.getId().asLong();
         DatabaseLoader.openConnectionIfClosed();
@@ -191,9 +196,8 @@ public class Icicle {
 
         if (properties.getMembersOnFirstJoin() == 0) {
             properties.setMembersOnFirstJoin(guild.getMemberCount());
+            properties.save();
         }
-
-        properties.save();
 
         guild.getMembers()
                 .map(member -> Icicle.addUserToDatabase(member, guild))
@@ -203,7 +207,7 @@ public class Icicle {
         return true;
     }
 
-    private static boolean addUserToDatabase(Member member, Guild guild) {
+    public static boolean addUserToDatabase(Member member, Guild guild) {
 
         if (member.isBot()) {
             return false;
@@ -212,6 +216,7 @@ public class Icicle {
         DatabaseLoader.openConnectionIfClosed();
 
         long userIdSnowflake = member.getId().asLong();
+        long serverIdSnowflake = guild.getId().asLong();
 
         DiscordUser user = DiscordUser.findOrCreateIt("user_id_snowflake", userIdSnowflake);
         user.save();
@@ -219,14 +224,24 @@ public class Icicle {
 
         if (user.getDateEntry() == 0) {
             user.setDateEntry(Instant.now().toEpochMilli());
+            user.save();
         }
 
-        ServerUser serverUser = ServerUser.findOrCreateIt()
+        DiscordServer server = DiscordServer.findOrCreateIt("server_id", serverIdSnowflake);
 
+        int serverId = server.getServerId();
+        int userId = user.getUserId();
+
+        ServerUser serverUser = ServerUser.findOrCreateIt("user_id", userId, "server_id", serverId);
+        serverUser.save();
+        serverUser.refresh();
+
+        if (serverUser.getDate() == 0) {
+            serverUser.setDate(Instant.now().toEpochMilli());
+            serverUser.save();
+        }
 
         return true;
     }
-
-
 
 }

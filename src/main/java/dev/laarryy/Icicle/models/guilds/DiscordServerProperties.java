@@ -5,8 +5,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.javalite.activejdbc.Model;
 import org.javalite.activejdbc.annotations.Table;
 
-import java.time.Instant;
-
 @Table("server_properties")
 public class DiscordServerProperties extends Model {
 

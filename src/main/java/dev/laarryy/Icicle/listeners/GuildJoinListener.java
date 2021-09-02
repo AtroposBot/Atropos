@@ -1,17 +1,13 @@
 package dev.laarryy.Icicle.listeners;
 
-import dev.laarryy.Icicle.models.guilds.DiscordServer;
-import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
-import dev.laarryy.Icicle.models.guilds.DiscordServerRoles;
-import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.Icicle;
 import discord4j.core.event.domain.guild.GuildCreateEvent;
-import discord4j.core.object.entity.Role;
+import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.Member;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import java.time.Instant;
 
 public class GuildJoinListener {
     private final Logger logger = LogManager.getLogger(this);
@@ -21,20 +17,16 @@ public class GuildJoinListener {
 
         logger.info("Joining Guild: " + event.getGuild().getName());
 
-        Long guildId = event.getGuild().getId().asLong();
+        Guild guild = event.getGuild();
 
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordServer server = DiscordServer.findOrCreateIt("server_id", guildId);
+        Icicle.addServerToDatabase(guild);
 
-        server.setDateEntry(Instant.now().toEpochMilli());
+        Flux<Member> memberFlux = event.getGuild().getMembers();
 
-        int serverId = server.getServerId();
-
-        DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", event.getGuild().getId().asLong());
-
-        properties.setServerName(event.getGuild().getName());
-        properties.setServerIdSnowflake(event.getGuild().getId().asLong());
-        properties.saveIt();
+        memberFlux
+                .map(member -> Icicle.addUserToDatabase(member, guild))
+                .doOnError(logger::error)
+                .subscribe();
 
         return Mono.empty();
     }
