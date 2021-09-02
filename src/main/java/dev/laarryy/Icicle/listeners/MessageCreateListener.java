@@ -34,6 +34,11 @@ public class MessageCreateListener {
         server.saveIt();
 
         DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+
+        if (user == null) {
+            return Mono.empty();
+        }
+
         int userId = user.getUserId();
         user.saveIt();
 
