@@ -1,6 +1,7 @@
 package dev.laarryy.Icicle.commands;
 
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
+import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
@@ -42,11 +43,16 @@ public class TestCommand implements Command {
         Guild guild = event.getInteraction().getGuild().block();
         User user = event.getInteraction().getUser();
 
+        DatabaseLoader.openConnectionIfClosed();
+
         Permission permission = Permission.findOrCreateIt("permission", request.name());
+        permission.save();
+        permission.refresh();
         int permissionId = permission.getInteger("id");
 
         if (!permissionChecker.checkPermission(guild, user, permissionId)) {
             logger.info("Test permission check conducted, no permission found.");
+            event.reply("No permission.").withEphemeral(true).subscribe();
             return Mono.empty();
         } else {
             logger.info("Test permission check conducted, permission granted!");
