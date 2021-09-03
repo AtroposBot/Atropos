@@ -8,8 +8,11 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.User;
+import discord4j.rest.util.Permission;
+import discord4j.rest.util.PermissionSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import reactor.core.publisher.Flux;
 
 public class PermissionChecker {
     private final Logger logger = LogManager.getLogger(this);
@@ -25,10 +28,53 @@ public class PermissionChecker {
 
         Boolean hasRoleWithPermission =
                 guild.getRoles()
-                        .map(Role::getId)
-                        .any(snowflake -> ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, snowflake.asLong()) != null)
+                        .filter(role -> ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null)
+                        .any(role ->
+                                member.getRoles()
+                                        .any(memberRole -> memberRole.equals(role))
+                                        .block())
                         .block();
 
         return hasRoleWithPermission != null && hasRoleWithPermission;
+    }
+
+    public boolean checkIsAdministrator(Guild guild, Member member) {
+
+        logger.info("Checking if Admin");
+        Boolean hasRoleWithAdmin =
+                member.getRoles()
+                .map(Role::getPermissions)
+                .any(permissions -> permissions.contains(Permission.ADMINISTRATOR))
+                .block();
+
+        Boolean isUserWithAdmin =
+                member.getBasePermissions()
+                        .flux()
+                        .any(permissions -> permissions.contains(Permission.ADMINISTRATOR))
+                        .block();
+
+        Boolean ownsGuild = Flux.just(member).any(member1 -> member1.equals(guild.getOwner().block())).block();
+
+        if (hasRoleWithAdmin!= null && hasRoleWithAdmin) {
+            logger.info("Has role with admin");
+            return true;
+        } else {
+            logger.info("No role with admin");
+        }
+
+        if (isUserWithAdmin != null && isUserWithAdmin) {
+            logger.info("Is user with admin");
+            return true;
+        } else {
+            logger.info("Is not user with admin");
+        }
+
+        if (ownsGuild != null && ownsGuild) {
+            logger.info("Owns guild");
+            return true;
+        } else {
+            logger.info("Does not own guild");
+            return false;
+        }
     }
 }
