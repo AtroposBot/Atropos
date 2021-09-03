@@ -15,12 +15,20 @@ public class Punishment extends Model {
         return getInteger("id");
     }
 
-    public int getUserId() {
-        return getInteger("user_id");
+    public int getPunishedUserId() {
+        return getInteger("user_id_punished");
     }
 
-    public void setUserId(int userId) {
-        set("user_id", userId);
+    public void setPunishedUserId(int punishedUserId) {
+        set("user_id_punished", punishedUserId);
+    }
+
+    public int getPunishingUserId() {
+        return getInteger("user_id_punisher");
+    }
+
+    public void setPunishingUserId(int punishingUserId) {
+        set("user_id_punisher", punishingUserId);
     }
 
     public int getServerId() {
@@ -39,23 +47,23 @@ public class Punishment extends Model {
         set("punishment_type", punishmentType);
     }
 
-    public @NonNull Instant getDateEntry() {
-        return Instant.ofEpochMilli(getLong("punishment_date"));
+    public @NonNull Long getDateEntry() {
+        return getLong("punishment_date");
     }
 
-    public void setDateEntry(@NonNull Instant dateEntry) {
+    public void setDateEntry(@NonNull Long dateEntry) {
         set("punishment_date", dateEntry);
     }
 
-    public @Nullable Instant getEndDate() {
-        return Instant.ofEpochMilli(getLong("punishment_end_date"));
+    public @Nullable Long getEndDate() {
+        return getLong("punishment_end_date");
     }
 
-    public void setEndDate(@Nullable Instant endDateEntry) {
+    public void setEndDate(@Nullable Long endDateEntry) {
         set("punishment_end_date", endDateEntry);
     }
 
-    public @Nullable String getMessage() {
+    public @Nullable String getPunishmentMessage() {
         return getString("punishment_message");
     }
 
@@ -63,41 +71,12 @@ public class Punishment extends Model {
         set("punishment_message", message);
     }
 
-    public void createPunishment(
-            int userId,
-            int serverId,
-            @NonNull String punishmentType,
-            @NonNull Instant punishmentDate,
-            @Nullable Instant punishmentEndDate,
-            @Nullable String punishmentMessage
-    ) {
-        Punishment p = Punishment.createIt();
-        p.setUserId(userId);
-        p.setServerId(serverId);
-        p.setPunishmentType(punishmentType);
-        p.setDateEntry(punishmentDate);
-        p.setEndDate(punishmentEndDate);
-        p.setPunishmentMessage(punishmentMessage);
-        p.saveIt();
+    public boolean getIfDMed() {
+        return getBoolean("did_dm");
     }
 
-    public void createPunishment(
-            Long userIdSnowflake,
-            Long serverIdSnowflake,
-            @NonNull String punishmentType,
-            @NonNull Instant punishmentDate,
-            @Nullable Instant punishmentEndDate,
-            @Nullable String punishmentMessage
-    ) {
-        SnowflakeIdFinder snowflakeIdFinder = new SnowflakeIdFinder();
-        Punishment p = Punishment.createIt();
-        p.setUserId(snowflakeIdFinder.getUserIdFromSnowflake(userIdSnowflake));
-        p.setServerId(snowflakeIdFinder.getServerIdFromSnowflake(serverIdSnowflake));
-        p.setPunishmentType(punishmentType);
-        p.setDateEntry(punishmentDate);
-        p.setEndDate(punishmentEndDate);
-        p.setPunishmentMessage(punishmentMessage);
-        p.saveIt();
+    public void setDMed(boolean DMed) {
+        setBoolean("did_dm", DMed);
     }
 
 }
