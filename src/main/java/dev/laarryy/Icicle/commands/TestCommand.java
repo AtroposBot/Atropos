@@ -12,13 +12,11 @@ import discord4j.rest.util.ApplicationCommandOptionType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.Random;
 
 
-public class TestCommand implements Command {
+public class TestCommand {
     private final Logger logger = LogManager.getLogger(this);
     private final PermissionChecker permissionChecker = new PermissionChecker();
 

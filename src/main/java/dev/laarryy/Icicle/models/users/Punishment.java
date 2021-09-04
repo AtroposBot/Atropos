@@ -79,4 +79,12 @@ public class Punishment extends Model {
         setBoolean("did_dm", DMed);
     }
 
+    public boolean getIfEnded() {
+        return getBoolean("end_date_passed");
+    }
+
+    public void setEnded(boolean ended) {
+        setBoolean("end_date_passed", ended);
+    }
+
 }
