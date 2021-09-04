@@ -42,6 +42,21 @@ public class PermissionCommand implements Command {
                     .builder()
                     .name("/warn")
                     .value("warn")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/ban")
+                    .value("ban")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/forceban")
+                    .value("forceban")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/mute")
+                    .value("mute")
                     .build()
     );
 

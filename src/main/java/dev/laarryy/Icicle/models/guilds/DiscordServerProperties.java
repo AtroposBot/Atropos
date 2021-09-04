@@ -47,4 +47,12 @@ public class DiscordServerProperties extends Model {
     public void setServerLogChannelSnowflake(@Nullable Long serverLogChannelSnowflake) {
         set("server_log_channel_snowflake", serverLogChannelSnowflake);
     }
+
+    public Long getMutedRoleSnowflake() {
+        return getLong("muted_role_id_snowflake");
+    }
+
+    public void setMutedRoleSnowflake(Long mutedRoleSnowflake) {
+        setLong("muted_role_id_snowflake", mutedRoleSnowflake);
+    }
 }

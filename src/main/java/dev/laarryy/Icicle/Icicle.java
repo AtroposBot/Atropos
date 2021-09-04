@@ -1,6 +1,8 @@
 package dev.laarryy.Icicle;
 
 import dev.laarryy.Icicle.commands.Command;
+import dev.laarryy.Icicle.commands.punishments.PunishmentEnder;
+import dev.laarryy.Icicle.commands.punishments.PunishmentManager;
 import dev.laarryy.Icicle.config.ConfigManager;
 import dev.laarryy.Icicle.listeners.EventListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
@@ -30,6 +32,7 @@ import org.reflections.scanners.MethodAnnotationsScanner;
 import org.reflections.scanners.SubTypesScanner;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -49,6 +52,7 @@ public class Icicle {
 
     private static final Logger logger = LogManager.getLogger(Icicle.class);
     private static final List<Command> COMMANDS = new ArrayList<>();
+    private static PunishmentManager punishmentManager = null;
 
     public static void main(String[] args) throws Exception {
 
@@ -70,7 +74,7 @@ public class Icicle {
                 .setEnabledIntents(IntentSet.all())
                 .setSharding(ShardingStrategy.recommended())
                 .setInitialPresence(shardInfo -> ClientPresence.of(Status.DO_NOT_DISTURB,
-                        ClientActivity.playing("Shard " + (shardInfo.getIndex() + 1)  + " of " + shardInfo.getCount()
+                        ClientActivity.playing("Shard " + (shardInfo.getIndex() + 1) + " of " + shardInfo.getCount()
                                 + " | DM for ModMail | Last Activated "
                                 + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.FULL).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(Instant.now())))
                 )
@@ -101,14 +105,12 @@ public class Icicle {
         logger.info("Connected to Database!");
 
 
-
-
         // Register slash and 'normal' commands with Discord
         Reflections reflections = new Reflections("dev.laarryy.Icicle.commands", new SubTypesScanner());
         Set<Class<? extends Command>> commandsToRegister = reflections.getSubTypesOf(Command.class);
 
         for (Class<? extends Command> registerableCommand : commandsToRegister) {
-          final Command command = registerableCommand.getDeclaredConstructor().newInstance();
+            final Command command = registerableCommand.getDeclaredConstructor().newInstance();
 
             // Add to commands map
             COMMANDS.add(command);
@@ -116,18 +118,21 @@ public class Icicle {
             // Register the command with discord
             long applicationId = client.getRestClient().getApplicationId().block();
 
+            logger.info("Beginning command registration with discord: " + command.getRequest().name());
+
             client.getRestClient().getApplicationService()
                     .createGuildApplicationCommand(applicationId, Snowflake.asLong("724025797861572639"), command.getRequest())
-                    .block();
+                    .subscribe();
+
+            logger.info("Command registration with discord sent.");
         }
 
         // Listen for command event and execute from map
-        logger.info(COMMANDS.get(1).getRequest().name());
 
         client.getEventDispatcher().on(SlashCommandEvent.class)
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
-                                .filter(entry ->  event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
+                                .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
                                 .flatMap(entry -> entry.execute(event))
                                 .next()))
                 .subscribe();
@@ -165,10 +170,28 @@ public class Icicle {
 
         logger.info("Registered Listeners!");
 
+        // Register all guilds and users in them to database
+
         client.getGuilds()
                 .map(Icicle::addServerToDatabase)
                 .doOnError(logger::error)
                 .subscribe();
+
+        // Start regularly checking for punishments to end
+
+        Mono.just(client)
+                .map(PunishmentEnder::new)
+                .doOnError(logger::error)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe();
+
+        // Start up the punishment manager
+
+        Mono.just(client)
+                .map(PunishmentManager::new)
+                .doOnError(logger::error)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(punishmentManager1 -> punishmentManager = punishmentManager1);
 
         client.onDisconnect().block();
     }
@@ -242,6 +265,10 @@ public class Icicle {
         }
 
         return true;
+    }
+
+    public static PunishmentManager getPunishmentManager() {
+        return punishmentManager;
     }
 
 }
