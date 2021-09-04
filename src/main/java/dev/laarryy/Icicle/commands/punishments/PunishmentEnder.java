@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
@@ -33,7 +34,6 @@ public class PunishmentEnder {
         DatabaseLoader.openConnectionIfClosed();
         Flux.interval(Duration.ofMinutes(1))
                 .doOnNext(this::checkPunishmentEnding)
-                .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
 
         logger.info("Constructor called, Flux should be started.");
@@ -42,12 +42,15 @@ public class PunishmentEnder {
     private void checkPunishmentEnding(Long l) {
         logger.info("Checking punishment ending - minute " + l.toString());
 
+        logger.info("Opening connection.");
         DatabaseLoader.openConnectionIfClosed();
+        logger.info("Populating LazyList");
         LazyList<Punishment> punishmentsLazyList = Punishment.find("end_date_passed = ?", false);
+        logger.info("LazyList Populated, doing Flux.");
 
         Flux.fromIterable(punishmentsLazyList)
                 .filter(this::checkIfOverDue)
-                .subscribeOn(Schedulers.boundedElastic())
+                .doOnNext(pun -> logger.info("handling overdue punishment"))
                 .subscribe(this::endPunishment);
 
     }
@@ -64,6 +67,8 @@ public class PunishmentEnder {
 
     public void endPunishment(Punishment punishment) {
 
+        DatabaseLoader.openConnectionIfClosed();
+
         logger.info("Ending punishment of type: " + punishment.getPunishmentType());
 
         String punishmentType = punishment.getPunishmentType();
@@ -72,26 +77,27 @@ public class PunishmentEnder {
         Snowflake userId = Snowflake.of(punishedUser.getUserIdSnowflake());
 
         // Ensure bot is still in guild - if not, nothing more is required.
-        Guild guild;
-        if (client.getGuildById(Snowflake.of(server.getServerSnowflake())).block() != null) {
-            guild = client.getGuildById(Snowflake.of(server.getServerSnowflake())).block();
-        } else {
-            guild = null;
-        }
-        if (guild == null) return;
 
-        Member member = guild.getMemberById(userId).block();
 
-        switch (punishmentType) {
-            case "ban" -> discordUnbanUser(guild, punishment, userId);
-            case "mute" -> discordUnmuteUser(server, punishment, member);
-            default -> punishment.setEnded(true);
-        }
+        client.getGuildById(Snowflake.of(server.getServerSnowflake()))
+                .onErrorReturn(Exception.class, null)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(guild1 -> {
+                    if (guild1 == null) return;
+                    logger.info("Ending punishment - should be subbed to boundedElastic");
+                    DatabaseLoader.openConnectionIfClosed();
+                    Member member = guild1.getMemberById(userId).block();
+                    switch (punishmentType) {
+                        case "ban" -> discordUnbanUser(guild1, punishment, userId);
+                        case "mute" -> discordUnmuteUser(server, punishment, member);
+                        default -> punishment.setEnded(true);
+                    }
+                });
     }
 
     private void discordUnbanUser(Guild guild, Punishment punishment, Snowflake userId) {
-        DatabaseLoader.openConnectionIfClosed();
         guild.unban(userId).subscribe();
+        DatabaseLoader.openConnectionIfClosed();
         punishment.setEnded(true);
         punishment.save();
     }
