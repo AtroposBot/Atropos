@@ -87,4 +87,11 @@ public class Punishment extends Model {
         setBoolean("end_date_passed", ended);
     }
 
+    public String getEndReason() {
+        return getString("punishment_end_reason");
+    }
+
+    public void setEndReason(String endReason) {
+        setString("punishment_end_reason", endReason);
+    }
 }

@@ -13,9 +13,7 @@ import discord4j.core.object.entity.User;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.service.ApplicationService;
 import discord4j.rest.util.ApplicationCommandOptionType;
-import discord4j.rest.util.Permission;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
@@ -57,6 +55,31 @@ public class PermissionCommand implements Command {
                     .builder()
                     .name("/mute")
                     .value("mute")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/kick")
+                    .value("kick")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/case")
+                    .value("case")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/unmute")
+                    .value("unmute")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/unban")
+                    .value("unban")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Every single permission")
+                    .value("everything")
                     .build()
     );
 
@@ -187,7 +210,9 @@ public class PermissionCommand implements Command {
 
     private int getIdOfPermissionToHandle(ApplicationCommandInteractionOption option) {
         String permissionName = option.getOption("permission").get().getValue().get().asString();
-        dev.laarryy.Icicle.models.guilds.permissions.Permission permissionToHandle = dev.laarryy.Icicle.models.guilds.permissions.Permission.findFirst("permission = ?", permissionName);
+        dev.laarryy.Icicle.models.guilds.permissions.Permission permissionToHandle = dev.laarryy.Icicle.models.guilds.permissions.Permission.findOrCreateIt("permission", permissionName);
+        permissionToHandle.save();
+        permissionToHandle.refresh();
         return permissionToHandle.getInteger("id");
     }
 }

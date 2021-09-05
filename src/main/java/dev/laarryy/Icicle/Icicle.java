@@ -1,7 +1,7 @@
 package dev.laarryy.Icicle;
 
 import dev.laarryy.Icicle.commands.Command;
-import dev.laarryy.Icicle.commands.punishments.PunishmentEnder;
+import dev.laarryy.Icicle.commands.punishments.AutoPunishmentEnder;
 import dev.laarryy.Icicle.commands.punishments.PunishmentManager;
 import dev.laarryy.Icicle.config.ConfigManager;
 import dev.laarryy.Icicle.listeners.EventListener;
@@ -122,7 +122,7 @@ public class Icicle {
 
             client.getRestClient().getApplicationService()
                     .createGuildApplicationCommand(applicationId, Snowflake.asLong("724025797861572639"), command.getRequest())
-                    .subscribe();
+                    .block();
 
             logger.info("Command registration with discord sent.");
         }
@@ -180,7 +180,7 @@ public class Icicle {
         // Start regularly checking for punishments to end
 
         Mono.just(client)
-                .map(PunishmentEnder::new)
+                .map(AutoPunishmentEnder::new)
                 .doOnError(logger::error)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
