@@ -16,26 +16,14 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.Channel;
-import discord4j.core.object.entity.channel.GuildChannel;
-import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.object.entity.channel.TextChannel;
-import discord4j.core.object.entity.channel.TopLevelGuildChannel;
-import discord4j.core.object.entity.channel.TopLevelGuildMessageChannel;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.BanQuerySpec;
-import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.RoleCreateSpec;
-import discord4j.core.spec.TextChannelEditMono;
 import discord4j.core.spec.TextChannelEditSpec;
 import discord4j.core.spec.VoiceChannelEditSpec;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.discordjson.json.ImmutablePermissionsEditRequest;
-import discord4j.discordjson.json.PermissionsEditRequest;
 import discord4j.discordjson.json.RoleData;
-import discord4j.rest.entity.RestChannel;
-import discord4j.rest.util.Color;
-import discord4j.rest.util.Image;
 import discord4j.rest.util.OrderUtil;
 import discord4j.rest.util.PermissionSet;
 import org.apache.logging.log4j.LogManager;
@@ -46,9 +34,6 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.util.List;
 import java.util.Set;
 
@@ -89,10 +74,10 @@ public class PunishmentManager {
         permission.refresh();
         int permissionId = permission.getInteger("id");
 
-        // Make sure user has permission to do this, or stop here
+        // Make sure user has permission to do this, or stop here - PermissionId 69 is the wildcard/everything permission.
 
-        if (!permissionChecker.checkPermission(guild, user, permissionId)) {
-            event.reply("No permission.").withEphemeral(true).subscribe();
+        if (!permissionChecker.checkPermission(guild, user, permissionId) && !permissionChecker.checkPermission(guild, user, 69)) {
+            Notifier.notifyPunisherOfError(event, "noPermission");
             return Mono.empty();
         }
 
@@ -103,6 +88,7 @@ public class PunishmentManager {
         if (discordServer != null) {
             serverId = discordServer.getServerId();
         } else {
+            Notifier.notifyPunisherOfError(event, "nullServer");
             return Mono.empty();
         }
 
@@ -115,6 +101,7 @@ public class PunishmentManager {
                     .onErrorReturn(NumberFormatException.class, 0L)
                     .filter(aLong -> aLong != 0)
                     .filter(aLong -> apiBanId(guild, aLong))
+                    .doOnComplete(() -> Notifier.notifyPunisherForcebanComplete(event))
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(aLong -> {
 
@@ -140,13 +127,13 @@ public class PunishmentManager {
                         punishment.save();
                         logger.info("Saved forceban for ID: " + aLong);
                     });
-            event.reply("Forceban in progress.").withEphemeral(true).subscribe();
             return Mono.empty();
         }
 
         // All other punishments have Users, so if we're missing one here it's a problem, we need to stop.
 
         if (event.getOption("user").isEmpty()) {
+            Notifier.notifyPunisherOfError(event, "noUser");
             return Mono.empty();
         }
 
@@ -159,7 +146,7 @@ public class PunishmentManager {
         // Make sure the punisher is higher up the food chain than the person they're trying to punish in the guild they're both in.
 
         if (!checkIfPunisherHasHighestRole(member, punishedUser.asMember(guild.getId()).block(), guild)) {
-            event.reply("The target of this action has higher roles than you, or is an administrator while you are not.").withEphemeral(true).subscribe();
+            Notifier.notifyPunisherOfError(event, "noPermission");
             return Mono.empty();
         }
 
@@ -180,32 +167,20 @@ public class PunishmentManager {
 
         // Check if there's a duration on this punishment, and if so save it to database
 
-        boolean durationSuccessful;
         if (event.getOption("duration").isPresent() && event.getOption("duration").get().getValue().isPresent()) {
             try {
                 Duration punishmentDuration = DurationParser.parseDuration(event.getOption("duration").get().getValue().get().asString());
                 Instant punishmentEndDate = Instant.now().plus(punishmentDuration);
                 punishment.setEndDate(punishmentEndDate.toEpochMilli());
                 punishment.save();
-                durationSuccessful = true;
-
             } catch (Exception exception) {
-                durationSuccessful = false;
+                Notifier.notifyPunisherOfError(event, "invalidDuration");
+                punishment.delete();
+                return Mono.empty();
             }
         } else {
-            durationSuccessful = false;
             punishment.setEnded(true);
             punishment.save();
-        }
-
-        // Format punishment end date to string for use in DMing user and notifying punisher.
-
-        String punishmentEnd;
-        if (punishment.getEndDate() != null) {
-            Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
-            punishmentEnd = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG).withZone(ZoneId.systemDefault()).format(endDate);
-        } else {
-            punishmentEnd = "Indefinite.";
         }
 
         // Find out how many days worth of messages to delete if this is a member ban
@@ -220,56 +195,25 @@ public class PunishmentManager {
 
         // DMing the punished user, notifying the punishing user that it's worked out
 
-        if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean()) || event.getOption("dm").isEmpty()) {
+        if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
+                || (event.getOption("dm").isEmpty() || event.getCommandName().equals("case"))) {
             punishment.setDMed(true);
             punishment.save();
             punishment.refresh();
 
-            String actionType = punishment.getPunishmentType().toUpperCase();
-
-            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                    .title(guild.getName())
-                    .author("Notice from Guild:", "", guild.getIconUrl(Image.Format.PNG).orElse(guild.getSelfMember().block().getAvatarUrl()))
-                    .description(punishedUser.getMention() + ", this message is to notify you of moderation action taken by the staff of "
-                            + guild.getName()
-                            + ". This incident will be recorded.")
-                    .addField("Action Taken", actionType, true)
-                    .addField("Reason", punishmentReason, false)
-                    .addField("End Date", punishmentEnd, false)
-                    .color(Color.RUST)
-                    .timestamp(Instant.now())
-                    .build();
-
-            PrivateChannel privateChannel = punishedUser.getPrivateChannel().block();
-
-            try {
-                privateChannel.createMessage(embed).block();
-                if (durationSuccessful) {
-                    event.reply("Successfully punished " + punishedUser.getUsername() + ". Punishment ID is " + punishment.getInteger("id") + " and will end on " + punishmentEnd + ".").withEphemeral(true).subscribe();
-                } else {
-                    event.reply("Successfully punished " + punishedUser.getUsername() + ". Punishment ID is " + punishment.getInteger("id") + " and has no expiration.").withEphemeral(true).subscribe();
-                }
-            } catch (Exception e) {
-                event.reply("Successfully recorded punishment, but unable to DM user. " +
-                        "Punishment ID is " + punishment.getInteger("id") + ".").withEphemeral(true).subscribe();
-            }
+            Notifier.notifyPunisher(event, punishment, punishmentReason);
+            Notifier.notifyPunished(event, punishment, punishmentReason);
+        } else {
+            Notifier.notifyPunisher(event, punishment, punishmentReason);
         }
 
-        // Let punishing user know that it worked in case they manually disabled DMing.
-
-        if (event.getOption("dm").isPresent() && !event.getOption("dm").get().getValue().get().asBoolean()) {
-            if (durationSuccessful) {
-                event.reply("Successfully punished " + punishedUser.getUsername() + ". Punishment ID is " + punishment.getInteger("id") + " and will end on " + punishmentEnd + ".").withEphemeral(true).subscribe();
-            } else {
-                event.reply("Successfully punished " + punishedUser.getUsername() + ". Punishment ID is " + punishment.getInteger("id") + " and has no expiration.").withEphemeral(true).subscribe();
-            }
-        }
-        // Actually do the punishment, discord-side. Nothing to do for warnings.
+        // Actually do the punishment, discord-side. Nothing to do for warnings or cases.
 
         DatabaseLoader.openConnectionIfClosed();
         switch (punishment.getPunishmentType()) {
             case "mute" -> discordMuteUser(guild, punished.getUserIdSnowflake(), DiscordServerProperties.findFirst("server_id = ?", discordServer.getServerId()));
             case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
+            case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
         }
 
         return Mono.empty();
@@ -292,6 +236,10 @@ public class PunishmentManager {
                         .build())
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
+    }
+
+    private void discordKickUser(Guild guild, Long userIdSnowflake, String punishmentReason) {
+        guild.kick(Snowflake.of(userIdSnowflake), punishmentReason).subscribe();
     }
 
     private boolean apiBanId(Guild guild, Long id) {

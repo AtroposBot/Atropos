@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.commands;
 
+import dev.laarryy.Icicle.commands.punishments.Notifier;
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.PermissionChecker;
@@ -50,7 +51,7 @@ public class TestCommand {
 
         if (!permissionChecker.checkPermission(guild, user, permissionId)) {
             logger.info("Test permission check conducted, no permission found.");
-            event.reply("No permission.").withEphemeral(true).subscribe();
+            Notifier.notifyPunisherOfError(event, "noPermission");
             return Mono.empty();
         } else {
             logger.info("Test permission check conducted, permission granted!");

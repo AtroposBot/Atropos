@@ -19,12 +19,12 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 import java.time.Instant;
 
-public class PunishmentEnder {
+public class AutoPunishmentEnder {
 
     private final Logger logger = LogManager.getLogger(this);
     GatewayDiscordClient client;
 
-    public PunishmentEnder(GatewayDiscordClient client) {
+    public AutoPunishmentEnder(GatewayDiscordClient client) {
         if (client != null) {
             this.client = client;
         } else {
@@ -40,7 +40,7 @@ public class PunishmentEnder {
     }
 
     private void checkPunishmentEnding(Long l) {
-        logger.info("Checking punishment ending - minute " + l.toString());
+        logger.info("Checking punishment ending.");
 
         logger.info("Opening connection.");
         DatabaseLoader.openConnectionIfClosed();
@@ -65,7 +65,7 @@ public class PunishmentEnder {
         return endInstant.isBefore(nowInstant);
     }
 
-    public void endPunishment(Punishment punishment) {
+    private void endPunishment(Punishment punishment) {
 
         DatabaseLoader.openConnectionIfClosed();
 
@@ -86,7 +86,12 @@ public class PunishmentEnder {
                     if (guild1 == null) return;
                     logger.info("Ending punishment - should be subbed to boundedElastic");
                     DatabaseLoader.openConnectionIfClosed();
-                    Member member = guild1.getMemberById(userId).block();
+
+                    Member member;
+                    try { member = guild1.getMemberById(userId).block(); } catch (Exception exception) {
+                        member = null;
+                    }
+
                     switch (punishmentType) {
                         case "ban" -> discordUnbanUser(guild1, punishment, userId);
                         case "mute" -> discordUnmuteUser(server, punishment, member);
