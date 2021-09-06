@@ -28,7 +28,9 @@ public class PermissionChecker {
 
         Boolean hasRoleWithPermission =
                 guild.getRoles()
-                        .filter(role -> ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null)
+                        .filter(role ->
+                                (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null)
+                                        || (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null))
                         .any(role ->
                                 member.getRoles()
                                         .any(memberRole -> memberRole.equals(role))
@@ -43,9 +45,9 @@ public class PermissionChecker {
         logger.info("Checking if Admin");
         Boolean hasRoleWithAdmin =
                 member.getRoles()
-                .map(Role::getPermissions)
-                .any(permissions -> permissions.contains(Permission.ADMINISTRATOR))
-                .block();
+                        .map(Role::getPermissions)
+                        .any(permissions -> permissions.contains(Permission.ADMINISTRATOR))
+                        .block();
 
         Boolean isUserWithAdmin =
                 member.getBasePermissions()
@@ -55,7 +57,7 @@ public class PermissionChecker {
 
         Boolean ownsGuild = Flux.just(member).any(member1 -> member1.equals(guild.getOwner().block())).block();
 
-        if (hasRoleWithAdmin!= null && hasRoleWithAdmin) {
+        if (hasRoleWithAdmin != null && hasRoleWithAdmin) {
             logger.info("Has role with admin");
             return true;
         } else {

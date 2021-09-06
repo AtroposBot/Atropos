@@ -78,6 +78,16 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
+                    .name("/inf update")
+                    .value("infupdate")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/inf search")
+                    .value("infsearch")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
                     .name("Every single permission")
                     .value("everything")
                     .build()

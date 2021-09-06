@@ -1,4 +1,4 @@
-package dev.laarryy.Icicle.commands.punishments;
+package dev.laarryy.Icicle.utils;
 
 import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
@@ -88,7 +88,7 @@ public final class Notifier {
         }
     }
 
-    public static void notifyPunisherOfError(SlashCommandEvent event, String errorType) {
+    public static void notifyCommandUserOfError(SlashCommandEvent event, String errorType) {
         switch (errorType) {
             case "noPermission" -> event.reply().withEmbeds(noPermissionsEmbed()).withEphemeral(true).subscribe();
             case "nullServer" -> event.reply().withEmbeds(nullServerEmbed()).withEphemeral(true).subscribe();
@@ -97,6 +97,8 @@ public final class Notifier {
             case "noMutedRole" -> event.reply().withEmbeds(noMutedRoleEmbed()).withEphemeral(true).subscribe();
             case "userNotMuted" -> event.reply().withEmbeds(userNotMutedEmbed()).withEphemeral(true).subscribe();
             case "alreadyApplied" -> event.reply().withEmbeds(punishmentAlreadyAppliedEmbed()).withEphemeral(true).subscribe();
+            case "404" -> event.reply().withEmbeds(fourOhFourEmbed()).withEphemeral(true).subscribe();
+            case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
             default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
         }
     }
@@ -186,6 +188,24 @@ public final class Notifier {
                 .build();
     }
 
+    private static EmbedCreateSpec fourOhFourEmbed() {
+        return EmbedCreateSpec.builder()
+                .color(Color.RUBY)
+                .title("Error: Not Found")
+                .description("Action aborted because query could not be found.")
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec malformedInputEmbed() {
+        return EmbedCreateSpec.builder()
+                .color(Color.RUBY)
+                .title("Error: Malformed Input")
+                .description("Action aborted because input cannot be accepted.")
+                .timestamp(Instant.now())
+                .build();
+    }
+
     private static EmbedCreateSpec noPermissionsEmbed() {
         return EmbedCreateSpec.builder()
                 .color(Color.RUBY)
@@ -245,7 +265,7 @@ public final class Notifier {
                         " volunteering to run this bot. Please try again!", true)
                 .addField("Valid Formats",
                         """
-                                Here are a couple of example valid formats that you might find useful in formulating your next duration:\s
+                                Here are a few valid example formats that you might find useful in formulating your next duration:\s
                                  `2 years 7 months 3 weeks 4 days 34 minutes`
                                  `2year7month3week4day34min`
                                  `2y7mo3w4d34m`""",
