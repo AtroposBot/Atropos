@@ -1,5 +1,7 @@
 package dev.laarryy.Icicle.commands.punishments;
 
+import dev.laarryy.Icicle.commands.AuditLogger;
+import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
@@ -28,8 +30,12 @@ public final class ManualPunishmentEnder {
 
     public static void endPunishment(SlashCommandEvent event, ApplicationCommandRequest request) {
 
+        DatabaseLoader.openConnectionIfClosed();
+
+
         if (event.getInteraction().getGuild().block() == null || event.getInteraction().getGuildId().isEmpty()) {
             Notifier.notifyPunisherOfError(event, "nullServer");
+            AuditLogger.addCommandToDB(event, false);
             return;
         }
 
@@ -79,6 +85,7 @@ public final class ManualPunishmentEnder {
         Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
         if (mutedRoleId == null) {
             Notifier.notifyPunisherOfError(event, "noMutedRole");
+            AuditLogger.addCommandToDB(event, false);
             return false;
         }
         Role mutedRole;
@@ -86,14 +93,17 @@ public final class ManualPunishmentEnder {
             mutedRole = event.getInteraction().getGuild().block().getRoleById(Snowflake.of(mutedRoleId)).block();
         } catch (NullPointerException exception) {
             Notifier.notifyPunisherOfError(event, "noMutedRole");
+            AuditLogger.addCommandToDB(event, false);
             return false;
         }
             if (mutedRole != null && member.getRoles().any(role -> role.equals(mutedRole)).block()) {
                 logger.info("Unmuting discord-side");
                 member.removeRole(Snowflake.of(mutedRoleId), reason).block();
+                AuditLogger.addCommandToDB(event, true);
                 return true;
             } else {
                 Notifier.notifyPunisherOfError(event, "userNotMuted");
+                AuditLogger.addCommandToDB(event, false);
                 return false;
             }
 
@@ -111,15 +121,31 @@ public final class ManualPunishmentEnder {
         };
 
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", aLong);
-        if (discordUser != null) {
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+
+        if (discordUser != null && discordServer != null) {
             DatabaseLoader.openConnectionIfClosed();
-            LazyList<Punishment> punishmentLazyList = Punishment.find("server_id = ? and user_id_punished = ? and punishment_type = ?",
-                    event.getInteraction().getGuildId().get().asLong(),
+            int serverId = discordServer.getServerId();
+            LazyList<Punishment> punishmentLazyList = Punishment.find("server_id = ? and user_id_punished = ? and punishment_type = ? and end_date_passed = ?",
+                    serverId,
                     discordUser.getUserId(),
-                    punishmentType);
+                    punishmentType,
+                    false);
+
+            logger.info("punishment list size: " + punishmentLazyList.size());
+
             Flux.fromIterable(punishmentLazyList)
+                    .filter(punishment -> {
+                                if (punishment != null) {
+                                    logger.info("non-null punishment");
+                                    return true;
+                                } else return false;
+                            }
+                    )
+                    .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(punishment -> {
                         // TODO: Make this actually affect the database - right now it does not.
+                        logger.info("ending DB punishment: " + punishment.getPunishmentType());
                         punishment.setEnded(true);
                         punishment.setEndDate(Instant.now().toEpochMilli());
                         punishment.setEndReason(reason);
