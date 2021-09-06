@@ -1,11 +1,12 @@
 package dev.laarryy.Icicle.commands.punishments;
 
-import dev.laarryy.Icicle.commands.AuditLogger;
+import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.utils.Notifier;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
@@ -34,7 +35,7 @@ public final class ManualPunishmentEnder {
 
 
         if (event.getInteraction().getGuild().block() == null || event.getInteraction().getGuildId().isEmpty()) {
-            Notifier.notifyPunisherOfError(event, "nullServer");
+            Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
             return;
         }
@@ -84,7 +85,7 @@ public final class ManualPunishmentEnder {
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getInteraction().getGuildId().get().asLong());
         Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
         if (mutedRoleId == null) {
-            Notifier.notifyPunisherOfError(event, "noMutedRole");
+            Notifier.notifyCommandUserOfError(event, "noMutedRole");
             AuditLogger.addCommandToDB(event, false);
             return false;
         }
@@ -92,7 +93,7 @@ public final class ManualPunishmentEnder {
         try {
             mutedRole = event.getInteraction().getGuild().block().getRoleById(Snowflake.of(mutedRoleId)).block();
         } catch (NullPointerException exception) {
-            Notifier.notifyPunisherOfError(event, "noMutedRole");
+            Notifier.notifyCommandUserOfError(event, "noMutedRole");
             AuditLogger.addCommandToDB(event, false);
             return false;
         }
@@ -102,7 +103,7 @@ public final class ManualPunishmentEnder {
                 AuditLogger.addCommandToDB(event, true);
                 return true;
             } else {
-                Notifier.notifyPunisherOfError(event, "userNotMuted");
+                Notifier.notifyCommandUserOfError(event, "userNotMuted");
                 AuditLogger.addCommandToDB(event, false);
                 return false;
             }
@@ -144,7 +145,6 @@ public final class ManualPunishmentEnder {
                     )
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(punishment -> {
-                        // TODO: Make this actually affect the database - right now it does not.
                         logger.info("ending DB punishment: " + punishment.getPunishmentType());
                         punishment.setEnded(true);
                         punishment.setEndDate(Instant.now().toEpochMilli());

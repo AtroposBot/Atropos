@@ -1,6 +1,6 @@
 package dev.laarryy.Icicle.commands.punishments;
 
-import dev.laarryy.Icicle.commands.AuditLogger;
+import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
@@ -8,6 +8,7 @@ import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.DurationParser;
+import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
@@ -78,7 +79,7 @@ public class PunishmentManager {
         // Make sure user has permission to do this, or stop here - PermissionId 69 is the wildcard/everything permission.
 
         if (!permissionChecker.checkPermission(guild, user, permissionId) && !permissionChecker.checkPermission(guild, user, 69)) {
-            Notifier.notifyPunisherOfError(event, "noPermission");
+            Notifier.notifyCommandUserOfError(event, "noPermission");
             return Mono.empty();
         }
 
@@ -89,7 +90,7 @@ public class PunishmentManager {
         if (discordServer != null) {
             serverId = discordServer.getServerId();
         } else {
-            Notifier.notifyPunisherOfError(event, "nullServer");
+            Notifier.notifyCommandUserOfError(event, "nullServer");
             return Mono.empty();
         }
 
@@ -138,7 +139,7 @@ public class PunishmentManager {
         // All other punishments have Users, so if we're missing one here it's a problem, we need to stop.
 
         if (event.getOption("user").isEmpty()) {
-            Notifier.notifyPunisherOfError(event, "noUser");
+            Notifier.notifyCommandUserOfError(event, "noUser");
             AuditLogger.addCommandToDB(event, false);
             return Mono.empty();
         }
@@ -152,7 +153,7 @@ public class PunishmentManager {
         // Make sure the punisher is higher up the food chain than the person they're trying to punish in the guild they're both in.
 
         if (!checkIfPunisherHasHighestRole(member, punishedUser.asMember(guild.getId()).block(), guild)) {
-            Notifier.notifyPunisherOfError(event, "noPermission");
+            Notifier.notifyCommandUserOfError(event, "noPermission");
             AuditLogger.addCommandToDB(event, false);
             return Mono.empty();
         }
@@ -165,7 +166,8 @@ public class PunishmentManager {
                 serverId,
                 request.name(),
                 false) != null) {
-            Notifier.notifyPunisherOfError(event, "alreadyApplied");
+            Notifier.notifyCommandUserOfError(event, "alreadyApplied");
+            AuditLogger.addCommandToDB(event, false);
             return Mono.empty();
         }
 
@@ -192,7 +194,7 @@ public class PunishmentManager {
                 punishment.setEndDate(punishmentEndDate.toEpochMilli());
                 punishment.save();
             } catch (Exception exception) {
-                Notifier.notifyPunisherOfError(event, "invalidDuration");
+                Notifier.notifyCommandUserOfError(event, "invalidDuration");
                 AuditLogger.addCommandToDB(event, false);
                 punishment.delete();
                 return Mono.empty();

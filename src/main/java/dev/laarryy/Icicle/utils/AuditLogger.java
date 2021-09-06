@@ -1,4 +1,4 @@
-package dev.laarryy.Icicle.commands;
+package dev.laarryy.Icicle.utils;
 
 import dev.laarryy.Icicle.commands.punishments.ManualPunishmentEnder;
 import dev.laarryy.Icicle.models.guilds.CommandUse;
