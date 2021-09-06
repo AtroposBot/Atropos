@@ -95,6 +95,8 @@ public final class Notifier {
             case "noUser" -> event.reply().withEmbeds(noUserEmbed()).withEphemeral(true).subscribe();
             case "invalidDuration" -> event.reply().withEmbeds(invalidDurationEmbed()).withEphemeral(true).subscribe();
             case "noMutedRole" -> event.reply().withEmbeds(noMutedRoleEmbed()).withEphemeral(true).subscribe();
+            case "userNotMuted" -> event.reply().withEmbeds(userNotMutedEmbed()).withEphemeral(true).subscribe();
+            case "alreadyApplied" -> event.reply().withEmbeds(punishmentAlreadyAppliedEmbed()).withEphemeral(true).subscribe();
             default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
         }
     }
@@ -225,7 +227,7 @@ public final class Notifier {
     private static EmbedCreateSpec noUserEmbed() {
         return EmbedCreateSpec.builder()
                 .color(Color.RUBY)
-                .title("Error")
+                .title("Error: No User")
                 .description("Action aborted due to lack of user.")
                 .addField("Detail", "In order to take this action, the bot needs to know which user to " +
                         "act upon. For some reason, that user cannot be found.", true)
@@ -236,7 +238,7 @@ public final class Notifier {
     private static EmbedCreateSpec invalidDurationEmbed() {
         return EmbedCreateSpec.builder()
                 .color(Color.RUBY)
-                .title("Error")
+                .title("Error: Invalid Duration")
                 .description("Action aborted due to invalid duration value.")
                 .addField("Detail", "In order to take this action and apply an appropriate duration, the" +
                         " bot needs a valid input. The input provided was not decipherable by us, the small gnomes" +
@@ -252,10 +254,33 @@ public final class Notifier {
                 .build();
     }
 
+    private static EmbedCreateSpec userNotMutedEmbed() {
+        return EmbedCreateSpec.builder()
+                .color(Color.RUBY)
+                .title("Error: User Not Muted")
+                .description("Action aborted due to selected user not being muted.")
+                .addField("Detail", "In order to take this action, the user to unmute needs first to be " +
+                        "muted. Double check that you didn't accidentally select someone with a similar name.", true)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec punishmentAlreadyAppliedEmbed() {
+        return EmbedCreateSpec.builder()
+                .color(Color.RUBY)
+                .title("Error: Punishment Already Applied")
+                .description("Action aborted due to selected user already having a current punishment of this type.")
+                .addField("Detail", "In order to take this action, the user must not already have an " +
+                        "active punishment of this type on their record. You must first unmute or unban the user.",
+                        true)
+                .timestamp(Instant.now())
+                .build();
+    }
+
     private static EmbedCreateSpec unknownErrorEmbed() {
         return EmbedCreateSpec.builder()
                 .color(Color.RUBY)
-                .title("Error")
+                .title("Error: Unknown")
                 .description("Error unknown. You certainly should not be seeing this! Contact bot author with timestamp of this error, please.")
                 .timestamp(Instant.now())
                 .build();

@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.commands.punishments;
 
+import dev.laarryy.Icicle.commands.AuditLogger;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
@@ -101,7 +102,10 @@ public class PunishmentManager {
                     .onErrorReturn(NumberFormatException.class, 0L)
                     .filter(aLong -> aLong != 0)
                     .filter(aLong -> apiBanId(guild, aLong))
-                    .doOnComplete(() -> Notifier.notifyPunisherForcebanComplete(event))
+                    .doOnComplete(() -> {
+                        Notifier.notifyPunisherForcebanComplete(event);
+                        AuditLogger.addCommandToDB(event, true);
+                    })
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(aLong -> {
 
@@ -109,6 +113,7 @@ public class PunishmentManager {
 
                         if (guild.getMemberById(Snowflake.of(aLong)).onErrorReturn(Exception.class, null).block() != null) {
                             if (!checkIfPunisherHasHighestRole(event.getInteraction().getMember().get(), guild.getMemberById(Snowflake.of(aLong)).block(), guild)) {
+                                AuditLogger.addCommandToDB(event, false);
                                 return;
                             }
                         }
@@ -134,6 +139,7 @@ public class PunishmentManager {
 
         if (event.getOption("user").isEmpty()) {
             Notifier.notifyPunisherOfError(event, "noUser");
+            AuditLogger.addCommandToDB(event, false);
             return Mono.empty();
         }
 
@@ -147,10 +153,22 @@ public class PunishmentManager {
 
         if (!checkIfPunisherHasHighestRole(member, punishedUser.asMember(guild.getId()).block(), guild)) {
             Notifier.notifyPunisherOfError(event, "noPermission");
+            AuditLogger.addCommandToDB(event, false);
             return Mono.empty();
         }
 
         logger.info("Passed relative permission check.");
+
+        if (Punishment.findFirst("user_id_punisher = ? and user_id_punished = ? and server_id = ? and punishment_type = ? and end_date_passed = ?",
+                punisher.getUserId(),
+                punished.getUserId(),
+                serverId,
+                request.name(),
+                false) != null) {
+            Notifier.notifyPunisherOfError(event, "alreadyApplied");
+            return Mono.empty();
+        }
+
 
         Punishment punishment = createDatabasePunishmentRecord(punisher, punished, serverId, request.name());
         punishment.save();
@@ -175,6 +193,7 @@ public class PunishmentManager {
                 punishment.save();
             } catch (Exception exception) {
                 Notifier.notifyPunisherOfError(event, "invalidDuration");
+                AuditLogger.addCommandToDB(event, false);
                 punishment.delete();
                 return Mono.empty();
             }
@@ -215,6 +234,8 @@ public class PunishmentManager {
             case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
             case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
         }
+
+        AuditLogger.addCommandToDB(event, true);
 
         return Mono.empty();
     }
