@@ -39,10 +39,10 @@ public class CommandUse extends Model {
     }
 
     public boolean getSucceeded() {
-        return getBoolean("succeeded");
+        return getBoolean("success");
     }
 
     public void setSucceeded(boolean succeeded) {
-        setBoolean("succeeded", succeeded);
+        setBoolean("success", succeeded);
     }
 }

@@ -122,7 +122,7 @@ public class Icicle {
 
             client.getRestClient().getApplicationService()
                     .createGuildApplicationCommand(applicationId, Snowflake.asLong("724025797861572639"), command.getRequest())
-                    .subscribe();
+                    .block();
 
             logger.info("Command registration with discord sent.");
         }

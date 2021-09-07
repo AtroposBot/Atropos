@@ -94,6 +94,14 @@ public class PunishmentManager {
             return Mono.empty();
         }
 
+        // Ensure bot is not a target
+
+        if (event.getOption("user").get().getValue().get().asUser().block().isBot()) {
+            Notifier.notifyCommandUserOfError(event, "cannotTargetBots");
+            AuditLogger.addCommandToDB(event, false);
+            return Mono.empty();
+        }
+
         // Handle forceban via API before dealing with literally every other punishment (that can actually provide a user)
 
         if (event.getOption("id").isPresent() && event.getOption("id").get().getValue().isPresent()) {
@@ -110,11 +118,13 @@ public class PunishmentManager {
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(aLong -> {
 
-                        // Ensure nobody is trying to forceban their boss
+                        // Ensure nobody is trying to forceban their boss or a bot
 
                         if (guild.getMemberById(Snowflake.of(aLong)).onErrorReturn(Exception.class, null).block() != null) {
                             if (!checkIfPunisherHasHighestRole(event.getInteraction().getMember().get(), guild.getMemberById(Snowflake.of(aLong)).block(), guild)) {
-                                AuditLogger.addCommandToDB(event, false);
+                                return;
+                            }
+                            if (guild.getMemberById(Snowflake.of(aLong)).block().isBot()) {
                                 return;
                             }
                         }

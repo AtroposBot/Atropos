@@ -9,7 +9,9 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.object.entity.Guild;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
@@ -26,6 +28,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -145,9 +148,12 @@ public class InfCommand implements Command {
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
-        LazyList<Punishment> punishmentLazyList = Punishment.where("server_id = ?", discordServer.getServerId()).limit(25).orderBy("id desc");
+        Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
+        long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
 
-        String results = createFormattedPunishmentsTable(punishmentLazyList);
+        LazyList<Punishment> punishmentLazyList = Punishment.where("server_id = ? and punishment_date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
+
+        String results = createFormattedPunishmentsTable(punishmentLazyList, event);
 
         EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
@@ -160,32 +166,7 @@ public class InfCommand implements Command {
         AuditLogger.addCommandToDB(event, true);
     }
 
-    private String createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList) {
-        List<String> rows = new ArrayList<>();
-        rows.add("```");
-        rows.add(String.format("| %-7s| %-18s | %-6s |\n", "ID", "Date", "Type"));
-        rows.add("----------------------------------------\n");
 
-        for (Punishment p : punishmentLazyList) {
-            if (p == null) {
-                continue;
-            }
-            int id = p.getPunishmentId();
-            Instant date = Instant.ofEpochMilli(p.getDateEntry());
-            String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
-            String type = p.getPunishmentType();
-            rows.add(String.format("| %-5d| %-20s | %-6s |\n", id, dateString, type));
-        }
-
-        rows.add("```");
-
-        StringBuffer stringBuffer = new StringBuffer();
-        for (String row: rows) {
-            stringBuffer.append(row);
-        }
-
-        return stringBuffer.toString();
-    }
 
     private void searchForCase(SlashCommandEvent event) {
 
@@ -272,9 +253,9 @@ public class InfCommand implements Command {
                 .addField("User", "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">", false)
                 .addField("Moderator", "`" + punisherSnowflake + "`:" +"<@" + punisherSnowflake + ">", false)
                 .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), false)
-                .addField("Date", date, false)
+                .addField("Date", date, true)
                 .addField("Reason", reason, true)
-                .addField("End Date", endDate, false)
+                .addField("End Date", endDate, true)
                 .addField("End Reason", endReason, true)
                 .addField("Attempted to DM User?", didDMMessage, false)
                 .timestamp(Instant.now())
@@ -335,7 +316,10 @@ public class InfCommand implements Command {
 
         int serverId = discordServer.getServerId();
 
-        LazyList<Punishment> punishmentLazyList = Punishment.find("user_id_punished = ? and server_id = ?", userId, serverId).limit(50).orderBy("id desc");
+        Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
+        long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
+
+        LazyList<Punishment> punishmentLazyList = Punishment.find("user_id_punished = ? and server_id = ? and punishment_date > ?", userId, serverId, tenDaysAgoStamp).limit(50).orderBy("id desc");
 
         if (punishmentLazyList.isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "noResults");
@@ -343,7 +327,7 @@ public class InfCommand implements Command {
             return;
         }
 
-        String results = createFormattedPunishmentsTable(punishmentLazyList);
+        String results = createFormattedPunishmentsTable(punishmentLazyList, event);
 
         EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
@@ -434,5 +418,53 @@ public class InfCommand implements Command {
             return true;
         }
         return false;
+    }
+
+    private String createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList, SlashCommandEvent event) {
+        Guild guild = event.getInteraction().getGuild().block();
+        List<String> rows = new ArrayList<>();
+        rows.add("```");
+        rows.add(String.format("| %-6s | %-5s | %-17s | %-17s |\n", "ID", "Type", "Mod", "Target"));
+        rows.add("----------------------------------------------------------\n");
+
+        for (Punishment p : punishmentLazyList) {
+            if (p == null) {
+                continue;
+            }
+            int id = p.getPunishmentId();
+
+            DiscordUser punishedUser = DiscordUser.findFirst("id = ?", p.getPunishedUserId());
+
+            String punished = getUsernameDefaultID(punishedUser, guild);
+
+            DiscordUser punishingUser = DiscordUser.findFirst("id = ?", p.getPunishingUserId());
+            String punisher = getUsernameDefaultID(punishingUser, guild);
+
+            String type = p.getPunishmentType();
+            rows.add(String.format("| %-6s | %-5s | %-17s | %-17s |\n", id, type, punisher, punished));
+        }
+
+        rows.add("```");
+
+        StringBuffer stringBuffer = new StringBuffer();
+        for (String row: rows) {
+            stringBuffer.append(row);
+        }
+
+        return stringBuffer.toString();
+    }
+
+    private String getUsernameDefaultID(DiscordUser user, Guild guild) {
+        Long userId = user.getUserIdSnowflake();
+        String usernameOrId;
+        if (guild.getMemberById(Snowflake.of(userId)).block() != null) {
+            usernameOrId = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
+        } else usernameOrId = String.valueOf(userId);
+
+        if (usernameOrId.length() > 17) {
+            usernameOrId = usernameOrId.substring(0,14) + "...";
+        }
+
+        return usernameOrId;
     }
 }
