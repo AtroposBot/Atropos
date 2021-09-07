@@ -100,6 +100,7 @@ public final class Notifier {
             case "404" -> event.reply().withEmbeds(fourOhFourEmbed()).withEphemeral(true).subscribe();
             case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
             case "noResults" -> event.reply().withEmbeds(noResultsEmbed()).subscribe();
+            case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).subscribe();
             default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
         }
     }
@@ -194,6 +195,17 @@ public final class Notifier {
                 .color(Color.RUBY)
                 .title("Error: Not Found")
                 .description("Action aborted because query could not be found.")
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec cannotTargetBotsEmbed() {
+        return EmbedCreateSpec.builder()
+                .color(Color.RUBY)
+                .title("Error: Cannot Target Bots")
+                .description("Action aborted because you may not punish bots.")
+                .addField("Detail", "Administrative action against bot users must be done manually by " +
+                        "someone with discord-side permission to do so.", false)
                 .timestamp(Instant.now())
                 .build();
     }
