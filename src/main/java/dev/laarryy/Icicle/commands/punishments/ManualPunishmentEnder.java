@@ -29,7 +29,7 @@ public final class ManualPunishmentEnder {
     private ManualPunishmentEnder() {
     }
 
-    public static void endPunishment(SlashCommandEvent event, ApplicationCommandRequest request) {
+    public static void endPunishment(SlashCommandEvent event) {
 
         DatabaseLoader.openConnectionIfClosed();
 
@@ -132,8 +132,13 @@ public final class ManualPunishmentEnder {
                     discordUser.getUserId(),
                     punishmentType,
                     false);
+            LazyList<Punishment> punishmentLazyList2 = Punishment.findBySQL("select * from punishments where server_id = ? and user_id_punished = ? and punishment_type = ? and punishment_end_date is NULL and end_date_passed = ?",
+                    serverId,
+                    discordUser.getUserId(),
+                    punishmentType,
+                    true);
 
-            logger.info("punishment list size: " + punishmentLazyList.size());
+            punishmentLazyList.addAll(punishmentLazyList2);
 
             Flux.fromIterable(punishmentLazyList)
                     .filter(punishment -> {

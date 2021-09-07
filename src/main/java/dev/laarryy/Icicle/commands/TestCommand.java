@@ -7,6 +7,7 @@ import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
+import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.ApplicationCommandOptionType;
@@ -17,7 +18,7 @@ import reactor.core.publisher.Mono;
 import java.util.Random;
 
 
-public class TestCommand {
+public class TestCommand implements Command{
     private final Logger logger = LogManager.getLogger(this);
     private final PermissionChecker permissionChecker = new PermissionChecker();
 
@@ -69,7 +70,9 @@ public class TestCommand {
 
             return Mono.empty();
         } else {
-            event.reply("Hi. Your test was successful! Congratulation.").subscribe();
+            event.reply().withEmbeds(EmbedCreateSpec.builder()
+                    .title("test")
+                    .description("```\nThis is an example \nof a codeblock \nin an embed \nto see what happens and \nmaybe to check what the optimal/maximum length might be for one of these. \n```").build()).subscribe();
         }
         return Mono.empty();
     }

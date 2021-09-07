@@ -10,7 +10,7 @@ Configutation:
       name: Console
       target: SYSTEM_OUT
       PatternLayout:
-        Pattern: "ICICLOG: [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n"
+        Pattern: "ICICLOG: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1}:%M:%L - %msg%n"
     File:
       name: File_Appender
       fileName: ${log-path}/logfile.log
