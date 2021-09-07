@@ -78,7 +78,7 @@ public class PunishmentManager {
 
         // Make sure user has permission to do this, or stop here - PermissionId 69 is the wildcard/everything permission.
 
-        if (!permissionChecker.checkPermission(guild, user, permissionId) && !permissionChecker.checkPermission(guild, user, 69)) {
+        if (!permissionChecker.checkPermission(guild, user, permissionId)) {
             Notifier.notifyCommandUserOfError(event, "noPermission");
             return Mono.empty();
         }
@@ -160,8 +160,7 @@ public class PunishmentManager {
 
         logger.info("Passed relative permission check.");
 
-        if (Punishment.findFirst("user_id_punisher = ? and user_id_punished = ? and server_id = ? and punishment_type = ? and end_date_passed = ?",
-                punisher.getUserId(),
+        if (Punishment.findFirst("user_id_punished = ? and server_id = ? and punishment_type = ? and end_date_passed = ?",
                 punished.getUserId(),
                 serverId,
                 request.name(),
@@ -183,7 +182,12 @@ public class PunishmentManager {
             punishment.setPunishmentMessage(punishmentMessage);
             punishment.save();
             punishmentReason = punishmentMessage;
-        } else punishmentReason = "No reason provided.";
+        } else {
+            punishmentReason = "No reason provided.";
+            punishment.refresh();
+            punishment.setPunishmentMessage(punishmentReason);
+            punishment.save();
+        }
 
         // Check if there's a duration on this punishment, and if so save it to database
 

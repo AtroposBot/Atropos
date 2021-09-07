@@ -1,24 +1,35 @@
 package dev.laarryy.Icicle.commands.search;
 
-import dev.laarryy.Icicle.models.users.Punishment;
-import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.commands.Command;
-import dev.laarryy.Icicle.utils.Notifier;
+import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
+import dev.laarryy.Icicle.models.users.DiscordUser;
+import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.utils.AuditLogger;
+import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.ApplicationCommandOptionType;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.regex.Pattern;
 
 public class InfCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
@@ -33,28 +44,40 @@ public class InfCommand implements Command {
                     .type(ApplicationCommandOptionType.SUB_COMMAND_GROUP.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
-                            .name("id")
+                            .name("user")
                             .description("Search by user ID.")
                             .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
                             .required(false)
                             .addOption(ApplicationCommandOptionData.builder()
                                     .name("snowflake")
                                     .description("User ID to search.")
+                                    .type(ApplicationCommandOptionType.STRING.getValue())
+                                    .required(false)
+                                    .build())
+                            .addOption(ApplicationCommandOptionData.builder()
+                                    .name("mention")
+                                    .description("User mention to search.")
+                                    .type(ApplicationCommandOptionType.USER.getValue())
+                                    .required(false)
+                                    .build())
+                            .build())
+                    .addOption(ApplicationCommandOptionData.builder()
+                            .name("case")
+                            .description("Search by case ID.")
+                            .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                            .required(false)
+                            .addOption(ApplicationCommandOptionData.builder()
+                                    .name("caseid")
+                                    .description("Case ID to search.")
                                     .type(ApplicationCommandOptionType.INTEGER.getValue())
                                     .required(true)
                                     .build())
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
-                            .name("mention")
-                            .description("Search by user mention.")
+                            .name("recent")
+                            .description("Show recent cases.")
                             .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
                             .required(false)
-                            .addOption(ApplicationCommandOptionData.builder()
-                                    .name("user")
-                                    .description("User mention to search.")
-                                    .type(ApplicationCommandOptionType.USER.getValue())
-                                    .required(true)
-                                    .build())
                             .build())
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
@@ -74,6 +97,15 @@ public class InfCommand implements Command {
                             .type(ApplicationCommandOptionType.STRING.getValue())
                             .required(true)
                             .build())
+                    .addOption(ApplicationCommandOptionData.builder()
+                            .name("which")
+                            .description("Which reason to update - punishment or end punishment reason?")
+                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .required(true)
+                            .choices(List.of(
+                                    ApplicationCommandOptionChoiceData.builder().name("punishment").value("punishment").build(),
+                                    ApplicationCommandOptionChoiceData.builder().name("endpunishment").value("endpunishment").build()))
+                            .build())
                     .build())
             .defaultPermission(true)
             .build();
@@ -86,9 +118,243 @@ public class InfCommand implements Command {
 
         if (event.getOption("update").isPresent()) {
             Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::updatePunishment);
+            return Mono.empty();
+        }
+
+        if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("user").isPresent()) {
+            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::searchPunishments);
+            return Mono.empty();
+        }
+
+        if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("case").isPresent()) {
+            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::searchForCase);
+            return Mono.empty();
+        }
+
+        if (event.getOption("search").get().getOption("recent").isPresent()) {
+            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::recentCases);
+            return Mono.empty();
         }
 
         return Mono.empty();
+    }
+
+    private void recentCases(SlashCommandEvent event) {
+
+        if (ensureGuildAndPermissionCheck(event)) return;
+
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+
+        LazyList<Punishment> punishmentLazyList = Punishment.where("server_id = ?", discordServer.getServerId()).limit(25).orderBy("id desc");
+
+        String results = createFormattedPunishmentsTable(punishmentLazyList);
+
+        EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                .color(Color.ENDEAVOUR)
+                .title("Recent Cases")
+                .description(results)
+                .footer("For detailed information, run /inf search case <id>", "")
+                .timestamp(Instant.now())
+                .build();
+        event.reply().withEmbeds(resultEmbed).subscribe();
+        AuditLogger.addCommandToDB(event, true);
+    }
+
+    private String createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList) {
+        List<String> rows = new ArrayList<>();
+        rows.add("```");
+        rows.add(String.format("| %-7s| %-18s | %-6s |\n", "ID", "Date", "Type"));
+        rows.add("----------------------------------------\n");
+
+        for (Punishment p : punishmentLazyList) {
+            if (p == null) {
+                continue;
+            }
+            int id = p.getPunishmentId();
+            Instant date = Instant.ofEpochMilli(p.getDateEntry());
+            String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
+            String type = p.getPunishmentType();
+            rows.add(String.format("| %-5d| %-20s | %-6s |\n", id, dateString, type));
+        }
+
+        rows.add("```");
+
+        StringBuffer stringBuffer = new StringBuffer();
+        for (String row: rows) {
+            stringBuffer.append(row);
+        }
+
+        return stringBuffer.toString();
+    }
+
+    private void searchForCase(SlashCommandEvent event) {
+
+        if (ensureGuildAndPermissionCheck(event)) return;
+
+        if (event.getOption("search").get().getOption("case").isEmpty() || event.getOption("search").get().getOption("case").get().getOption("caseid").isEmpty()) {
+            Notifier.notifyCommandUserOfError(event, "malformedInput");
+            AuditLogger.addCommandToDB(event, false);
+            return;
+        }
+
+        int caseInt = (int) event.getOption("search").get().getOption("case").get().getOption("caseid").get().getValue().get().asLong();
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+
+        if (discordServer == null) {
+            Notifier.notifyCommandUserOfError(event, "nullServer");
+            AuditLogger.addCommandToDB(event, false);
+            return;
+        }
+
+        int serverId = discordServer.getServerId();
+        Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", caseInt, serverId);
+
+        if (punishment == null) {
+            Notifier.notifyCommandUserOfError(event, "404");
+            AuditLogger.addCommandToDB(event, false);
+            return;
+        }
+
+        DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+        DiscordUser punisher = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
+
+        if (discordUser == null || punisher == null) {
+            Notifier.notifyCommandUserOfError(event, "noUser");
+            AuditLogger.addCommandToDB(event, false);
+            return;
+        }
+
+        Long userSnowflake = discordUser.getUserIdSnowflake();
+        Long punisherSnowflake = punisher.getUserIdSnowflake();
+
+        String endDate;
+        String endReason;
+        String reason;
+        String didDMMessage;
+
+        if (punishment.getEndReason() != null) {
+            endReason = punishment.getEndReason();
+        } else {
+            endReason = "No reason provided.";
+        }
+
+        if (punishment.getPunishmentMessage() != null) {
+            reason = punishment.getPunishmentMessage();
+        } else {
+            reason = "No reason provided.";
+        }
+
+        if (punishment.getIfDMed()) {
+            didDMMessage = "Yes";
+        } else {
+            didDMMessage = "No";
+        }
+
+        if (punishment.getEndDate() != null) {
+            endDate = DateTimeFormatter
+                    .ofLocalizedDateTime(FormatStyle.FULL)
+                    .withLocale(Locale.CANADA)
+                    .withZone(ZoneId.systemDefault())
+                    .format(Instant.ofEpochMilli(punishment.getEndDate()));
+        } else {
+            endDate = "Not set.";
+        }
+
+        String date = DateTimeFormatter
+                .ofLocalizedDateTime(FormatStyle.FULL)
+                .withLocale(Locale.CANADA)
+                .withZone(ZoneId.systemDefault())
+                .format(Instant.ofEpochMilli(punishment.getDateEntry()));
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .color(Color.ENDEAVOUR)
+                .title("Case " + punishment.getPunishmentId())
+                .addField("User", "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">", false)
+                .addField("Moderator", "`" + punisherSnowflake + "`:" +"<@" + punisherSnowflake + ">", false)
+                .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), false)
+                .addField("Date", date, false)
+                .addField("Reason", reason, true)
+                .addField("End Date", endDate, false)
+                .addField("End Reason", endReason, true)
+                .addField("Attempted to DM User?", didDMMessage, false)
+                .timestamp(Instant.now())
+                .build();
+
+        event.reply().withEmbeds(embed).subscribe();
+        AuditLogger.addCommandToDB(event, true);
+    }
+
+    private void searchPunishments(SlashCommandEvent event) {
+
+        if (ensureGuildAndPermissionCheck(event)) return;
+
+        long userIdSnowflake;
+        if (event.getOption("search").get().getOption("user").isPresent()
+                && event.getOption("search").get().getOption("user").get().getOption("snowflake").isPresent()
+                && event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().isPresent()) {
+
+            String snowflakeString = event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().get().asString();
+            Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
+
+            if (!snowflakePattern.matcher(snowflakeString).matches()) {
+                Notifier.notifyCommandUserOfError(event, "malformedInput");
+                AuditLogger.addCommandToDB(event, false);
+                return;
+            }
+
+            logger.info("Snowflake String is: ||" + snowflakeString + "||");
+            userIdSnowflake = Long.parseLong(snowflakeString);
+        } else if (event.getOption("search").get().getOption("user").isPresent()
+                && event.getOption("search").get().getOption("user").get().getOption("mention").isPresent()
+                && event.getOption("search").get().getOption("user").get().getOption("mention").get().getValue().isPresent()) {
+
+            userIdSnowflake = event.getOption("search").get().getOption("user").get().getOption("mention").get().getValue().get().asUser().block().getId().asLong();
+
+        } else {
+            userIdSnowflake = 0L;
+        }
+
+
+        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+
+        if (discordUser == null) {
+            Notifier.notifyCommandUserOfError(event, "noUser");
+            AuditLogger.addCommandToDB(event, false);
+            return;
+        }
+
+        int userId = discordUser.getUserId();
+        long guildId = event.getInteraction().getGuildId().get().asLong();
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
+
+        if (discordServer == null) {
+            Notifier.notifyCommandUserOfError(event, "nullServer");
+            AuditLogger.addCommandToDB(event, false);
+            return;
+        }
+
+        int serverId = discordServer.getServerId();
+
+        LazyList<Punishment> punishmentLazyList = Punishment.find("user_id_punished = ? and server_id = ?", userId, serverId).limit(50).orderBy("id desc");
+
+        if (punishmentLazyList.isEmpty()) {
+            Notifier.notifyCommandUserOfError(event, "noResults");
+            AuditLogger.addCommandToDB(event, true);
+            return;
+        }
+
+        String results = createFormattedPunishmentsTable(punishmentLazyList);
+
+        EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                .color(Color.ENDEAVOUR)
+                .title("Results for user " + userIdSnowflake)
+                .description(results)
+                .footer("For detailed information, run /inf search case <id>", "")
+                .timestamp(Instant.now())
+                .build();
+
+        AuditLogger.addCommandToDB(event, true);
+        event.reply().withEmbeds(resultEmbed).subscribe();
     }
 
     private void updatePunishment(SlashCommandEvent event) {
@@ -139,12 +405,34 @@ public class InfCommand implements Command {
                     .timestamp(Instant.now())
                     .build();
 
+            if (event.getOption("update").get().getOption("which").get().getValue().get().asString().equals("punishment")) {
+                punishment.setPunishmentMessage(newReason);
+            }
 
-            punishment.setPunishmentMessage(newReason);
+            if (event.getOption("update").get().getOption("which").get().getValue().get().asString().equals("endpunishment")) {
+                punishment.setEndReason(newReason);
+            }
             punishment.save();
             AuditLogger.addCommandToDB(event, true);
             event.reply().withEmbeds(spec).subscribe();
         }
+    }
 
+    private boolean ensureGuildAndPermissionCheck(SlashCommandEvent event) {
+        DatabaseLoader.openConnectionIfClosed();
+
+        if (event.getInteraction().getGuild().block() == null) {
+            Notifier.notifyCommandUserOfError(event, "nullServer");
+            AuditLogger.addCommandToDB(event, false);
+            return true;
+        }
+
+        int permissionID = Permission.findOrCreateIt("permission", "infsearch").getInteger("id");
+        if (!permissionChecker.checkPermission(event.getInteraction().getGuild().block(), event.getInteraction().getUser(), permissionID)) {
+            Notifier.notifyCommandUserOfError(event, "noPermission");
+            AuditLogger.addCommandToDB(event, false);
+            return true;
+        }
+        return false;
     }
 }

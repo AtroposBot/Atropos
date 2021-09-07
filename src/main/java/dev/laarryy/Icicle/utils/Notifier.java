@@ -99,6 +99,7 @@ public final class Notifier {
             case "alreadyApplied" -> event.reply().withEmbeds(punishmentAlreadyAppliedEmbed()).withEphemeral(true).subscribe();
             case "404" -> event.reply().withEmbeds(fourOhFourEmbed()).withEphemeral(true).subscribe();
             case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
+            case "noResults" -> event.reply().withEmbeds(noResultsEmbed()).subscribe();
             default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
         }
     }
@@ -202,6 +203,15 @@ public final class Notifier {
                 .color(Color.RUBY)
                 .title("Error: Malformed Input")
                 .description("Action aborted because input cannot be accepted.")
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec noResultsEmbed() {
+        return EmbedCreateSpec.builder()
+                .color(Color.ENDEAVOUR)
+                .title("No Results")
+                .description("No results found for specified query.")
                 .timestamp(Instant.now())
                 .build();
     }

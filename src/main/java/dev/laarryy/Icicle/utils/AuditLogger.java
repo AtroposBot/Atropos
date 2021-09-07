@@ -38,12 +38,9 @@ public final class AuditLogger {
         stringBuffer.append(event.getCommandName() + " ");
 
         Flux.fromIterable(event.getOptions())
-                .filter(option -> option.getValue().isPresent())
                 .subscribe(option -> stringBuffer.append(generateOptionString(option)));
 
         String commandContent = stringBuffer.toString();
-
-        logger.info(commandContent);
 
         CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", commandContent, "date", Instant.now().toEpochMilli(), "success", success);
         commandUse.save();
@@ -51,10 +48,25 @@ public final class AuditLogger {
     }
 
     private static String generateOptionString(ApplicationCommandInteractionOption option) {
-        return option.getName() + ":" + stringifyOptionValue(option) + " ";
+        StringBuffer sb = new StringBuffer();
+        if (option.getType().name().equals("SUB_COMMAND_GROUP") || option.getType().name().equals("SUB_COMMAND")) {
+
+            option.getOptions().forEach(op -> {
+                sb.append(op.getName() + " " + generateOptionString(op));
+            });
+        } else {
+            String valuedOption = option.getName() + ":" + stringifyOptionValue(option) + " ";
+            sb.append(valuedOption);
+        }
+        return sb.toString();
     }
 
     private static String stringifyOptionValue(ApplicationCommandInteractionOption option) {
+
+        if (option.getValue().isEmpty()) {
+            return "";
+        }
+
         switch (option.getType().name()) {
             case "USER": return option.getValue().get().asUser().block().getId().asString();
             case "STRING": return option.getValue().get().asString();
@@ -63,7 +75,7 @@ public final class AuditLogger {
             case "CHANNEL": return option.getValue().get().asChannel().block().getId().asString();
             case "ROLE": return option.getValue().get().asRole().block().getId().asString();
             case "MENTIONABLE": return option.getValue().get().toString();
-            default: return "unknown value";
+            default: return option.getName();
         }
     }
 }
