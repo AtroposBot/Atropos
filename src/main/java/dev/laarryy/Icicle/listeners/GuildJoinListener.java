@@ -21,13 +21,6 @@ public class GuildJoinListener {
 
         Icicle.addServerToDatabase(guild);
 
-        Flux<Member> memberFlux = event.getGuild().getMembers();
-
-        memberFlux
-                .map(member -> Icicle.addUserToDatabase(member, guild))
-                .doOnError(logger::error)
-                .subscribe();
-
         return Mono.empty();
     }
 }

@@ -1,4 +1,4 @@
-package dev.laarryy.Icicle.commands.punishments;
+package dev.laarryy.Icicle.services;
 
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
@@ -13,7 +13,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
