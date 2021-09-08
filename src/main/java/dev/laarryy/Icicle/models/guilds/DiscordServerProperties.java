@@ -40,12 +40,68 @@ public class DiscordServerProperties extends Model {
         setInteger("member_count_on_icicle_join", membersonFirstJoin);
     }
 
-    public @Nullable Long getServerLogChannelSnowflake() {
-        return getLong("server_log_channel_snowflake");
+    public @Nullable Long getGuildLogChannelSnowflake() {
+        return getLong("guild_log_channel_snowflake");
     }
 
-    public void setServerLogChannelSnowflake(@Nullable Long serverLogChannelSnowflake) {
-        set("server_log_channel_snowflake", serverLogChannelSnowflake);
+    public void setGuildLogChannelSnowflake(@Nullable Long guildLogChannelSnowflake) {
+        set("guild_log_channel_snowflake", guildLogChannelSnowflake);
+    }
+
+    public @Nullable Long getMessageLogChannelSnowflake() {
+        return getLong("message_log_channel_snowflake");
+    }
+
+    public void setMessageLogChannelSnowflake(@Nullable Long messageLogChannelSnowflake) {
+        set("message_log_channel_snowflake", messageLogChannelSnowflake);
+    }
+
+    public @Nullable Long getMemberLogChannelSnowflake() {
+        return getLong("member_log_channel_snowflake");
+    }
+
+    public void setMemberLogChannelSnowflake(@Nullable Long memberLogChannelSnowflake) {
+        set("member_log_channel_snowflake", memberLogChannelSnowflake);
+    }
+
+    public @Nullable Long getPunishmentLogChannelSnowflake() {
+        return getLong("punishment_log_channel_snowflake");
+    }
+
+    public void setPunishmentLogChannelSnowflake(@Nullable Long punishmentLogChannelSnowflake) {
+        set("punishment_log_channel_snowflake", punishmentLogChannelSnowflake);
+    }
+
+    public boolean getMessageLogEnabled() {
+        return getBoolean("message_log_enabled");
+    }
+
+    public void setMessageLogEnabled(boolean messageLogEnabled) {
+        setBoolean("message_log_enabled", messageLogEnabled);
+    }
+
+    public boolean getMemberLogEnabled() {
+        return getBoolean("member_log_enabled");
+    }
+
+    public void setMemberLogEnabled(boolean memberLogEnabled) {
+        setBoolean("member_log_enabled", memberLogEnabled);
+    }
+
+    public boolean getGuildLogEnabled() {
+        return getBoolean("guild_log_enabled");
+    }
+
+    public void setGuildLogEnabled(boolean guildLogEnabled) {
+        setBoolean("guild_log_enabled", guildLogEnabled);
+    }
+
+    public boolean getPunishmentLogEnabled() {
+        return getBoolean("punishment_log_enabled");
+    }
+
+    public void setPunishmentLogEnabled(boolean punishmentLogEnabled) {
+        setBoolean("punishment_log_enabled", punishmentLogEnabled);
     }
 
     public Long getMutedRoleSnowflake() {

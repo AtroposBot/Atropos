@@ -1,7 +1,8 @@
 package dev.laarryy.Icicle;
 
+import dev.laarryy.Icicle.cache.GenericCache;
 import dev.laarryy.Icicle.commands.Command;
-import dev.laarryy.Icicle.commands.punishments.AutoPunishmentEnder;
+import dev.laarryy.Icicle.services.AutoPunishmentEnder;
 import dev.laarryy.Icicle.commands.punishments.PunishmentManager;
 import dev.laarryy.Icicle.config.ConfigManager;
 import dev.laarryy.Icicle.listeners.EventListener;
@@ -9,6 +10,7 @@ import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.joins.ServerUser;
 import dev.laarryy.Icicle.models.users.DiscordUser;
+import dev.laarryy.Icicle.services.CacheMaintainer;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import discord4j.common.util.Snowflake;
 import discord4j.core.DiscordClientBuilder;
@@ -53,6 +55,7 @@ public class Icicle {
     private static final Logger logger = LogManager.getLogger(Icicle.class);
     private static final List<Command> COMMANDS = new ArrayList<>();
     private static PunishmentManager punishmentManager = null;
+    private static GenericCache<Long, DiscordServerProperties> genericCache = null;
 
     public static void main(String[] args) throws Exception {
 
@@ -193,6 +196,13 @@ public class Icicle {
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(punishmentManager1 -> punishmentManager = punishmentManager1);
 
+        // Start up our cache
+
+        Mono.just(60000L)
+                .map(l -> new GenericCache<Long, DiscordServerProperties>())
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe(genericCache1 -> genericCache = genericCache1);
+
         client.onDisconnect().block();
     }
 
@@ -269,6 +279,14 @@ public class Icicle {
 
     public static PunishmentManager getPunishmentManager() {
         return punishmentManager;
+    }
+
+    public static GenericCache<Long, DiscordServerProperties> getGenericCache() {
+        Mono.just(genericCache)
+                .map(CacheMaintainer::new)
+                .subscribeOn(Schedulers.boundedElastic())
+                .subscribe();
+        return genericCache;
     }
 
 }

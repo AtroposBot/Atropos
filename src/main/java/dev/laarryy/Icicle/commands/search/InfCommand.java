@@ -252,12 +252,12 @@ public class InfCommand implements Command {
                 .title("Case " + punishment.getPunishmentId())
                 .addField("User", "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">", false)
                 .addField("Moderator", "`" + punisherSnowflake + "`:" +"<@" + punisherSnowflake + ">", false)
-                .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), false)
+                .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), true)
                 .addField("Date", date, true)
                 .addField("Reason", reason, true)
                 .addField("End Date", endDate, true)
                 .addField("End Reason", endReason, true)
-                .addField("Attempted to DM User?", didDMMessage, false)
+                .addField("Attempted to DM User?", didDMMessage, true)
                 .timestamp(Instant.now())
                 .build();
 
