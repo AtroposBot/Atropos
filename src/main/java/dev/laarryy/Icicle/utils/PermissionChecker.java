@@ -9,12 +9,11 @@ import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.User;
 import discord4j.rest.util.Permission;
-import discord4j.rest.util.PermissionSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Flux;
 
-public class PermissionChecker {
+public final class PermissionChecker {
     private final Logger logger = LogManager.getLogger(this);
 
     public boolean checkPermission(Guild guild, User user, int permissionId) {

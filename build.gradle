@@ -16,6 +16,7 @@ def activeJdbcGradePluginVersion = '2.2'
 def reflectionsVersion = "0.9.12"
 def discord4jVersion = '3.2.0-RC2'
 def configurateVersion = '4.1.1'
+def caffeineVersion = '3.0.4'
 
 repositories {
     mavenCentral()
@@ -41,6 +42,7 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.10.3'
     implementation "org.javalite:activejdbc-gradle-plugin:$activeJdbcGradePluginVersion"
     implementation "org.reflections:reflections:$reflectionsVersion"
+    implementation "com.github.ben-manes.caffeine:caffeine:$caffeineVersion"
 }
 
 shadowJar {

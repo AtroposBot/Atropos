@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.services;
 
+import dev.laarryy.Icicle.listeners.logging.LoggingListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.users.DiscordUser;
@@ -103,7 +104,9 @@ public class AutoPunishmentEnder {
         guild.unban(userId).subscribe();
         DatabaseLoader.openConnectionIfClosed();
         punishment.setEnded(true);
+        punishment.setEndReason("Automatically unbanned on timer.");
         punishment.save();
+        LoggingListener.onUnban(guild, userId.asLong(), "Automatically unbanned on timer.");
     }
 
     private void discordUnmuteUser(DiscordServer server, Punishment punishment, Member member) {
@@ -114,7 +117,9 @@ public class AutoPunishmentEnder {
             member.removeRole(Snowflake.of(mutedRoleSnowflake)).subscribe();
         }
         punishment.setEnded(true);
+        punishment.setEndReason("Automatically unmuted on timer.");
         punishment.save();
+        LoggingListener.onUnmute(member, member.getId().asLong(), "Automatically unmuted on timer.");
     }
 
 }
