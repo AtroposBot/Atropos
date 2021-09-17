@@ -1,12 +1,9 @@
 package dev.laarryy.Icicle.models.users;
 
-import dev.laarryy.Icicle.utils.SnowflakeIdFinder;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.javalite.activejdbc.Model;
 import org.javalite.activejdbc.annotations.Table;
-
-import java.time.Instant;
 
 @Table("punishments")
 public class Punishment extends Model {
@@ -39,35 +36,35 @@ public class Punishment extends Model {
         set("server_id", serverId);
     }
 
-    public @NonNull String getPunishmentType() {
+    public String getPunishmentType() {
         return getString("punishment_type");
     }
 
-    public void setPunishmentType(@NonNull String punishmentType) {
+    public void setPunishmentType(String punishmentType) {
         set("punishment_type", punishmentType);
     }
 
-    public @NonNull Long getDateEntry() {
+    public Long getDateEntry() {
         return getLong("punishment_date");
     }
 
-    public void setDateEntry(@NonNull Long dateEntry) {
+    public void setDateEntry(Long dateEntry) {
         set("punishment_date", dateEntry);
     }
 
-    public @Nullable Long getEndDate() {
+    public Long getEndDate() {
         return getLong("punishment_end_date");
     }
 
-    public void setEndDate(@Nullable Long endDateEntry) {
+    public void setEndDate(Long endDateEntry) {
         set("punishment_end_date", endDateEntry);
     }
 
-    public @Nullable String getPunishmentMessage() {
+    public String getPunishmentMessage() {
         return getString("punishment_message");
     }
 
-    public void setPunishmentMessage(@Nullable String message) {
+    public void setPunishmentMessage(String message) {
         set("punishment_message", message);
     }
 

@@ -101,6 +101,7 @@ public final class Notifier {
             case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
             case "noResults" -> event.reply().withEmbeds(noResultsEmbed()).subscribe();
             case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).subscribe();
+            case "invalidChannel" -> event.reply().withEmbeds(invalidChannelEmbed()).subscribe();
             default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
         }
     }
@@ -224,6 +225,15 @@ public final class Notifier {
                 .color(Color.ENDEAVOUR)
                 .title("No Results")
                 .description("No results found for specified query.")
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec invalidChannelEmbed() {
+        return EmbedCreateSpec.builder()
+                .color(Color.ENDEAVOUR)
+                .title("Invalid Channel")
+                .description("This channel cannot be used for this.")
                 .timestamp(Instant.now())
                 .build();
     }

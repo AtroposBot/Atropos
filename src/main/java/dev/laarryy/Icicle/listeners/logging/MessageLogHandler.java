@@ -1,20 +1,10 @@
 package dev.laarryy.Icicle.listeners.logging;
 
+import discord4j.core.object.entity.channel.TextChannel;
+
 public class MessageLogHandler {
 
-    public void handleMessageEvent() {
-
-    }
-
-    public void handleMemberEvent() {
-
-    }
-
-    public void handleGuildEvent() {
-
-    }
-
-    public void handlePunishmentEvent() {
+    public void handleMessageEvent(TextChannel messageLogChannel) {
 
     }
 }

@@ -161,6 +161,7 @@ public class AuditCommand implements Command {
                 .color(Color.ENDEAVOUR)
                 .title("Audit: " + auditInt)
                 .description("Command contents: `" + commandUse.getCommandContents() + "`")
+                .addField("User", "`" + userSnowflake + "`:<@" + userSnowflake + ">", false)
                 .addField("Date", date, false)
                 .addField("Result", succeeded, false)
                 .build();
@@ -187,7 +188,7 @@ public class AuditCommand implements Command {
                 .color(Color.ENDEAVOUR)
                 .title("Recent Cases")
                 .description(results)
-                .footer("For detailed information, run /inf search case <id>", "")
+                .footer("For detailed information, run /audit id <id>", "")
                 .timestamp(Instant.now())
                 .build();
         event.reply().withEmbeds(resultEmbed).subscribe();
@@ -256,7 +257,7 @@ public class AuditCommand implements Command {
                 .color(Color.ENDEAVOUR)
                 .title("Results")
                 .description(results)
-                .footer("For detailed information, run /inf search case <id>", "")
+                .footer("For detailed information, run /audit id <id>", "")
                 .timestamp(Instant.now())
                 .build();
         event.reply().withEmbeds(resultEmbed).subscribe();

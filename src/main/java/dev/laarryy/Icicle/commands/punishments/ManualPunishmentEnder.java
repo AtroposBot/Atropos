@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.commands.punishments;
 
+import dev.laarryy.Icicle.listeners.logging.LoggingListener;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
@@ -73,6 +74,7 @@ public final class ManualPunishmentEnder {
     private static boolean discordUnban(Guild guild, Long aLong, String reason) {
         try {
             guild.unban(Snowflake.of(aLong), reason);
+            LoggingListener.onUnban(guild, aLong, reason);
             return true;
         } catch (Exception exception) {
             return false;
@@ -101,6 +103,7 @@ public final class ManualPunishmentEnder {
                 logger.info("Unmuting discord-side");
                 member.removeRole(Snowflake.of(mutedRoleId), reason).block();
                 AuditLogger.addCommandToDB(event, true);
+                LoggingListener.onUnmute(member, member.getId().asLong(), reason);
                 return true;
             } else {
                 Notifier.notifyCommandUserOfError(event, "userNotMuted");

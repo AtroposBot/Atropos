@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.services;
 
+import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import dev.laarryy.Icicle.cache.GenericCache;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
@@ -14,7 +15,7 @@ import java.time.Duration;
 public class CacheMaintainer {
     private final Logger logger = LogManager.getLogger(this);
 
-    public CacheMaintainer(GenericCache<Long, DiscordServerProperties> cache) {
+    public CacheMaintainer(AsyncLoadingCache<Long, DiscordServerProperties> cache) {
         DatabaseLoader.openConnectionIfClosed();
         Flux.interval(Duration.ofMinutes(3))
                 .doOnNext(l -> refreshPropertiesCache(cache))
@@ -22,14 +23,12 @@ public class CacheMaintainer {
                 .subscribe();
     }
 
-    private void refreshPropertiesCache(GenericCache<Long, DiscordServerProperties> cache) {
+    private void refreshPropertiesCache(AsyncLoadingCache<Long, DiscordServerProperties> cache) {
         DatabaseLoader.openConnectionIfClosed();
         LazyList<DiscordServerProperties> propertiesList = DiscordServerProperties.findAll();
         logger.info("refreshing properties cache");
         Flux.fromIterable(propertiesList)
                 .subscribe(property -> {
-                    cache.clean();
-                    cache.put(property.getServerIdSnowflake(), property);
                 });
     }
 }

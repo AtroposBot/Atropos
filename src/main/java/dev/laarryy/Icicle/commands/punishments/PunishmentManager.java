@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.commands.punishments;
 
+import dev.laarryy.Icicle.listeners.logging.LoggingListener;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
@@ -8,6 +9,7 @@ import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.DurationParser;
+import dev.laarryy.Icicle.utils.LogExecutor;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
@@ -228,6 +230,15 @@ public class PunishmentManager {
             } else messageDeleteDays = (int) preliminaryResult;
         } else messageDeleteDays = 0;
 
+        // Actually do the punishment, discord-side. Nothing to do for warnings or cases.
+
+        DatabaseLoader.openConnectionIfClosed();
+        switch (punishment.getPunishmentType()) {
+            case "mute" -> discordMuteUser(guild, punished.getUserIdSnowflake(), DiscordServerProperties.findFirst("server_id = ?", discordServer.getServerId()));
+            case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
+            case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
+        }
+
         // DMing the punished user, notifying the punishing user that it's worked out
 
         if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
@@ -242,14 +253,7 @@ public class PunishmentManager {
             Notifier.notifyPunisher(event, punishment, punishmentReason);
         }
 
-        // Actually do the punishment, discord-side. Nothing to do for warnings or cases.
-
-        DatabaseLoader.openConnectionIfClosed();
-        switch (punishment.getPunishmentType()) {
-            case "mute" -> discordMuteUser(guild, punished.getUserIdSnowflake(), DiscordServerProperties.findFirst("server_id = ?", discordServer.getServerId()));
-            case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
-            case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
-        }
+        LoggingListener.onPunishment(event, punishment);
 
         AuditLogger.addCommandToDB(event, true);
 

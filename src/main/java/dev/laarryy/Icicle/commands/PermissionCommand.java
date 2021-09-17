@@ -93,6 +93,11 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
+                    .name("/logsettings")
+                    .value("logsettings")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
                     .name("Every single permission")
                     .value("everything")
                     .build()
