@@ -53,8 +53,14 @@ public class Icicle {
 
     private static final Logger logger = LogManager.getLogger(Icicle.class);
     private static final List<Command> COMMANDS = new ArrayList<>();
-    private static PunishmentManager punishmentManager = null;
-    private static LoadingCache<Long, DiscordServerProperties> loadingCache;
+    private final PunishmentManager punishmentManager = new PunishmentManager();
+    private final LoadingCache<Long, DiscordServerProperties> cache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(5))
+            .build(aLong -> DiscordServerProperties.findFirst("server_id_snowflake = ?", aLong));
+
+    public LoadingCache<Long, DiscordServerProperties> getCache() {
+        return cache;
+    }
 
     public static void main(String[] args) throws Exception {
 
@@ -187,20 +193,6 @@ public class Icicle {
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
 
-        // Start up the punishment manager
-
-        Mono.just(client)
-                .map(PunishmentManager::new)
-                .doOnError(logger::error)
-                .subscribeOn(Schedulers.boundedElastic())
-                .subscribe(punishmentManager1 -> punishmentManager = punishmentManager1);
-
-        // Start up our cache
-
-        loadingCache = Caffeine.newBuilder()
-                .expireAfterWrite(Duration.ofMinutes(5))
-                .build(aLong -> DiscordServerProperties.findFirst("server_id_snowflake = ?", aLong));
-
         client.onDisconnect().block();
     }
 
@@ -275,12 +267,7 @@ public class Icicle {
         return true;
     }
 
-    public static PunishmentManager getPunishmentManager() {
-        return punishmentManager;
+    public PunishmentManager getPunishmentManager() {
+        return this.punishmentManager;
     }
-
-    public static LoadingCache<Long, DiscordServerProperties> getCache() {
-        return loadingCache;
-    }
-
 }
