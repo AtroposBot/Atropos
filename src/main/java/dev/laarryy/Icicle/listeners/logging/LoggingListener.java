@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.listeners.logging;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.listeners.EventListener;
@@ -28,10 +29,17 @@ import discord4j.core.object.entity.channel.TextChannel;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-public final class LoggingListener {
-    private static LoadingCache<Long, DiscordServerProperties> cache = Icicle.getCache();
+import java.time.Duration;
 
-    private static Mono<TextChannel> getLogChannel(Guild guild, String type) {
+public final class LoggingListener {
+    LoadingCache<Long, DiscordServerProperties> cache = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(5))
+            .build(aLong -> DiscordServerProperties.findFirst("server_id_snowflake = ?", aLong));
+    public LoggingListener() {
+
+    }
+
+    private Mono<TextChannel> getLogChannel(Guild guild, String type) {
         Long guildIdSnowflake = guild.getId().asLong();
         DiscordServerProperties serverProperties = cache.get(guildIdSnowflake);
         if (serverProperties == null) {
@@ -59,7 +67,7 @@ public final class LoggingListener {
         return Mono.just((TextChannel) channel);
     }
 
-    public static void onPunishment(SlashCommandEvent event, Punishment punishment) {
+    public void onPunishment(SlashCommandEvent event, Punishment punishment) {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) return;
 
@@ -71,7 +79,7 @@ public final class LoggingListener {
                 });
     }
 
-    public static void onUnban(Guild guild, Long unBannedId, String reason) {
+    public void onUnban(Guild guild, Long unBannedId, String reason) {
         if (guild == null) return;
 
         getLogChannel(guild, "punishment")
@@ -82,7 +90,7 @@ public final class LoggingListener {
                 });
     }
 
-    public static void onUnmute(Member member, Long unMutedId, String reason) {
+    public void onUnmute(Member member, Long unMutedId, String reason) {
         Guild guild = member.getGuild().block();
         if (guild == null) return;
 

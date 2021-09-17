@@ -9,11 +9,9 @@ import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.DurationParser;
-import dev.laarryy.Icicle.utils.LogExecutor;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
-import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.PermissionOverwrite;
 import discord4j.core.object.entity.Guild;
@@ -43,16 +41,7 @@ import java.util.Set;
 
 public class PunishmentManager {
     private final Logger logger = LogManager.getLogger(this);
-    GatewayDiscordClient client;
     PermissionChecker permissionChecker = new PermissionChecker();
-
-    public PunishmentManager(GatewayDiscordClient client) {
-        if (client != null) {
-            this.client = client;
-        } else {
-            logger.error("Client is null.");
-        }
-    }
 
     public Mono<Void> doPunishment(ApplicationCommandRequest request, SlashCommandEvent event) {
 
