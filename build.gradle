@@ -14,7 +14,7 @@ def activejdbcVersion = '3.0-SNAPSHOT'
 def mysqlconnectorjavaVersion = '8.0.25'
 def activeJdbcGradePluginVersion = '2.2'
 def reflectionsVersion = "0.9.12"
-def discord4jVersion = '3.2.0-RC2'
+def discord4jVersion = '3.2.0-RC3'
 def configurateVersion = '4.1.1'
 def caffeineVersion = '3.0.4'
 

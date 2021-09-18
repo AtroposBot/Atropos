@@ -1,7 +1,6 @@
 package dev.laarryy.Icicle.services;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
-import dev.laarryy.Icicle.cache.GenericCache;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import org.apache.logging.log4j.LogManager;

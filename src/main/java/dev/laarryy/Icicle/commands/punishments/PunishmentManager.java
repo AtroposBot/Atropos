@@ -1,13 +1,14 @@
 package dev.laarryy.Icicle.commands.punishments;
 
+import dev.laarryy.Icicle.LoggingListenerManager;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;
-import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
 import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.DurationParser;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
@@ -42,7 +43,7 @@ import java.util.Set;
 public class PunishmentManager {
     private final Logger logger = LogManager.getLogger(this);
     PermissionChecker permissionChecker = new PermissionChecker();
-    LoggingListener loggingListener = new LoggingListener();
+    LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
 
     public Mono<Void> doPunishment(ApplicationCommandRequest request, SlashCommandEvent event) {
 

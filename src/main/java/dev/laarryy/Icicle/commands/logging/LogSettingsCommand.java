@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.commands.logging;
 
+import dev.laarryy.Icicle.CacheManager;
 import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
@@ -132,6 +133,8 @@ public class LogSettingsCommand implements Command {
 
         DatabaseLoader.openConnectionIfClosed();
 
+        CacheManager.getManager().getCache().invalidate(guild.getId().asLong());
+
         String logType = event.getOption("unset").get().getOption("type").get().getValue().get().asString();
 
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
@@ -199,6 +202,8 @@ public class LogSettingsCommand implements Command {
         DatabaseLoader.openConnectionIfClosed();
 
         String logType = event.getOption("set").get().getOption("type").get().getValue().get().asString();
+
+        CacheManager.getManager().getCache().invalidate(guild.getId().asLong());
 
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 

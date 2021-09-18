@@ -1,12 +1,13 @@
 package dev.laarryy.Icicle.commands.punishments;
 
+import dev.laarryy.Icicle.LoggingListenerManager;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;
-import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
@@ -25,7 +26,7 @@ import java.time.Instant;
 
 public final class ManualPunishmentEnder {
     private static final Logger logger = LogManager.getLogger(ManualPunishmentEnder.class);
-    LoggingListener loggingListener = new LoggingListener();
+    LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
 
     public ManualPunishmentEnder() {}
 

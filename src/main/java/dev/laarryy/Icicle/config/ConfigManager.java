@@ -12,6 +12,7 @@ public class ConfigManager {
     String address;
     String username;
     String password;
+    String token;
 
     private static final ConfigLoader configLoader = new ConfigLoader();
     private static ConfigSettings configSettings;
@@ -34,6 +35,7 @@ public class ConfigManager {
         this.address = configSettings.getAddress();
         this.username = configSettings.getUsername();
         this.password = configSettings.getPassword();
+        this.token = configSettings.getToken();
     }
 
     public static String getAddress() {
@@ -46,5 +48,9 @@ public class ConfigManager {
 
     public static String getPassword() {
         return configSettings.getPassword();
+    }
+
+    public static String getToken() {
+        return configSettings.getToken();
     }
 }

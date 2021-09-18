@@ -1,6 +1,7 @@
 package dev.laarryy.Icicle;
 
 import dev.laarryy.Icicle.listeners.EventListener;
+import dev.laarryy.Icicle.listeners.logging.LoggingListener;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.Event;
 import org.apache.logging.log4j.LogManager;
@@ -24,7 +25,12 @@ public class ListenerManager {
         Set<Method> listenersToRegister = reflections2.getMethodsAnnotatedWith(EventListener.class);
 
         for (Method registerableListener : listenersToRegister) {
-            Object listener = registerableListener.getDeclaringClass().getDeclaredConstructor().newInstance();
+            Object listener;
+            if (registerableListener.getDeclaringClass().isInstance(LoggingListener.class)) {
+                listener = LoggingListenerManager.getManager().getLoggingListener();
+            } else {
+                listener = registerableListener.getDeclaringClass().getDeclaredConstructor().newInstance();
+            }
             Parameter[] params = registerableListener.getParameters();
 
             if (params.length == 0) {
