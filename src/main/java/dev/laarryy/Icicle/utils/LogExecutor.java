@@ -5,6 +5,18 @@ import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import discord4j.core.event.domain.InviteCreateEvent;
 import discord4j.core.event.domain.PresenceUpdateEvent;
+import discord4j.core.event.domain.channel.NewsChannelCreateEvent;
+import discord4j.core.event.domain.channel.NewsChannelDeleteEvent;
+import discord4j.core.event.domain.channel.NewsChannelUpdateEvent;
+import discord4j.core.event.domain.channel.StoreChannelCreateEvent;
+import discord4j.core.event.domain.channel.StoreChannelDeleteEvent;
+import discord4j.core.event.domain.channel.StoreChannelUpdateEvent;
+import discord4j.core.event.domain.channel.TextChannelCreateEvent;
+import discord4j.core.event.domain.channel.TextChannelDeleteEvent;
+import discord4j.core.event.domain.channel.TextChannelUpdateEvent;
+import discord4j.core.event.domain.channel.VoiceChannelCreateEvent;
+import discord4j.core.event.domain.channel.VoiceChannelDeleteEvent;
+import discord4j.core.event.domain.channel.VoiceChannelUpdateEvent;
 import discord4j.core.event.domain.guild.BanEvent;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.guild.MemberLeaveEvent;
@@ -42,6 +54,9 @@ public final class LogExecutor {
     }
 
     public static void logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
+        if (event.getMessage().isPresent()) {
+
+        }
         logChannel.createMessage("MESSAGE DELETED!").subscribe();
 
     }
@@ -71,6 +86,54 @@ public final class LogExecutor {
     }
 
     public static void logInviteCreate(InviteCreateEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logNewsCreate(NewsChannelCreateEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logNewsDelete(NewsChannelDeleteEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logNewsUpdate(NewsChannelUpdateEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logStoreCreate(StoreChannelCreateEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logStoreDelete(StoreChannelDeleteEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logStoreUpdate(StoreChannelUpdateEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logVoiceCreate(VoiceChannelCreateEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logVoiceDelete(VoiceChannelDeleteEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logVoiceUpdate(VoiceChannelUpdateEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logTextCreate(TextChannelCreateEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logTextDelete(TextChannelDeleteEvent event, TextChannel logChannel) {
+
+    }
+
+    public static void logTextUpdate(TextChannelUpdateEvent event, TextChannel logChannel) {
 
     }
 
