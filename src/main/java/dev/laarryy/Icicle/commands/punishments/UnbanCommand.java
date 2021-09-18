@@ -36,9 +36,10 @@ public class UnbanCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
+        ManualPunishmentEnder manualPunishmentEnder = new ManualPunishmentEnder();
         Mono.just(event)
                 .subscribeOn(Schedulers.boundedElastic())
-                .subscribe(event1 -> ManualPunishmentEnder.endPunishment(event));
+                .subscribe(event1 -> manualPunishmentEnder.endPunishment(event));
         return Mono.empty();
     }
 }

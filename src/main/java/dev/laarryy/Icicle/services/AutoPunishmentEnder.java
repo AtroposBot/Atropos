@@ -22,6 +22,7 @@ import java.time.Instant;
 public class AutoPunishmentEnder {
 
     private final Logger logger = LogManager.getLogger(this);
+    LoggingListener loggingListener = new LoggingListener();
     GatewayDiscordClient client;
 
     public AutoPunishmentEnder(GatewayDiscordClient client) {
@@ -106,7 +107,7 @@ public class AutoPunishmentEnder {
         punishment.setEnded(true);
         punishment.setEndReason("Automatically unbanned on timer.");
         punishment.save();
-        LoggingListener.onUnban(guild, userId.asLong(), "Automatically unbanned on timer.");
+        loggingListener.onUnban(guild, userId.asLong(), "Automatically unbanned on timer.");
     }
 
     private void discordUnmuteUser(DiscordServer server, Punishment punishment, Member member) {
@@ -119,7 +120,7 @@ public class AutoPunishmentEnder {
         punishment.setEnded(true);
         punishment.setEndReason("Automatically unmuted on timer.");
         punishment.save();
-        LoggingListener.onUnmute(member, member.getId().asLong(), "Automatically unmuted on timer.");
+        loggingListener.onUnmute(member, member.getId().asLong(), "Automatically unmuted on timer.");
     }
 
 }

@@ -73,7 +73,7 @@ public class BanCommand implements Command {
     public Mono<Void> execute(SlashCommandEvent event) {
 
         Icicle icicle = new Icicle();
-        icicle.getPunishmentManager();
+        PunishmentManager punishmentManager = icicle.getPunishmentManager();
 
         Mono.just(event)
                 .subscribeOn(Schedulers.boundedElastic())

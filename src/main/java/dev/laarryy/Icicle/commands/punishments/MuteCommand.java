@@ -50,7 +50,8 @@ public class MuteCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
-        PunishmentManager punishmentManager = Icicle.getPunishmentManager();
+        Icicle icicle = new Icicle();
+        PunishmentManager punishmentManager = icicle.getPunishmentManager();
         Mono.just(event)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(event1 -> punishmentManager.doPunishment(request, event1));

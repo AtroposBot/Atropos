@@ -2,10 +2,10 @@ package dev.laarryy.Icicle.listeners.logging;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.listeners.EventListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.users.Punishment;
+import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.LogExecutor;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.InviteCreateEvent;
@@ -26,23 +26,33 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.channel.GuildChannel;
 import discord4j.core.object.entity.channel.TextChannel;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
+import java.util.Objects;
 
 public final class LoggingListener {
+    private final Logger logger = LogManager.getLogger(this);
     LoadingCache<Long, DiscordServerProperties> cache = Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofMinutes(5))
-            .build(aLong -> DiscordServerProperties.findFirst("server_id_snowflake = ?", aLong));
+            .build(aLong -> {
+                DatabaseLoader.openConnectionIfClosed();
+                return DiscordServerProperties.findFirst("server_id_snowflake = ?", aLong);
+            });
+
     public LoggingListener() {
 
     }
 
     private Mono<TextChannel> getLogChannel(Guild guild, String type) {
+        DatabaseLoader.openConnectionIfClosed();
         Long guildIdSnowflake = guild.getId().asLong();
         DiscordServerProperties serverProperties = cache.get(guildIdSnowflake);
         if (serverProperties == null) {
+            logger.info("serverProperties is null");
             return null;
         }
 
@@ -55,12 +65,14 @@ public final class LoggingListener {
         };
 
         if (logChannelSnowflake == null) {
+            logger.info("logChannelSnowflake is null");
             return null;
         }
 
         GuildChannel channel = guild.getChannelById(Snowflake.of(logChannelSnowflake)).block();
 
         if (!(channel instanceof TextChannel)) {
+            logger.info("channel isn't a textchannel");
             return null;
         }
 
@@ -72,6 +84,7 @@ public final class LoggingListener {
         if (guild == null) return;
 
         getLogChannel(guild, "punishment")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -83,6 +96,7 @@ public final class LoggingListener {
         if (guild == null) return;
 
         getLogChannel(guild, "punishment")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -95,9 +109,9 @@ public final class LoggingListener {
         if (guild == null) return;
 
         getLogChannel(guild, "punishment")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
-                    if (textChannel == null) return;
                     LogExecutor.logPunishmentUnmute(unMutedId, textChannel, reason);
                 });
     }
@@ -108,6 +122,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "message")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -122,6 +137,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "message")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -136,6 +152,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "message")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -150,6 +167,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -164,6 +182,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -178,6 +197,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "member")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -192,6 +212,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "member")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -206,6 +227,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -222,6 +244,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -237,6 +260,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -252,6 +276,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -267,6 +292,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
@@ -282,6 +308,7 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
+                .filter(Objects::nonNull)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(textChannel -> {
                     if (textChannel == null) return;
