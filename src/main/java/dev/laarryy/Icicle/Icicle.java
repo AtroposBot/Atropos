@@ -1,65 +1,28 @@
 package dev.laarryy.Icicle;
 
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import dev.laarryy.Icicle.commands.Command;
-import dev.laarryy.Icicle.services.AutoPunishmentEnder;
 import dev.laarryy.Icicle.commands.punishments.PunishmentManager;
 import dev.laarryy.Icicle.config.ConfigManager;
-import dev.laarryy.Icicle.listeners.EventListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.joins.ServerUser;
 import dev.laarryy.Icicle.models.users.DiscordUser;
+import dev.laarryy.Icicle.services.AutoPunishmentEnder;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
-import discord4j.common.util.Snowflake;
-import discord4j.core.DiscordClientBuilder;
 import discord4j.core.GatewayDiscordClient;
-import discord4j.core.event.domain.Event;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.User;
-import discord4j.core.object.presence.ClientActivity;
-import discord4j.core.object.presence.ClientPresence;
-import discord4j.core.object.presence.Status;
-import discord4j.core.shard.ShardingStrategy;
-import discord4j.gateway.intent.IntentSet;
-import discord4j.rest.util.AllowedMentions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.reflections.Reflections;
-import org.reflections.scanners.MethodAnnotationsScanner;
-import org.reflections.scanners.SubTypesScanner;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Parameter;
-import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 
 public class Icicle {
 
     private static final Logger logger = LogManager.getLogger(Icicle.class);
     private final PunishmentManager punishmentManager = new PunishmentManager();
-    private final LoadingCache<Long, DiscordServerProperties> cache = Caffeine.newBuilder()
-            .expireAfterWrite(Duration.ofMinutes(5))
-            .build(aLong -> DiscordServerProperties.findFirst("server_id_snowflake = ?", aLong));
-
-    public LoadingCache<Long, DiscordServerProperties> getCache() {
-        return cache;
-    }
 
     public PunishmentManager getPunishmentManager() {
         return this.punishmentManager;
@@ -73,14 +36,15 @@ public class Icicle {
             logger.debug(arg);
         }
 
-        if (args.length != 1) {
-            logger.error("Invalid Arguments. Allowed Number of Arguments is 1");
-        }
+        // Load Config
 
+        ConfigManager manager = new ConfigManager();
+        manager.loadDatabaseConfig();
+
+        logger.info("Loaded Config");
         logger.info("Connecting to Discord!");
 
-        ClientManager clientManager = new ClientManager();
-        GatewayDiscordClient client = clientManager.createClient(args[0]);
+        GatewayDiscordClient client = ClientManager.getManager().getClient();
 
         client.getEventDispatcher().on(ReadyEvent.class)
                 .subscribe(event -> {
@@ -88,14 +52,7 @@ public class Icicle {
                     logger.info("Logged in as: " + self.getUsername() + "#" + self.getDiscriminator());
                 });
 
-        logger.debug("Connected! Loading Config");
-
-        // Load Config
-
-        ConfigManager manager = new ConfigManager();
-        manager.loadDatabaseConfig();
-
-        logger.info("Loaded Config");
+        logger.debug("Connected!");
 
         // Connect to DB
 
@@ -104,6 +61,8 @@ public class Icicle {
         DatabaseLoader.openConnection();
 
         logger.info("Connected to Database!");
+
+        LoadingCache<Long, DiscordServerProperties> cache = CacheManager.getManager().getCache();
 
         CommandManager commandManager = new CommandManager();
         commandManager.registerCommands(client);

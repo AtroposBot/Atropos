@@ -1,8 +1,6 @@
 package dev.laarryy.Icicle.utils;
 
-import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
-import dev.laarryy.Icicle.storage.DatabaseLoader;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;

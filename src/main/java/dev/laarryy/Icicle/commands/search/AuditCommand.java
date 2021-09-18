@@ -1,18 +1,15 @@
 package dev.laarryy.Icicle.commands.search;
 
-import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.models.guilds.CommandUse;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
 import dev.laarryy.Icicle.models.users.DiscordUser;
-import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
-import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -23,17 +20,14 @@ import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;

@@ -1,7 +1,5 @@
 package dev.laarryy.Icicle.models.users;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.Nullable;
 import org.javalite.activejdbc.Model;
 import org.javalite.activejdbc.annotations.Table;
 

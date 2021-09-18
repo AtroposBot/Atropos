@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.services;
 
+import dev.laarryy.Icicle.LoggingListenerManager;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
@@ -22,7 +23,7 @@ import java.time.Instant;
 public class AutoPunishmentEnder {
 
     private final Logger logger = LogManager.getLogger(this);
-    LoggingListener loggingListener = new LoggingListener();
+    LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
     GatewayDiscordClient client;
 
     public AutoPunishmentEnder(GatewayDiscordClient client) {

@@ -9,6 +9,7 @@ public class ConfigSettings {
     protected @Nullable String address = "nothing";
     protected @Nullable String username = "nope";
     protected @Nullable String password = "nada";
+    protected @Nullable String token = "secret";
 
     public @Nullable String getAddress() {
         return address;
@@ -32,5 +33,9 @@ public class ConfigSettings {
 
     public void setPassword(@Nullable String password) {
         this.password = password;
+    }
+
+    public @Nullable String getToken() {
+        return token;
     }
 }

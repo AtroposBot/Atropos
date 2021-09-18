@@ -2,7 +2,6 @@ package dev.laarryy.Icicle.commands.punishments;
 
 import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.commands.Command;
-import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;

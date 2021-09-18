@@ -1,8 +1,8 @@
 package dev.laarryy.Icicle.commands;
 
-import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;

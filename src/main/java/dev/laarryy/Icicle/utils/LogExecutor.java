@@ -42,6 +42,7 @@ public final class LogExecutor {
     }
 
     public static void logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
+        logChannel.createMessage("MESSAGE DELETED!").subscribe();
 
     }
 
