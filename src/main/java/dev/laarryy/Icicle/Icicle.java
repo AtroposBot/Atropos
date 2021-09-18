@@ -52,7 +52,6 @@ import java.util.Set;
 public class Icicle {
 
     private static final Logger logger = LogManager.getLogger(Icicle.class);
-    private static final List<Command> COMMANDS = new ArrayList<>();
     private final PunishmentManager punishmentManager = new PunishmentManager();
     private final LoadingCache<Long, DiscordServerProperties> cache = Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofMinutes(5))
@@ -61,6 +60,11 @@ public class Icicle {
     public LoadingCache<Long, DiscordServerProperties> getCache() {
         return cache;
     }
+
+    public PunishmentManager getPunishmentManager() {
+        return this.punishmentManager;
+    }
+
 
     public static void main(String[] args) throws Exception {
 
@@ -75,19 +79,8 @@ public class Icicle {
 
         logger.info("Connecting to Discord!");
 
-        GatewayDiscordClient client = DiscordClientBuilder.create(args[0])
-                .setDefaultAllowedMentions(AllowedMentions.suppressEveryone())
-                .build()
-                .gateway()
-                .setEnabledIntents(IntentSet.all())
-                .setSharding(ShardingStrategy.recommended())
-                .setInitialPresence(shardInfo -> ClientPresence.of(Status.DO_NOT_DISTURB,
-                        ClientActivity.playing("Shard " + (shardInfo.getIndex() + 1) + " of " + shardInfo.getCount()
-                                + " | DM for ModMail | Last Activated "
-                                + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.FULL).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(Instant.now())))
-                )
-                .login()
-                .block(Duration.ofSeconds(30));
+        ClientManager clientManager = new ClientManager();
+        GatewayDiscordClient client = clientManager.createClient(args[0]);
 
         client.getEventDispatcher().on(ReadyEvent.class)
                 .subscribe(event -> {
@@ -112,85 +105,19 @@ public class Icicle {
 
         logger.info("Connected to Database!");
 
+        CommandManager commandManager = new CommandManager();
+        commandManager.registerCommands(client);
 
-        // Register slash and 'normal' commands with Discord
-        Reflections reflections = new Reflections("dev.laarryy.Icicle.commands", new SubTypesScanner());
-        Set<Class<? extends Command>> commandsToRegister = reflections.getSubTypesOf(Command.class);
+        ListenerManager listenerManager = new ListenerManager();
+        listenerManager.registerListeners(client);
 
-        for (Class<? extends Command> registerableCommand : commandsToRegister) {
-            final Command command = registerableCommand.getDeclaredConstructor().newInstance();
-
-            // Add to commands map
-            COMMANDS.add(command);
-
-            // Register the command with discord
-            long applicationId = client.getRestClient().getApplicationId().block();
-
-            logger.info("Beginning command registration with discord: " + command.getRequest().name());
-
-            client.getRestClient().getApplicationService()
-                    .createGuildApplicationCommand(applicationId, Snowflake.asLong("724025797861572639"), command.getRequest())
-                    .block();
-
-            logger.info("Command registration with discord sent.");
-        }
-
-        // Listen for command event and execute from map
-
-        client.getEventDispatcher().on(SlashCommandEvent.class)
-                .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
-                        .flatMap(content -> Flux.fromIterable(COMMANDS)
-                                .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
-                                .flatMap(entry -> entry.execute(event))
-                                .next()))
-                .subscribe();
-
-        logger.info("Registered Slash Commands!");
-
-        // Register event listeners
-        Reflections reflections2 = new Reflections("dev.laarryy.Icicle.listeners",
-                new MethodAnnotationsScanner());
-        Set<Method> listenersToRegister = reflections2.getMethodsAnnotatedWith(EventListener.class);
-
-        for (Method registerableListener : listenersToRegister) {
-            Object listener = registerableListener.getDeclaringClass().getDeclaredConstructor().newInstance();
-            Parameter[] params = registerableListener.getParameters();
-
-            if (params.length == 0) {
-                logger.error("You have a listener with no parameters!");
-                // do something?
-                continue;
-            }
-
-            Class<? extends Event> type = (Class<? extends Event>) params[0].getType();
-
-            client.getEventDispatcher().on(type)
-                    .flatMap(event -> {
-                        try {
-                            return (Mono<Void>) registerableListener.invoke(listener, event);
-                        } catch (IllegalAccessException | InvocationTargetException e) {
-                            e.printStackTrace();
-                        }
-                        return Mono.empty();
-                    })
-                    .subscribe(logger::error);
-        }
-
-        logger.info("Registered Listeners!");
+        AutoPunishmentEnder autoPunishmentEnder = new AutoPunishmentEnder(client);
 
         // Register all guilds and users in them to database
 
         client.getGuilds()
                 .map(Icicle::addServerToDatabase)
                 .doOnError(logger::error)
-                .subscribe();
-
-        // Start regularly checking for punishments to end
-
-        Mono.just(client)
-                .map(AutoPunishmentEnder::new)
-                .doOnError(logger::error)
-                .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
 
         client.onDisconnect().block();
@@ -265,9 +192,5 @@ public class Icicle {
         }
 
         return true;
-    }
-
-    public PunishmentManager getPunishmentManager() {
-        return this.punishmentManager;
     }
 }

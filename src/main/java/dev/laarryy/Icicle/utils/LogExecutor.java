@@ -2,6 +2,7 @@ package dev.laarryy.Icicle.utils;
 
 import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
+import dev.laarryy.Icicle.storage.DatabaseLoader;
 import discord4j.core.event.domain.InviteCreateEvent;
 import discord4j.core.event.domain.PresenceUpdateEvent;
 import discord4j.core.event.domain.guild.BanEvent;
@@ -24,6 +25,7 @@ public final class LogExecutor {
     private LogExecutor() {}
 
     public static void logPunishment(Punishment punishment, TextChannel logChannel) {
+        DatabaseLoader.openConnectionIfClosed();
         DiscordUser punishedUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
         DiscordUser punishingUser = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -35,7 +37,8 @@ public final class LogExecutor {
                 .footer("For more information, run /inf search case <id>", "")
                 .timestamp(Instant.now())
                 .build();
-        logChannel.createMessage(embed).block();
+        logChannel.createMessage("A punishment has been recorded").subscribe();
+        logChannel.createMessage(embed).subscribe();
     }
 
     public static void logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {

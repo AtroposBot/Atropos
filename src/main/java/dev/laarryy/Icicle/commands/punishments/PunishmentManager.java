@@ -42,6 +42,7 @@ import java.util.Set;
 public class PunishmentManager {
     private final Logger logger = LogManager.getLogger(this);
     PermissionChecker permissionChecker = new PermissionChecker();
+    LoggingListener loggingListener = new LoggingListener();
 
     public Mono<Void> doPunishment(ApplicationCommandRequest request, SlashCommandEvent event) {
 
@@ -242,7 +243,7 @@ public class PunishmentManager {
             Notifier.notifyPunisher(event, punishment, punishmentReason);
         }
 
-        LoggingListener.onPunishment(event, punishment);
+        loggingListener.onPunishment(event, punishment);
 
         AuditLogger.addCommandToDB(event, true);
 

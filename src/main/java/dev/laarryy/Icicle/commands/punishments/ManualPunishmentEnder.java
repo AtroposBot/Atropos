@@ -14,7 +14,6 @@ import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
-import discord4j.discordjson.json.ApplicationCommandRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
@@ -26,11 +25,11 @@ import java.time.Instant;
 
 public final class ManualPunishmentEnder {
     private static final Logger logger = LogManager.getLogger(ManualPunishmentEnder.class);
+    LoggingListener loggingListener = new LoggingListener();
 
-    private ManualPunishmentEnder() {
-    }
+    public ManualPunishmentEnder() {}
 
-    public static void endPunishment(SlashCommandEvent event) {
+    public void endPunishment(SlashCommandEvent event) {
 
         DatabaseLoader.openConnectionIfClosed();
 
@@ -71,17 +70,17 @@ public final class ManualPunishmentEnder {
         }
     }
 
-    private static boolean discordUnban(Guild guild, Long aLong, String reason) {
+    private boolean discordUnban(Guild guild, Long aLong, String reason) {
         try {
             guild.unban(Snowflake.of(aLong), reason);
-            LoggingListener.onUnban(guild, aLong, reason);
+            loggingListener.onUnban(guild, aLong, reason);
             return true;
         } catch (Exception exception) {
             return false;
         }
     }
 
-    private static boolean discordUnmute(Member member, SlashCommandEvent event, String reason) {
+    private boolean discordUnmute(Member member, SlashCommandEvent event, String reason) {
         logger.info("preparing to unmute discord-side");
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getInteraction().getGuildId().get().asLong());
@@ -103,7 +102,7 @@ public final class ManualPunishmentEnder {
                 logger.info("Unmuting discord-side");
                 member.removeRole(Snowflake.of(mutedRoleId), reason).block();
                 AuditLogger.addCommandToDB(event, true);
-                LoggingListener.onUnmute(member, member.getId().asLong(), reason);
+                loggingListener.onUnmute(member, member.getId().asLong(), reason);
                 return true;
             } else {
                 Notifier.notifyCommandUserOfError(event, "userNotMuted");
@@ -113,7 +112,7 @@ public final class ManualPunishmentEnder {
 
     }
 
-    private static boolean databaseEndPunishment(Long aLong, SlashCommandEvent event, String reason) {
+    private boolean databaseEndPunishment(Long aLong, SlashCommandEvent event, String reason) {
         DatabaseLoader.openConnectionIfClosed();
 
         String commandName = event.getCommandName();
