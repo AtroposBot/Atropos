@@ -316,12 +316,12 @@ public class PunishmentManager {
                 discordServerProperties.save();
                 logger.info("Done hoisting and saving to db.");
             }
+            discordServerProperties.save();
+            discordServerProperties.refresh();
+            Role mutedRole1 = guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake())).block();
+            updateMutedRoleInAllChannels(guild, mutedRole1);
         }
         discordServerProperties.refresh();
-
-        Role mutedRole = guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake())).block();
-        updateMutedRoleInAllChannels(guild, mutedRole);
-
         Member memberToMute = guild.getMemberById(Snowflake.of(userIdSnowflake)).block();
 
         if (memberToMute != null) {

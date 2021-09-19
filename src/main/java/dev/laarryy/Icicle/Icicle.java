@@ -3,6 +3,7 @@ package dev.laarryy.Icicle;
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.Icicle.commands.punishments.PunishmentManager;
 import dev.laarryy.Icicle.config.ConfigManager;
+import dev.laarryy.Icicle.config.EmojiManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.joins.ServerUser;
@@ -40,6 +41,9 @@ public class Icicle {
 
         ConfigManager manager = new ConfigManager();
         manager.loadDatabaseConfig();
+
+        EmojiManager emojiManager = new EmojiManager();
+        emojiManager.loadEmojiConfig();
 
         logger.info("Loaded Config");
         logger.info("Connecting to Discord!");
