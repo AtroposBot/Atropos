@@ -5,7 +5,6 @@ import dev.laarryy.Icicle.CacheManager;
 import dev.laarryy.Icicle.listeners.EventListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.users.Punishment;
-import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.LogExecutor;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.InviteCreateEvent;
@@ -51,7 +50,6 @@ public final class LoggingListener {
     }
 
     private Mono<TextChannel> getLogChannel(Guild guild, String type) {
-        DatabaseLoader.openConnectionIfClosed();
         Long guildIdSnowflake = guild.getId().asLong();
         DiscordServerProperties serverProperties = cache.get(guildIdSnowflake);
         if (serverProperties == null) {
