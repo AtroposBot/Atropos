@@ -1,10 +1,13 @@
 package dev.laarryy.Icicle.utils;
 
+import dev.laarryy.Icicle.ClientManager;
 import dev.laarryy.Icicle.config.EmojiManager;
+import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.ServerMessage;
 import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.InviteCreateEvent;
 import discord4j.core.event.domain.PresenceUpdateEvent;
 import discord4j.core.event.domain.channel.NewsChannelCreateEvent;
@@ -36,14 +39,23 @@ import discord4j.core.object.audit.AuditLogEntry;
 import discord4j.core.object.audit.AuditLogPart;
 import discord4j.core.object.entity.Attachment;
 import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.Role;
+import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
+import discord4j.rest.util.Image;
 import reactor.core.publisher.Flux;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.util.List;
+import java.util.Locale;
 
 public final class LogExecutor {
     private LogExecutor() {
@@ -71,7 +83,8 @@ public final class LogExecutor {
                 .timestamp(Instant.now())
                 .build();
         logChannel.createMessage("A punishment has been recorded").subscribe();
-        logChannel.createMessage(embed).subscribe();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
@@ -90,19 +103,22 @@ public final class LogExecutor {
             responsibleUserId = "Unknown";
         } else {
             String id = recentDelete.getResponsibleUser().get().getId().asString();
-            responsibleUserId = "`" + id + "`:<@" + id + ">";
+            String username = recentDelete.getResponsibleUser().get().getUsername() + "#" + recentDelete.getResponsibleUser().get().getDiscriminator();
+            responsibleUserId = "`" + username + "`:`" + id + "`:<@" + id + ">";
         }
 
         String senderId;
         if (event.getMessage().isPresent() && event.getMessage().get().getAuthor().isPresent()) {
             String id = event.getMessage().get().getAuthor().get().getId().asString();
-            senderId = "`" + id + "`:<@" + id + ">";
+            String username = event.getMessage().get().getAuthor().get().getUsername() + "#" + event.getMessage().get().getAuthor().get().getDiscriminator();
+            senderId = "`" + username + "`:" + "`" + id + "`:<@" + id + ">";
         } else {
             DatabaseLoader.openConnectionIfClosed();
             ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
             if (serverMessage != null) {
                 long id = serverMessage.getUserSnowflake();
-                senderId = "`" + id + "`:<@" + id + ">";
+                String username = guild.getMemberById(Snowflake.of(id)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(id)).block().getDiscriminator();
+                senderId = "`" + username + "`:" + "`" + id + "`:<@" + id + ">";
             } else {
                 senderId = "Unknown";
             }
@@ -181,7 +197,7 @@ public final class LogExecutor {
                     .build();
         }
 
-        logChannel.createMessage(embed).subscribe();
+        logChannel.createMessage(embed).block();
 
     }
 
@@ -307,10 +323,12 @@ public final class LogExecutor {
         String user;
         if (event.getMessage().block().getAuthor().isPresent()) {
             userId = event.getMessage().block().getAuthor().get().getId().asLong();
-            user = "`" + userId + "`:<@" + userId + ">";
+            String username = event.getMessage().block().getAuthor().get().getUsername();
+            user = "`" + username + "`:" +"`" + userId + "`:<@" + userId + ">";
         } else if (event.getOld().isPresent() && event.getOld().get().getAuthor().isPresent()) {
             userId = event.getOld().get().getAuthor().get().getId().asLong();
-            user = "`" + userId + "`:<@" + userId + ">";
+            String username = event.getOld().get().getAuthor().get().getUsername();
+            user = "`" + username + "`:" + "`" + userId + "`:<@" + userId + ">";
         } else {
             user = "Unknown";
         }
@@ -328,7 +346,7 @@ public final class LogExecutor {
                 .timestamp(Instant.now())
                 .build();
 
-        logChannel.createMessage(embed).subscribe();
+        logChannel.createMessage(embed).block();
     }
 
     public static void logBulkDelete(MessageBulkDeleteEvent event, TextChannel logChannel) {
@@ -347,7 +365,8 @@ public final class LogExecutor {
             responsibleUser = "Unknown";
         } else {
             long responsibleUserId = recentDelete.getResponsibleUser().get().getId().asLong();
-            responsibleUser = "`" + responsibleUserId + "`<@" + responsibleUserId + ">";
+            String username = recentDelete.getResponsibleUser().get().getUsername() + "#" + recentDelete.getResponsibleUser().get().getDiscriminator();
+            responsibleUser = "`" + username + "`:" + "`" + responsibleUserId + "`:<@" + responsibleUserId + ">";
         }
 
         List<Message> messageList = event.getMessages().stream().toList();
@@ -372,6 +391,7 @@ public final class LogExecutor {
                 .description(messages)
                 .addField("Responsible User", responsibleUser, false)
                 .addField("Channel", channel, false)
+                .timestamp(Instant.now())
                 .build();
 
         if (recentDelete.getReason().isPresent()) {
@@ -380,35 +400,390 @@ public final class LogExecutor {
                     .build();
         }
 
-        logChannel.createMessage(embed).subscribe();
+        logChannel.createMessage(embed).block();
     }
 
     public static void logMemberJoin(MemberJoinEvent event, TextChannel logChannel) {
+        Guild guild = event.getGuild().block();
+        if (guild == null) return;
 
+        long memberId = event.getMember().getId().asLong();
+        String username = event.getMember().getUsername() + "#" + event.getMember().getDiscriminator();
+        String member = "`" + username + "`:" + "`" + memberId + "`:<@" + memberId + ">";
+
+        String avatarUrl = event.getMember().getAvatarUrl();
+
+        String createDate = DateTimeFormatter
+                .ofLocalizedDateTime(FormatStyle.SHORT)
+                .withLocale(Locale.CANADA)
+                .withZone(ZoneId.systemDefault())
+                .format(event.getMember().getId().getTimestamp());
+
+        String badges = getBadges(event.getMember());
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserJoin() + " User Joined")
+                .addField("User", member, false)
+                .image(avatarUrl)
+                .addField("Account Created", createDate, false)
+                .timestamp(Instant.now())
+                .build();
+
+        if (!badges.equals("none")) {
+            embed = EmbedCreateSpec.builder().from(embed)
+                    .addField("Badges", badges, false)
+                    .build();
+        }
+
+        logChannel.createMessage(embed).block();
+    }
+
+    private static String getIconUrl(Guild guild) {
+        String guildIconUrl;
+        if (guild.getIconUrl(Image.Format.GIF).isPresent()) {
+            guildIconUrl = guild.getIconUrl(Image.Format.GIF).get();
+        } else if (guild.getIconUrl(Image.Format.PNG).isPresent()) {
+            guildIconUrl = guild.getIconUrl(Image.Format.PNG).get();
+        } else if (guild.getIconUrl(Image.Format.JPEG).isPresent()) {
+            guildIconUrl = guild.getIconUrl(Image.Format.JPEG).get();
+        } else {
+            guildIconUrl = "none";
+        }
+        return guildIconUrl;
+    }
+
+    private static String getBadges(Member member) {
+        StringBuilder stringBuilder = new StringBuilder();
+        if (member.getPublicFlags().contains(User.Flag.DISCORD_CERTIFIED_MODERATOR)) {
+            stringBuilder.append(EmojiManager.getModeratorBadge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.EARLY_SUPPORTER)) {
+            stringBuilder.append(EmojiManager.getEarlySupporterBadge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.BUG_HUNTER_LEVEL_1)) {
+            stringBuilder.append(EmojiManager.getBugHunter1Badge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.BUG_HUNTER_LEVEL_2)) {
+            stringBuilder.append(EmojiManager.getBugHunter2Badge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.DISCORD_EMPLOYEE)) {
+            stringBuilder.append(EmojiManager.getEmployeeBadge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.DISCORD_PARTNER)) {
+            stringBuilder.append(EmojiManager.getPartnerBadge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.VERIFIED_BOT_DEVELOPER)) {
+            stringBuilder.append(EmojiManager.getDeveloperBadge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.HYPESQUAD_EVENTS)) {
+            stringBuilder.append(EmojiManager.getHypeSquad2Badge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.HOUSE_BALANCE)) {
+            stringBuilder.append(EmojiManager.getBalanceBadge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.HOUSE_BRAVERY)) {
+            stringBuilder.append(EmojiManager.getBraveryBadge()).append(" ");
+        }
+        if (member.getPublicFlags().contains(User.Flag.HOUSE_BRILLIANCE)) {
+            stringBuilder.append(EmojiManager.getBrillianceBadge()).append(" ");
+        }
+        if (member.getPremiumTime().isPresent()) {
+            stringBuilder.append(EmojiManager.getNitroBadge()).append(" ");
+        }
+        if (stringBuilder.isEmpty()) {
+            return "none";
+        } else return stringBuilder.toString();
     }
 
     public static void logMemberLeave(MemberLeaveEvent event, TextChannel logChannel) {
+        Guild guild = event.getGuild().block();
+        if (guild == null) return;
 
+        long memberId = event.getUser().getId().asLong();
+        String username = event.getUser().getUsername() + "#" + event.getUser().getDiscriminator();
+        String memberName = "`" + username + "`:" + "`" + memberId + "`:<@" + memberId + ">";
+        String avatarUrl = event.getUser().getAvatarUrl();
+
+        Member member;
+        if (event.getMember().isPresent()) {
+            member = event.getMember().get();
+        } else {
+            member = null;
+        }
+
+        String badges;
+        String roles;
+        if (member != null) {
+            badges = getBadges(member);
+            roles = getRolesString(member);
+        } else {
+            badges = "none";
+            roles = "none";
+        }
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserLeave() + " User Left")
+                .addField("User", memberName, false)
+                .image(avatarUrl)
+                .timestamp(Instant.now())
+                .build();
+
+        if (!badges.equals("none")) {
+            embed = EmbedCreateSpec.builder().from(embed)
+                    .addField("Badges", badges, false)
+                    .build();
+        }
+
+        if (!roles.equals("none")) {
+            embed = EmbedCreateSpec.builder().from(embed)
+                    .addField("Roles", roles, false)
+                    .build();
+        }
+
+        logChannel.createMessage(embed).block();
+    }
+
+    public static String getRolesString(Member member) {
+        StringBuilder stringBuilder = new StringBuilder();
+        List<Role> roleList = member.getRoles().collectList().block();
+        if (roleList == null) {
+            return "none";
+        }
+        if (roleList.isEmpty()) {
+            return "No roles";
+        }
+        for (Role role : roleList) {
+            if (roleList.indexOf(role) == roleList.size() - 1) {
+                stringBuilder.append("`").append(role.getName()).append("`:<@&").append(role.getId().asLong()).append(">");
+            } else {
+                stringBuilder.append("`").append(role.getName()).append("`:<@&").append(role.getId().asLong()).append(">, ");
+            }
+        }
+        return stringBuilder.toString();
     }
 
     public static void logMemberUpdate(MemberUpdateEvent event, TextChannel logChannel) {
+        Guild guild = event.getGuild().block();
+        if (guild == null) return;
 
+        if (event.getMember().block() == null) {
+            return;
+        }
+
+        long memberId = event.getMember().block().getId().asLong();
+        String username = event.getMember().block().getUsername() + "#" + event.getMember().block().getDiscriminator();
+        String memberName = "`" + username + "`:" + "`" + memberId + "`:<@" + memberId + ">";
+
+        String memberInfo;
+        if (event.getOld().isPresent()) {
+            memberInfo = getMemberDiff(event.getOld().get().asFullMember().block(), event.getMember().block());
+        } else {
+            memberInfo = getMemberInformation(event.getMember().block());
+        }
+
+        String avatarUrl = event.getMember().block().getAvatarUrl();
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserIdentification() + " Member Update")
+                .addField("Member", memberName, false)
+                .addField("Information", memberInfo, false)
+                .thumbnail(avatarUrl)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
+    }
+
+    public static String getMemberInformation(Member member) {
+        List<Role> roles = member.getRoles().collectList().block();
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("```\n");
+        if (member.getNickname().isPresent()) {
+            stringBuilder.append("Nickname: ").append(member.getNickname().get()).append("\n");
+        } else {
+            stringBuilder.append("Username: ").append(member.getUsername()).append("\n");
+        }
+        if (roles != null && !roles.isEmpty()) {
+            for (Role role : roles) {
+                stringBuilder.append("Role: ").append(role.getName()).append(":").append(role.getId().asLong()).append("\n");
+            }
+        }
+        stringBuilder.append("```");
+        return stringBuilder.toString();
+    }
+
+    public static String getMemberDiff(Member oldMember, Member newMember) {
+        List<Role> oldRoles = oldMember.getRoles().collectList().block();
+        List<Role> newRoles = newMember.getRoles().collectList().block();
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("```diff\n");
+        if (oldMember.getNickname().isPresent() && newMember.getNickname().isPresent()) {
+            if (oldMember.getNickname().get().equals(newMember.getNickname().get())) {
+                stringBuilder.append("--- Nickname: ").append(oldMember.getNickname().get()).append("\n");
+            } else {
+                stringBuilder.append("- Nickname: ").append(oldMember.getNickname().get()).append("\n");
+                stringBuilder.append("+ Nickname: ").append(newMember.getNickname().get()).append("\n");
+            }
+        } else if (oldMember.getNickname().isEmpty() && newMember.getNickname().isPresent()) {
+            stringBuilder.append("+ Nickname: ").append(newMember.getNickname().get()).append("\n");
+        } else if (oldMember.getNickname().isPresent() && newMember.getNickname().isEmpty()) {
+            stringBuilder.append("- Nickname: ").append(oldMember.getNickname().get()).append("\n");
+        } else if (oldMember.getNickname().isEmpty() && newMember.getNickname().isEmpty()) {
+            stringBuilder.append("--- No nickname").append("\n");
+        }
+        if (oldRoles != null && newRoles != null) {
+            if (oldRoles.equals(newRoles)) {
+                stringBuilder.append("--- No role changes").append("\n");
+            } else {
+                for (Role role : oldRoles) {
+                    if (!newRoles.contains(role)) {
+                        stringBuilder.append("- Role: ").append(role.getName()).append(":").append(role.getId().asLong()).append("\n");
+                    }
+                }
+                for (Role role : newRoles) {
+                    if (!oldRoles.contains(role)) {
+                        stringBuilder.append("+ Role: ").append(role.getName()).append(":").append(role.getId().asLong()).append("\n");
+                    }
+                }
+            }
+        }
+        stringBuilder.append("```");
+        return stringBuilder.toString();
     }
 
     public static void logPresenceUpdate(PresenceUpdateEvent event, TextChannel logChannel) {
+        Guild guild = event.getGuild().block();
+        if (guild == null) return;
 
+        if (event.getMember().block() == null) {
+            return;
+        }
+
+        if (event.getOldUser().isEmpty()) {
+            return;
+        }
+
+        long memberId = event.getMember().block().getId().asLong();
+        String username = event.getMember().block().getUsername() + "#" + event.getMember().block().getDiscriminator();
+        String memberName = "`" + username + "`:" + "`" + memberId + "`:<@" + memberId + ">";
+
+        String presenceDiffInfo;
+        User oldUser = event.getOldUser().get();
+        User newUser = event.getUser().block();
+        if (oldUser.getDiscriminator().equals(newUser.getDiscriminator())
+                && oldUser.getUsername().equals(newUser.getUsername())
+                && oldUser.getAvatarUrl().equals(newUser.getAvatarUrl())) {
+            return;
+        } else {
+            presenceDiffInfo = getPresenceDiff(oldUser, newUser);
+        }
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserIdentification() + " Member Update")
+                .addField("Member", memberName, false)
+                .addField("Information", presenceDiffInfo, false)
+                .thumbnail(event.getMember().block().getAvatarUrl())
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
+    }
+
+    public static String getPresenceDiff(User oldUser, User newUser) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("```diff\n");
+        if (oldUser.getUsername().equals(newUser.getUsername())) {
+                stringBuilder.append("--- Username: ").append(oldUser.getUsername()).append("\n");
+        } else {
+            stringBuilder.append("- Username: ").append(oldUser.getUsername()).append("\n");
+            stringBuilder.append("+ Username: ").append(newUser.getUsername()).append("\n");
+        }
+        if (oldUser.getDiscriminator().equals(newUser.getDiscriminator())) {
+            stringBuilder.append("--- Discriminator: #").append(oldUser.getDiscriminator()).append("\n");
+        } else {
+            stringBuilder.append("- Discriminator: #").append(oldUser.getDiscriminator()).append("\n");
+            stringBuilder.append("+ Discriminator: #").append(newUser.getDiscriminator()).append("\n");
+        }
+        if (oldUser.getAvatarUrl().equals(newUser.getAvatarUrl())) {
+            stringBuilder.append("--- Avatar URL: ").append(oldUser.getAvatarUrl()).append("\n");
+        } else {
+            stringBuilder.append("- Avatar URL: ").append(oldUser.getAvatarUrl()).append("\n");
+            stringBuilder.append("+ Avatar URL: ").append(newUser.getAvatarUrl()).append("\n");
+        }
+        stringBuilder.append("```");
+        return stringBuilder.toString();
     }
 
     public static void logInviteCreate(InviteCreateEvent event, TextChannel logChannel) {
+        Guild guild = event.getGuild().block();
+        if (guild == null) return;
 
+        String inviter;
+        if (event.getInviter().isPresent()) {
+            long inviterId = event.getInviter().get().getId().asLong();
+            String username = event.getInviter().get().getUsername() + "#" + event.getInviter().get().getDiscriminator();
+            inviter = "`" + username + "`:`" + inviterId + "`:<@" + inviterId + ">";
+        } else {
+            inviter = "Unknown";
+        }
+
+        long channelId = event.getChannelId().asLong();
+        String channel = "`" + channelId + "`:<#" + channelId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getInvite() + " Server Invite Created")
+                .addField("Inviter", inviter, false)
+                .addField("Invite Code", "`" + event.getCode() + "`", false)
+                .addField("Channel", channel, false)
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logNewsCreate(NewsChannelCreateEvent event, TextChannel logChannel) {
+        AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(channelCreate);
+
+        long channelId = event.getChannel().getId().asLong();
+        String channel = "`" + channelId + "`:<#" + channelId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getNewsChannel() + " News Channel Created")
+                .addField("Channel", channel, false)
+                .addField("Created By", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logNewsDelete(NewsChannelDeleteEvent event, TextChannel logChannel) {
+        AuditLogEntry channelDelete = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_DELETE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(channelDelete);
+
+        long channelId = event.getChannel().getId().asLong();
+        String channel = "`" + channelId + "`:<#" + channelId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getNewsChannel() + " News Channel Deleted")
+                .addField("Channel", channel, false)
+                .addField("Deleted By", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logNewsUpdate(NewsChannelUpdateEvent event, TextChannel logChannel) {
@@ -416,11 +791,49 @@ public final class LogExecutor {
     }
 
     public static void logStoreCreate(StoreChannelCreateEvent event, TextChannel logChannel) {
+        AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(channelCreate);
+
+        long channelId = event.getChannel().getId().asLong();
+        String channel = "`" + channelId + "`:<#" + channelId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getStoreChannel() + " Store Channel Created")
+                .addField("Channel", channel, false)
+                .addField("Created By", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logStoreDelete(StoreChannelDeleteEvent event, TextChannel logChannel) {
+        AuditLogEntry channelDelete = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_DELETE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(channelDelete);
+
+        long channelId = event.getChannel().getId().asLong();
+        String channel = "`" + channelId + "`:<#" + channelId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getStoreChannel() + " Store Channel Deleted")
+                .addField("Channel", channel, false)
+                .addField("Deleted By", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logStoreUpdate(StoreChannelUpdateEvent event, TextChannel logChannel) {
@@ -428,11 +841,49 @@ public final class LogExecutor {
     }
 
     public static void logVoiceCreate(VoiceChannelCreateEvent event, TextChannel logChannel) {
+        AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(channelCreate);
+
+        long channelId = event.getChannel().getId().asLong();
+        String channel = "`" + channelId + "`:<#" + channelId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getVoiceChannel() + " Voice Channel Created")
+                .addField("Channel", channel, false)
+                .addField("Created By", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logVoiceDelete(VoiceChannelDeleteEvent event, TextChannel logChannel) {
+        AuditLogEntry channelDelete = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_DELETE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(channelDelete);
+
+        long channelId = event.getChannel().getId().asLong();
+        String channel = "`" + channelId + "`:<#" + channelId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getVoiceChannel() + " Voice Channel Deleted")
+                .addField("Channel", channel, false)
+                .addField("Deleted By", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logVoiceUpdate(VoiceChannelUpdateEvent event, TextChannel logChannel) {
@@ -440,11 +891,72 @@ public final class LogExecutor {
     }
 
     public static void logTextCreate(TextChannelCreateEvent event, TextChannel logChannel) {
+        AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(channelCreate);
+
+        long channelId = event.getChannel().getId().asLong();
+        String channel = "`" + channelId + "`:<#" + channelId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getTextChannel() + " Text Channel Created")
+                .addField("Channel", channel, false)
+                .addField("Created By", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
+    }
+
+    private static String getAuditResponsibleUser(AuditLogEntry aud) {
+        String responsibleUserId;
+        if (aud == null || aud.getResponsibleUser().isEmpty()) {
+            responsibleUserId = "Unknown";
+        } else {
+            String username = aud.getResponsibleUser().get().getUsername() + "#" + aud.getResponsibleUser().get().getDiscriminator();
+            String id = aud.getResponsibleUser().get().getId().asString();
+            responsibleUserId = "`" + username + "`:`" + id + "`:<@" + id + ">";
+        }
+        return responsibleUserId;
+    }
+
+    private static String getAuditTargetUser(AuditLogEntry aud) {
+        String responsibleUserId;
+        if (aud == null || aud.getTargetId().isEmpty()) {
+            responsibleUserId = "Unknown";
+        } else {
+            String id = aud.getTargetId().get().asString();
+            responsibleUserId = "`" + id + "`:<@" + id + ">";
+        }
+        return responsibleUserId;
     }
 
     public static void logTextDelete(TextChannelDeleteEvent event, TextChannel logChannel) {
+        AuditLogEntry channelDelete = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_DELETE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(channelDelete);
+
+        long channelId = event.getChannel().getId().asLong();
+        String channel = "`" + channelId + "`:<#" + channelId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getTextChannel() + " Text Channel Deleted")
+                .addField("Channel", channel, false)
+                .addField("Deleted By", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logTextUpdate(TextChannelUpdateEvent event, TextChannel logChannel) {
@@ -452,11 +964,83 @@ public final class LogExecutor {
     }
 
     public static void logBan(BanEvent event, TextChannel logChannel) {
+        AuditLogEntry userBan = event.getGuild().block().getAuditLog().withActionType(ActionType.MEMBER_BAN_ADD)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .filter(auditLogEntry -> auditLogEntry.getTargetId().isPresent())
+                .next()
+                .block();
+
+        String responsibleUserId = getAuditResponsibleUser(userBan);
+        String targetUserId = getAuditTargetUser(userBan);
+        String reason;
+        if (userBan.getReason().isPresent()) {
+            reason = userBan.getReason().get();
+        } else {
+            reason = "No reason provided.";
+        }
+
+        String caseId;
+        if (!userBan.getResponsibleUser().equals(ClientManager.getManager().getClient().getSelf().block())) {
+            DatabaseLoader.openConnectionIfClosed();
+            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getGuild().block().getId().asLong());
+            DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", userBan.getResponsibleUser().get().getId().asLong());
+            DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", userBan.getTargetId().get().asLong());
+            Punishment punishment = Punishment.create("user_id_punished", punished.getUserId(),
+                    "user_id_punisher", punisher.getUserId(),
+                    "server_id", discordServer.getServerId(),
+                    "punishment_type", "ban",
+                    "punishment_date", Instant.now().toEpochMilli(),
+                    "punishment_message", reason);
+            punishment.save();
+            punishment.refresh();
+            caseId = String.valueOf(punishment.getPunishmentId());
+        } else {
+            caseId = "none";
+        }
+
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserBan() + " User Banned")
+                .addField("Punished User", targetUserId, false)
+                .addField("Punishing User", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        if (!caseId.equals("none")) {
+            embed = EmbedCreateSpec.builder().from(embed)
+                    .addField("Case ID", "#" + caseId, false)
+                    .build();
+        }
+
+        logChannel.createMessage(embed).block();
 
     }
 
     public static void logUnban(UnbanEvent event, TextChannel logChannel) {
 
+        AuditLogEntry userUnban = event.getGuild().block().getAuditLog().withActionType(ActionType.MEMBER_BAN_REMOVE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
+
+        String responsibleUserId = getAuditResponsibleUser(userUnban);
+
+        long userId = event.getUser().getId().asLong();
+        String username = event.getUser().getUsername() + "#" + event.getUser().getDiscriminator();
+        String user = "`" + username + "`:`" + userId + "`:<@" + userId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserBan() + " User Unbanned")
+                .addField("User", user, false)
+                .addField("Unbanned By", responsibleUserId, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logRoleCreate(RoleCreateEvent event, TextChannel logChannel) {

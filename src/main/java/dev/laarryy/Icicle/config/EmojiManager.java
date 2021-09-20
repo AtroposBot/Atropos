@@ -8,6 +8,11 @@ import java.io.File;
 
 public class EmojiManager {
     private static final Logger logger = LogManager.getLogger(EmojiManager.class);
+    String newsChannel;
+    String voiceChannel;
+    String storeChannel;
+    String textChannel;
+    String stageChannel;
     String userMute;
     String userCase;
     String userWarn;
@@ -53,6 +58,11 @@ public class EmojiManager {
         File configFile = new File("/", "emojiConfig.yml");
         configFile.mkdir();
 
+        this.newsChannel = emojiConfig.getNewsChannel();
+        this.voiceChannel = emojiConfig.getVoiceChannel();
+        this.storeChannel = emojiConfig.getStoreChannel();
+        this.textChannel = emojiConfig.getTextChannel();
+        this.stageChannel = emojiConfig.getStageChannel();
         this.userMute = emojiConfig.getUserMute();
         this.userCase = emojiConfig.getUserCase();
         this.userWarn = emojiConfig.getUserWarn();
@@ -79,6 +89,30 @@ public class EmojiManager {
         this.braveryBadge = emojiConfig.getBraveryBadge();
         this.brillianceBadge = emojiConfig.getBrillianceBadge();
         this.triangleNitroBadge = emojiConfig.getTriangleNitroBadge();
+    }
+
+    public static String getNewsChannel() {
+        return emojiConfig.getNewsChannel();
+    }
+
+    public static String getVoiceChannel() {
+        return emojiConfig.getVoiceChannel();
+    }
+
+    public static String getStoreChannel() {
+        return emojiConfig.getStoreChannel();
+    }
+
+    public static String getTextChannel() {
+        return emojiConfig.getTextChannel();
+    }
+
+    public static String getStageChannel() {
+        return emojiConfig.getStageChannel();
+    }
+
+    public static String getInvite() {
+        return emojiConfig.getInvite();
     }
 
     public static String getUserMute() {
