@@ -1,5 +1,6 @@
-package dev.laarryy.Icicle;
+package dev.laarryy.Icicle.managers;
 
+import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.commands.Command;
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;

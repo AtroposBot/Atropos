@@ -1,4 +1,4 @@
-package dev.laarryy.Icicle;
+package dev.laarryy.Icicle.managers;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.LoadingCache;

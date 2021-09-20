@@ -1,6 +1,6 @@
 package dev.laarryy.Icicle.commands.logging;
 
-import dev.laarryy.Icicle.CacheManager;
+import dev.laarryy.Icicle.managers.CacheManager;
 import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;

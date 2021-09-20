@@ -1,6 +1,6 @@
 package dev.laarryy.Icicle.utils;
 
-import dev.laarryy.Icicle.ClientManager;
+import dev.laarryy.Icicle.managers.ClientManager;
 import dev.laarryy.Icicle.config.EmojiManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.ServerMessage;

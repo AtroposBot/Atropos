@@ -1,4 +1,4 @@
-package dev.laarryy.Icicle;
+package dev.laarryy.Icicle.managers;
 
 import dev.laarryy.Icicle.listeners.EventListener;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;

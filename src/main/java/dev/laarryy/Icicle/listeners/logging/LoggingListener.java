@@ -1,7 +1,7 @@
 package dev.laarryy.Icicle.listeners.logging;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import dev.laarryy.Icicle.CacheManager;
+import dev.laarryy.Icicle.managers.CacheManager;
 import dev.laarryy.Icicle.listeners.EventListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.users.Punishment;
@@ -34,8 +34,6 @@ import discord4j.core.event.domain.role.RoleCreateEvent;
 import discord4j.core.event.domain.role.RoleDeleteEvent;
 import discord4j.core.event.domain.role.RoleUpdateEvent;
 import discord4j.core.object.entity.Guild;
-import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.TextChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
