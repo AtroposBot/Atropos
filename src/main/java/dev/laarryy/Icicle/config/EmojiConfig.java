@@ -5,6 +5,13 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 @ConfigSerializable
 public class EmojiConfig {
+
+    protected @Nullable String newsChannel = "a";
+    protected @Nullable String voiceChannel = "a";
+    protected @Nullable String storeChannel = "a";
+    protected @Nullable String textChannel = "a";
+    protected @Nullable String stageChannel = "a";
+    protected @Nullable String invite = "a";
     protected @Nullable String userMute = "a";
     protected @Nullable String userCase = "a";
     protected @Nullable String userWarn = "a";
@@ -31,6 +38,55 @@ public class EmojiConfig {
     protected @Nullable String braveryBadge = "a";
     protected @Nullable String brillianceBadge = "a";
     protected @Nullable String triangleNitroBadge = "a";
+
+    public String getNewsChannel() {
+        return newsChannel;
+    }
+
+    public void setNewsChannel(String newsChannel) {
+        this.newsChannel = newsChannel;
+    }
+
+    public String getVoiceChannel() {
+        return voiceChannel;
+    }
+
+    public void setVoiceChannel(String voiceChannel) {
+        this.voiceChannel = voiceChannel;
+    }
+
+    public String getStoreChannel() {
+        return storeChannel;
+    }
+
+    public void setStoreChannel(String storeChannel) {
+        this.storeChannel = storeChannel;
+    }
+
+    public String getTextChannel() {
+        return textChannel;
+    }
+
+    public void setTextChannel(String textChannel) {
+        this.textChannel = textChannel;
+    }
+
+    public String getStageChannel() {
+        return stageChannel;
+    }
+
+    public void setStageChannel(String stageChannel) {
+        this.stageChannel = stageChannel;
+    }
+
+
+    public String getInvite() {
+        return invite;
+    }
+
+    public void setInvite(String invite) {
+        this.invite = invite;
+    }
 
     public String getUserMute() {
         return userMute;
