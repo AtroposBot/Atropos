@@ -49,7 +49,6 @@ import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import reactor.core.publisher.Flux;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -82,7 +81,6 @@ public final class LogExecutor {
                 .footer("For more information, run /inf search case <id>", "")
                 .timestamp(Instant.now())
                 .build();
-        logChannel.createMessage("A punishment has been recorded").subscribe();
 
         logChannel.createMessage(embed).block();
     }
@@ -339,6 +337,7 @@ public final class LogExecutor {
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(title)
                 .color(Color.MOON_YELLOW)
+                .addField("ID", "`" + event.getMessage().block().getId().asString() + "`", false)
                 .addField("User", user, false)
                 .addField("Channel", channel, false)
                 .addField("Old", oldContent, false)
@@ -388,6 +387,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getMessageDelete() + " " + EmojiManager.getMessageDelete() + " " + EmojiManager.getMessageDelete() + " Bulk Delete")
+                .color(Color.JAZZBERRY_JAM)
                 .description(messages)
                 .addField("Responsible User", responsibleUser, false)
                 .addField("Channel", channel, false)
@@ -423,6 +423,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserJoin() + " User Joined")
+                .color(Color.ENDEAVOUR)
                 .addField("User", member, false)
                 .image(avatarUrl)
                 .addField("Account Created", createDate, false)
@@ -585,6 +586,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserIdentification() + " Member Update")
+                .color(Color.MOON_YELLOW)
                 .addField("Member", memberName, false)
                 .addField("Information", memberInfo, false)
                 .thumbnail(avatarUrl)
@@ -680,6 +682,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserIdentification() + " Member Update")
+                .color(Color.MOON_YELLOW)
                 .addField("Member", memberName, false)
                 .addField("Information", presenceDiffInfo, false)
                 .thumbnail(event.getMember().block().getAvatarUrl())
@@ -732,6 +735,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getInvite() + " Server Invite Created")
+                .color(Color.ENDEAVOUR)
                 .addField("Inviter", inviter, false)
                 .addField("Invite Code", "`" + event.getCode() + "`", false)
                 .addField("Channel", channel, false)
@@ -755,6 +759,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getNewsChannel() + " News Channel Created")
+                .color(Color.SEA_GREEN)
                 .addField("Channel", channel, false)
                 .addField("Created By", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -778,6 +783,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getNewsChannel() + " News Channel Deleted")
+                .color(Color.JAZZBERRY_JAM)
                 .addField("Channel", channel, false)
                 .addField("Deleted By", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -805,6 +811,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getStoreChannel() + " Store Channel Created")
+                .color(Color.SEA_GREEN)
                 .addField("Channel", channel, false)
                 .addField("Created By", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -828,6 +835,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getStoreChannel() + " Store Channel Deleted")
+                .color(Color.JAZZBERRY_JAM)
                 .addField("Channel", channel, false)
                 .addField("Deleted By", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -855,6 +863,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getVoiceChannel() + " Voice Channel Created")
+                .color(Color.SEA_GREEN)
                 .addField("Channel", channel, false)
                 .addField("Created By", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -878,6 +887,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getVoiceChannel() + " Voice Channel Deleted")
+                .color(Color.JAZZBERRY_JAM)
                 .addField("Channel", channel, false)
                 .addField("Deleted By", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -905,6 +915,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getTextChannel() + " Text Channel Created")
+                .color(Color.SEA_GREEN)
                 .addField("Channel", channel, false)
                 .addField("Created By", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -951,6 +962,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getTextChannel() + " Text Channel Deleted")
+                .color(Color.JAZZBERRY_JAM)
                 .addField("Channel", channel, false)
                 .addField("Deleted By", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -1003,6 +1015,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserBan() + " User Banned")
+                .color(Color.JAZZBERRY_JAM)
                 .addField("Punished User", targetUserId, false)
                 .addField("Punishing User", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -1035,6 +1048,7 @@ public final class LogExecutor {
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserBan() + " User Unbanned")
+                .color(Color.SEA_GREEN)
                 .addField("User", user, false)
                 .addField("Unbanned By", responsibleUserId, false)
                 .timestamp(Instant.now())
@@ -1044,23 +1058,91 @@ public final class LogExecutor {
     }
 
     public static void logRoleCreate(RoleCreateEvent event, TextChannel logChannel) {
+        AuditLogEntry roleCreate = event.getGuild().block().getAuditLog().withActionType(ActionType.ROLE_CREATE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(roleCreate);
+
+        long roleId = event.getRole().getId().asLong();
+        String roleName = event.getRole().getName();
+        String role = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title("Role Created")
+                .color(Color.ENDEAVOUR)
+                .addField("User", responsibleUserId, false)
+                .addField("Role", role, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logRoleDelete(RoleDeleteEvent event, TextChannel logChannel) {
+        AuditLogEntry roleDelete = event.getGuild().block().getAuditLog().withActionType(ActionType.ROLE_DELETE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
 
+        String responsibleUserId = getAuditResponsibleUser(roleDelete);
+        String role;
+        if (event.getRole().isPresent()) {
+            long roleId = event.getRole().get().getId().asLong();
+            String roleName = event.getRole().get().getName();
+            role = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
+        } else {
+            role = "Unknown";
+        }
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title("Role Deleted")
+                .color(Color.JAZZBERRY_JAM)
+                .addField("User", responsibleUserId, false)
+                .addField("Role", role, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
     }
 
     public static void logRoleUpdate(RoleUpdateEvent event, TextChannel logChannel) {
 
     }
 
-    public static void logPunishmentUnban(Long unBannedUserId, TextChannel logChannel, String reason) {
+    public static void logPunishmentUnban(TextChannel logChannel, String reason, Punishment punishment) {
+        DatabaseLoader.openConnectionIfClosed();
+        DiscordUser punished = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+        long punishedId = punished.getUserIdSnowflake();
+        String punishedName = "`" + punishedId + "`:<@" + punishedId + ">";
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserBan() + " User Unbanned")
+                .addField("User", punishedName, false)
+                .addField("Reason", getStringWithLegalLength(reason, 1024), false)
+                .footer("For more information, run /inf search case " + punishment.getPunishmentId(), "")
+                .color(Color.SEA_GREEN)
+                .build();
 
+        logChannel.createMessage(embed).block();
     }
 
-    public static void logPunishmentUnmute(Long unMutedUserId, TextChannel logChannel, String reason) {
+    public static void logPunishmentUnmute(TextChannel logChannel, String reason, Punishment punishment) {
+        DatabaseLoader.openConnectionIfClosed();
+        DiscordUser punished = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+        long punishedId = punished.getUserIdSnowflake();
+        String punishedName = "`" + punishedId + "`:<@" + punishedId + ">";
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserMute() + " User Unmuted")
+                .addField("User", punishedName, false)
+                .addField("Reason", getStringWithLegalLength(reason, 1024), false)
+                .footer("For more information, run /inf search case " + punishment.getPunishmentId(), "")
+                .color(Color.SEA_GREEN)
+                .build();
 
+        logChannel.createMessage(embed).block();
     }
 
 }

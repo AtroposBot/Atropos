@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.commands.punishments;
 
+import dev.laarryy.Icicle.ClientManager;
 import dev.laarryy.Icicle.LoggingListenerManager;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
@@ -74,7 +75,6 @@ public final class ManualPunishmentEnder {
     private boolean discordUnban(Guild guild, Long aLong, String reason) {
         try {
             guild.unban(Snowflake.of(aLong), reason);
-            loggingListener.onUnban(guild, aLong, reason);
             return true;
         } catch (Exception exception) {
             return false;
@@ -103,7 +103,6 @@ public final class ManualPunishmentEnder {
                 logger.info("Unmuting discord-side");
                 member.removeRole(Snowflake.of(mutedRoleId), reason).block();
                 AuditLogger.addCommandToDB(event, true);
-                loggingListener.onUnmute(member, member.getId().asLong(), reason);
                 return true;
             } else {
                 Notifier.notifyCommandUserOfError(event, "userNotMuted");
@@ -158,6 +157,16 @@ public final class ManualPunishmentEnder {
                         punishment.setEndDate(Instant.now().toEpochMilli());
                         punishment.setEndReason(reason);
                         punishment.save();
+                        punishment.refresh();
+
+                        if (punishmentType.equals("mute")) {
+                            logger.info("logging unmute now");
+                            loggingListener.onUnmute(event.getInteraction().getGuild().block(), reason, punishment);
+                        }
+                        if (punishmentType.equals("ban")) {
+                            logger.info("logging unban now");
+                            loggingListener.onUnban(event.getInteraction().getGuild().block(), reason, punishment);
+                        }
                     });
             logger.info("database punishment updated as ended.");
             return true;

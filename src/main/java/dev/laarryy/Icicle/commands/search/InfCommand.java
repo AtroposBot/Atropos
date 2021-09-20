@@ -7,6 +7,7 @@ import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
+import dev.laarryy.Icicle.utils.LogExecutor;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
@@ -252,12 +253,12 @@ public class InfCommand implements Command {
                 .title("Case " + punishment.getPunishmentId())
                 .addField("User", "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">", false)
                 .addField("Moderator", "`" + punisherSnowflake + "`:" +"<@" + punisherSnowflake + ">", false)
-                .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), true)
-                .addField("Date", date, true)
-                .addField("Reason", reason, true)
-                .addField("End Date", endDate, true)
-                .addField("End Reason", endReason, true)
-                .addField("Attempted to DM User?", didDMMessage, true)
+                .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), false)
+                .addField("Date", date, false)
+                .addField("Reason", reason, false)
+                .addField("End Date", endDate, false)
+                .addField("End Reason", endReason, false)
+                .addField("Attempted to DM User?", didDMMessage, false)
                 .timestamp(Instant.now())
                 .build();
 

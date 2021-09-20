@@ -96,7 +96,7 @@ public class AutoPunishmentEnder {
 
                     switch (punishmentType) {
                         case "ban" -> discordUnbanUser(guild1, punishment, userId);
-                        case "mute" -> discordUnmuteUser(server, punishment, member);
+                        case "mute" -> discordUnmuteUser(server, punishment, member, guild1);
                         default -> punishment.setEnded(true);
                     }
                 });
@@ -108,10 +108,11 @@ public class AutoPunishmentEnder {
         punishment.setEnded(true);
         punishment.setEndReason("Automatically unbanned on timer.");
         punishment.save();
-        loggingListener.onUnban(guild, userId.asLong(), "Automatically unbanned on timer.");
+        punishment.refresh();
+        loggingListener.onUnban(guild, "Automatically unbanned on timer.", punishment);
     }
 
-    private void discordUnmuteUser(DiscordServer server, Punishment punishment, Member member) {
+    private void discordUnmuteUser(DiscordServer server, Punishment punishment, Member member, Guild guild) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id = ?", server.getServerId());
         Long mutedRoleSnowflake = serverProperties.getMutedRoleSnowflake();
@@ -121,7 +122,7 @@ public class AutoPunishmentEnder {
         punishment.setEnded(true);
         punishment.setEndReason("Automatically unmuted on timer.");
         punishment.save();
-        loggingListener.onUnmute(member, member.getId().asLong(), "Automatically unmuted on timer.");
+        loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment);
     }
 
 }

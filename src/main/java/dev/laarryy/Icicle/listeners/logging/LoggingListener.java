@@ -96,28 +96,31 @@ public final class LoggingListener {
 
     }
 
-    public void onUnban(Guild guild, Long unBannedId, String reason) {
-        if (guild == null) return;
+    public void onUnban(Guild guild, String reason, Punishment punishment) {
+        if (guild == null)  {
+            return;
+        }
 
         getLogChannel(guild, "punishment")
                 .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
-                        LogExecutor.logPunishmentUnban(unBannedId, textChannel, reason);
+                        LogExecutor.logPunishmentUnban(textChannel, reason, punishment);
                     }
                 })
                 .subscribe();
     }
 
-    public void onUnmute(Member member, Long unMutedId, String reason) {
-        Guild guild = member.getGuild().block();
-        if (guild == null) return;
+    public void onUnmute(Guild guild, String reason, Punishment punishment) {
+        if (guild == null)  {
+            return;
+        }
 
         getLogChannel(guild, "punishment")
                 .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
-                        LogExecutor.logPunishmentUnmute(unMutedId, textChannel, reason);
+                        LogExecutor.logPunishmentUnmute(textChannel, reason, punishment);
                     }
                 })
                 .subscribe();
@@ -143,6 +146,10 @@ public final class LoggingListener {
     public Mono<Void> on(MessageUpdateEvent event) {
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
+
+        if (event.getMessage().block().getAuthor().isPresent() && event.getMessage().block().getAuthor().get().isBot()) {
+            return Mono.empty();
+        }
 
         getLogChannel(guild, "message")
                 .subscribeOn(Schedulers.boundedElastic())
