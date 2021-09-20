@@ -1,7 +1,6 @@
 package dev.laarryy.Icicle.commands.punishments;
 
-import dev.laarryy.Icicle.ClientManager;
-import dev.laarryy.Icicle.LoggingListenerManager;
+import dev.laarryy.Icicle.managers.LoggingListenerManager;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
