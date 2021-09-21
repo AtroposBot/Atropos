@@ -1,6 +1,7 @@
 package dev.laarryy.Icicle.listeners;
 
 import dev.laarryy.Icicle.Icicle;
+import dev.laarryy.Icicle.utils.AddServerToDB;
 import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.object.entity.Guild;
 import org.apache.logging.log4j.LogManager;
@@ -17,7 +18,7 @@ public class GuildJoinListener {
 
         Guild guild = event.getGuild();
 
-        Icicle.addServerToDatabase(guild);
+        AddServerToDB.addServerToDatabase(guild);
 
         return Mono.empty();
     }

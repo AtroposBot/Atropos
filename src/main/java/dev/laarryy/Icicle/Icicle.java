@@ -8,21 +8,15 @@ import dev.laarryy.Icicle.managers.CacheManager;
 import dev.laarryy.Icicle.managers.ClientManager;
 import dev.laarryy.Icicle.managers.CommandManager;
 import dev.laarryy.Icicle.managers.ListenerManager;
-import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
-import dev.laarryy.Icicle.models.joins.ServerUser;
-import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.services.AutoPunishmentEnder;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.utils.AddServerToDB;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
-import discord4j.core.object.entity.Guild;
-import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.time.Instant;
 
 public class Icicle {
 
@@ -82,82 +76,12 @@ public class Icicle {
 
         // Register all guilds and users in them to database
 
+        // TODO: Shelf this to only when joining servers. Don't need to do it every startup.
         client.getGuilds()
-                .map(Icicle::addServerToDatabase)
+                .map(AddServerToDB::addServerToDatabase)
                 .doOnError(logger::error)
                 .subscribe();
 
         client.onDisconnect().block();
-    }
-
-    public static boolean addServerToDatabase(Guild guild) {
-
-        long serverIdSnowflake = guild.getId().asLong();
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordServer server = DiscordServer.findOrCreateIt("server_id", serverIdSnowflake);
-        server.save();
-        server.refresh();
-
-        if (server.getDateEntry() == 0) {
-            server.setDateEntry(Instant.now().toEpochMilli());
-            server.save();
-        }
-
-        int serverId = server.getServerId();
-
-        DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", serverIdSnowflake);
-
-        properties.setServerName(guild.getName());
-        properties.save();
-        properties.refresh();
-
-        if (properties.getMembersOnFirstJoin() == 0) {
-            properties.setMembersOnFirstJoin(guild.getMemberCount());
-            properties.save();
-        }
-
-        guild.getMembers()
-                .map(member -> Icicle.addUserToDatabase(member, guild))
-                .doOnError(logger::error)
-                .subscribe();
-
-        return true;
-    }
-
-    public static boolean addUserToDatabase(Member member, Guild guild) {
-
-        if (member.isBot()) {
-            return false;
-        }
-
-        DatabaseLoader.openConnectionIfClosed();
-
-        long userIdSnowflake = member.getId().asLong();
-        long serverIdSnowflake = guild.getId().asLong();
-
-        DiscordUser user = DiscordUser.findOrCreateIt("user_id_snowflake", userIdSnowflake);
-        user.save();
-        user.refresh();
-
-        if (user.getDateEntry() == 0) {
-            user.setDateEntry(Instant.now().toEpochMilli());
-            user.save();
-        }
-
-        DiscordServer server = DiscordServer.findOrCreateIt("server_id", serverIdSnowflake);
-
-        int serverId = server.getServerId();
-        int userId = user.getUserId();
-
-        ServerUser serverUser = ServerUser.findOrCreateIt("user_id", userId, "server_id", serverId);
-        serverUser.save();
-        serverUser.refresh();
-
-        if (serverUser.getDate() == 0) {
-            serverUser.setDate(Instant.now().toEpochMilli());
-            serverUser.save();
-        }
-
-        return true;
     }
 }

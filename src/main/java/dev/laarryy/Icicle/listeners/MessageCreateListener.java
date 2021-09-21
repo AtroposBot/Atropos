@@ -23,6 +23,10 @@ public class MessageCreateListener {
             return Mono.empty();
         }
 
+        if (event.getMember().get().isBot()) {
+            return Mono.empty();
+        }
+
         DatabaseLoader.openConnectionIfClosed();
 
         long messageIdSnowflake = event.getMessage().getId().asLong();

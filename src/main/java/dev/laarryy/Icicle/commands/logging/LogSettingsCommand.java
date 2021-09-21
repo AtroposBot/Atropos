@@ -5,6 +5,7 @@ import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.utils.AddServerToDB;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
@@ -148,7 +149,7 @@ public class LogSettingsCommand implements Command {
         }
 
         if (serverProperties == null) {
-            Icicle.addServerToDatabase(guild);
+            AddServerToDB.addServerToDatabase(guild);
             Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
             return;
@@ -208,7 +209,7 @@ public class LogSettingsCommand implements Command {
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
         if (serverProperties == null) {
-            Icicle.addServerToDatabase(guild);
+            AddServerToDB.addServerToDatabase(guild);
             Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
             return;

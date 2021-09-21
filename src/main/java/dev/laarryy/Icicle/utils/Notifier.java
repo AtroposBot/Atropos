@@ -89,6 +89,7 @@ public final class Notifier {
     public static void notifyCommandUserOfError(SlashCommandEvent event, String errorType) {
         switch (errorType) {
             case "noPermission" -> event.reply().withEmbeds(noPermissionsEmbed()).withEphemeral(true).subscribe();
+            case "noBotPermission" -> event.reply().withEmbeds(noBotPermissionsEmbed()).withEphemeral(true).subscribe();
             case "nullServer" -> event.reply().withEmbeds(nullServerEmbed()).withEphemeral(true).subscribe();
             case "noUser" -> event.reply().withEmbeds(noUserEmbed()).withEphemeral(true).subscribe();
             case "invalidDuration" -> event.reply().withEmbeds(invalidDurationEmbed()).withEphemeral(true).subscribe();
@@ -178,6 +179,44 @@ public final class Notifier {
                 .addField("Reason", reason, false)
                 .color(Color.ENDEAVOUR)
                 .footer("Case ID: " + caseId, "")
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec noBotPermissionsEmbed() {
+        return EmbedCreateSpec.builder()
+                .color(Color.RUBY)
+                .title("No Bot Permission")
+                .description("Action aborted because I do not have the required permissions to operate.")
+                .addField("Required Permissions",
+                        """
+                                ```diff
+                                + View Channels
+                                + Manage Channels
+                                + Manage Roles
+                                --- I need these to mute people and see chat
+                                + View Audit Log
+                                --- I need this to log who does what
+                                + Manage Members
+                                --- I need this to mute people and correct nickname hoists
+                                + Kick Members
+                                + Ban Members
+                                --- I need these to kick and ban
+                                + Send Messages
+                                + Use External Emoji
+                                --- I need these to log and interact with mods
+                                + Manage Messages
+                                + Read Message History
+                                --- I need these to moderate chat
+                                + Mute Members
+                                --- I need this to mute people
+                                ```
+                                """, false)
+                .addField("Additional Information", "Please set my highest role to be above anyone I " +
+                        "may need to punish in the role hierarchy, and rest assured that I will only " +
+                        "allow users to punish those who are below them (even if I am above everyone involved). " +
+                        "\n While I lack any of the basic permissions required to function, none of my commands will " +
+                        "work. This is so that I don't run into errors in trying to carry out your wishes.", false)
                 .timestamp(Instant.now())
                 .build();
     }

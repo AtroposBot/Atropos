@@ -122,12 +122,7 @@ public class PunishmentManager {
                             }
                         }
                         DatabaseLoader.openConnectionIfClosed();
-                        DiscordUser punished;
-                        if (DiscordUser.findFirst("user_id_snowflake = ?", aLong) == null) {
-                            punished = DiscordUser.createIt("user_id_snowflake", aLong, "date", Instant.now().toEpochMilli());
-                        } else {
-                            punished = DiscordUser.findFirst("user_id_snowflake = ? ", aLong);
-                        }
+                        DiscordUser punished = DiscordUser.findOrCreateIt("user_id_snowflake", aLong);
                         DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
                         Punishment punishment = createDatabasePunishmentRecord(punisher, punished, serverId, request.name());
                         punishment.save();
