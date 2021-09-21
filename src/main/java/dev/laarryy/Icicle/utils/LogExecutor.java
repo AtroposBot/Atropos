@@ -1111,6 +1111,107 @@ public final class LogExecutor {
 
     public static void logRoleUpdate(RoleUpdateEvent event, TextChannel logChannel) {
 
+        AuditLogEntry roleUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.ROLE_UPDATE)
+                .map(AuditLogPart::getEntries)
+                .flatMap(Flux::fromIterable)
+                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
+                .next()
+                .block();
+
+        String responsibleUser = getAuditResponsibleUser(roleUpdate);
+
+        Role oldRole;
+        if (event.getOld().isPresent()) {
+            oldRole = event.getOld().get();
+        } else {
+            oldRole = null;
+        }
+
+        String roleInfo;
+        if (oldRole != null) {
+            roleInfo = getRoleDiff(oldRole, event.getCurrent());
+        } else {
+            roleInfo = "none";
+        }
+
+        long roleId = event.getCurrent().getId().asLong();
+        String name = "`" + event.getCurrent().getName() + "`:`" + roleId + "`:<@&" + roleId + ">";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserIdentification() + " Role Updated")
+                .color(Color.ENDEAVOUR)
+                .addField("Responsible User", responsibleUser, false)
+                .addField("Role", name, false)
+                .footer("Check your server's audit log for more information", "")
+                .timestamp(Instant.now())
+                .build();
+
+        if (!roleInfo.equals("none")) {
+            embed = EmbedCreateSpec.builder().from(embed)
+                    .description(roleInfo)
+                    .build();
+        }
+
+        logChannel.createMessage(embed).block();
+
+    }
+
+    public static String getRoleDiff(Role oldRole, Role newRole) {
+        StringBuilder stringBuilder = new StringBuilder();
+        String roleInfo;
+        stringBuilder.append("```diff\n");
+        if (oldRole.getName().equals(newRole.getName())) {
+            stringBuilder.append("--- Name: ").append(oldRole.getName()).append("\n");
+        } else {
+            stringBuilder.append("- Name: ").append(oldRole.getName()).append("\n");
+            stringBuilder.append("+ Name: ").append(newRole.getName()).append("\n");
+        }
+        if (oldRole.getPosition().block().equals(newRole.getPosition().block())) {
+            stringBuilder.append("--- Position: ").append(oldRole.getPosition().block()).append("\n");
+        } else {
+            stringBuilder.append("- Position: ").append(oldRole.getPosition().block()).append("\n");
+            stringBuilder.append("+ Position: ").append(newRole.getPosition().block()).append("\n");
+        }
+        if (oldRole.getColor().equals(newRole.getColor())) {
+            stringBuilder.append("--- Colour: ").append(oldRole.getColor().getRGB()).append("\n");
+        } else {
+            stringBuilder.append("- Colour: ").append(oldRole.getColor().getRGB()).append("\n");
+            stringBuilder.append("+ Colour: ").append(newRole.getColor().getRGB()).append("\n");
+        }
+        if (oldRole.isMentionable() == newRole.isMentionable()) {
+            if (oldRole.isMentionable()) {
+                stringBuilder.append("--- Mentionable: Yes").append("\n");
+            } else {
+                stringBuilder.append("--- Mentionable: No").append("\n");
+            }
+        } else {
+            if (oldRole.isMentionable()) {
+                stringBuilder.append("- Mentionable: Yes").append("\n");
+                stringBuilder.append("+ Mentionable: No").append("\n");
+            } else {
+                stringBuilder.append("- Mentionable: No").append("\n");
+                stringBuilder.append("+ Mentionable: Yes").append("\n");
+            }
+        }
+        if (oldRole.isHoisted() == newRole.isHoisted()) {
+            if (oldRole.isHoisted()) {
+                stringBuilder.append("--- Hoisted: Yes").append("\n");
+            } else {
+                stringBuilder.append("--- Hoisted: No").append("\n");
+            }
+        } else {
+            if (oldRole.isHoisted()) {
+                stringBuilder.append("- Hoisted: Yes").append("\n");
+                stringBuilder.append("+ Hoisted: No").append("\n");
+            } else {
+                stringBuilder.append("- Hoisted: No").append("\n");
+                stringBuilder.append("+ Hoisted: Yes").append("\n");
+
+            }
+        }
+        stringBuilder.append("```");
+        roleInfo = stringBuilder.toString();
+        return roleInfo;
     }
 
     public static void logPunishmentUnban(TextChannel logChannel, String reason, Punishment punishment) {
@@ -1140,6 +1241,22 @@ public final class LogExecutor {
                 .addField("Reason", getStringWithLegalLength(reason, 1024), false)
                 .footer("For more information, run /inf search case " + punishment.getPunishmentId(), "")
                 .color(Color.SEA_GREEN)
+                .build();
+
+        logChannel.createMessage(embed).block();
+    }
+
+    public static void logMutedRoleDelete(Role mutedRole, TextChannel logChannel) {
+        long roleId = mutedRole.getId().asLong();
+        String role = "`" + mutedRole.getName() + "`:`" + roleId + "`";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .color(Color.JAZZBERRY_JAM)
+                .title("Muted Role Deleted")
+                .description("Oh no! You've deleted the role that this bot uses to mute people! Worry not - next time " +
+                        "you try to mute someone, the role will be recreated :sparkles: *automatically* :sparkles:.")
+                .addField("Role", role, false)
+                .timestamp(Instant.now())
                 .build();
 
         logChannel.createMessage(embed).block();

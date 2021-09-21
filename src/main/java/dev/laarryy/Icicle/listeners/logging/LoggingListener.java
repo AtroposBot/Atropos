@@ -34,6 +34,7 @@ import discord4j.core.event.domain.role.RoleCreateEvent;
 import discord4j.core.event.domain.role.RoleDeleteEvent;
 import discord4j.core.event.domain.role.RoleUpdateEvent;
 import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.channel.TextChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -122,6 +123,20 @@ public final class LoggingListener {
                     }
                 })
                 .subscribe();
+    }
+
+    public void onMutedRoleDelete(Guild guild, Role mutedRole) {
+        if (guild == null) {
+            return;
+        }
+
+        getLogChannel(guild, "guild")
+                .subscribeOn(Schedulers.boundedElastic())
+                .doOnSuccess(textChannel -> {
+                    if (textChannel != null) {
+                        LogExecutor.logMutedRoleDelete(mutedRole, textChannel);
+                    }
+                });
     }
 
     @EventListener

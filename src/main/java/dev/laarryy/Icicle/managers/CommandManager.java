@@ -2,6 +2,7 @@ package dev.laarryy.Icicle.managers;
 
 import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.commands.Command;
+import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
@@ -20,6 +21,8 @@ import java.util.Set;
 public class CommandManager {
     private final List<Command> COMMANDS = new ArrayList<>();
     private final Logger logger = LogManager.getLogger(Icicle.class);
+    private final PermissionChecker permissionChecker = new PermissionChecker();
+
 
     public void registerCommands(GatewayDiscordClient client) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         // Register slash commands with Discord
@@ -47,6 +50,7 @@ public class CommandManager {
         // Listen for command event and execute from map
 
         client.getEventDispatcher().on(SlashCommandEvent.class)
+                .filter(permissionChecker::checkBotPermission) // make sure bot has perms
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
                                 .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
