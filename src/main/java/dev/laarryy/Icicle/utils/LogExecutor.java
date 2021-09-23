@@ -505,11 +505,9 @@ public final class LogExecutor {
 
         String avatarUrl = event.getMember().getAvatarUrl();
 
-        String createDate = DateTimeFormatter
-                .ofLocalizedDateTime(FormatStyle.SHORT)
-                .withLocale(Locale.CANADA)
-                .withZone(ZoneId.systemDefault())
-                .format(event.getMember().getId().getTimestamp());
+        String createDate = TimestampMaker.getTimestampFromEpochSecond(
+                event.getMember().getId().getTimestamp().getEpochSecond(),
+                TimestampMaker.TimestampType.LONG_DATETIME);
 
         String badges = getBadges(event.getMember());
 
