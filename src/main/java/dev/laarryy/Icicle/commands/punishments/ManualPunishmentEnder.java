@@ -152,6 +152,7 @@ public final class ManualPunishmentEnder {
                     )
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(punishment -> {
+                        DatabaseLoader.openConnectionIfClosed();
                         logger.info("ending DB punishment: " + punishment.getPunishmentType());
                         punishment.setEnded(true);
                         punishment.setEndDate(Instant.now().toEpochMilli());

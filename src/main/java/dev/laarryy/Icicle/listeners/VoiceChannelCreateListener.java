@@ -14,14 +14,14 @@ import reactor.core.scheduler.Schedulers;
 public class VoiceChannelCreateListener {
 
     @EventListener
-    private Mono<Void> on(VoiceChannelCreateEvent event) {
+    public Mono<Void> on(VoiceChannelCreateEvent event) {
         DatabaseLoader.openConnectionIfClosed();
         Guild guild = event.getChannel().getGuild().block();
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
         if (discordServerProperties != null && discordServerProperties.getMutedRoleSnowflake() != null && discordServerProperties.getMutedRoleSnowflake() != 0) {
             guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake()))
                     .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe(role -> event.getChannel().edit(VoiceChannelEditSpec.builder()
+                    .flatMap(role -> event.getChannel().edit(VoiceChannelEditSpec.builder()
                             .addPermissionOverwrite(PermissionOverwrite.forRole(role.getId(),
                                     PermissionSet.none(),
                                     PermissionSet.of(
@@ -29,7 +29,8 @@ public class VoiceChannelCreateListener {
                                             discord4j.rest.util.Permission.PRIORITY_SPEAKER,
                                             discord4j.rest.util.Permission.STREAM
                                     )))
-                            .build()));
+                            .build()))
+                    .subscribe();
 
         }
         return Mono.empty();
