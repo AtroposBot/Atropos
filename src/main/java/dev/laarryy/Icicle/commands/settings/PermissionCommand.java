@@ -1,8 +1,12 @@
-package dev.laarryy.Icicle.commands;
+package dev.laarryy.Icicle.commands.settings;
 
+import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
+import dev.laarryy.Icicle.models.guilds.permissions.Permission;
 import dev.laarryy.Icicle.models.guilds.permissions.ServerRolePermission;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.utils.AuditLogger;
+import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
@@ -10,14 +14,18 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.User;
+import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.ApplicationCommandOptionType;
+import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
 import java.util.List;
 
 public class PermissionCommand implements Command {
@@ -98,6 +106,26 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
+                    .name("/blacklist")
+                    .value("blacklist")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/removesince")
+                    .value("removesince")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/stopjoins")
+                    .value("stopjoins")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/info")
+                    .value("info")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
                     .name("Every single permission")
                     .value("everything")
                     .build()
@@ -144,6 +172,18 @@ public class PermissionCommand implements Command {
                             .required(true)
                             .build())
                     .build())
+            .addOption(ApplicationCommandOptionData.builder()
+                    .name("list")
+                    .description("List permissions of a role in this guild.")
+                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .required(false)
+                    .addOption(ApplicationCommandOptionData.builder()
+                            .name("role")
+                            .description("Role to list permissions of.")
+                            .type(ApplicationCommandOptionType.ROLE.getValue())
+                            .required(true)
+                            .build())
+                    .build())
             .defaultPermission(true)
             .build();
 
@@ -166,11 +206,10 @@ public class PermissionCommand implements Command {
 
         DatabaseLoader.openConnectionIfClosed();
 
-        dev.laarryy.Icicle.models.guilds.permissions.Permission permission = dev.laarryy.Icicle.models.guilds.permissions.Permission.findOrCreateIt("permission", request.name());
+        Permission permission = Permission.findOrCreateIt("permission", request.name());
         permission.save();
         permission.refresh();
         int permissionId = permission.getInteger("id");
-
 
 
         if (!permissionChecker.checkIsAdministrator(guild, member) && !permissionChecker.checkPermission(guild, user, permissionId)) {
@@ -184,8 +223,61 @@ public class PermissionCommand implements Command {
         if (discordServer != null) {
             serverId = discordServer.getServerId();
         } else {
-            serverId = 0;
             return Mono.empty();
+        }
+
+        if (event.getOption("list").isPresent()) {
+            if (event.getOption("list").get().getValue().isEmpty()) {
+                Notifier.notifyCommandUserOfError(event, "malformedInput");
+                AuditLogger.addCommandToDB(event, false);
+                return Mono.empty();
+            }
+            Role role = event.getOption("list").get().getValue().get().asRole().block();
+            long roleId = role.getId().asLong();
+            String roleName = role.getName();
+            String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
+
+            LazyList<ServerRolePermission> permissions = ServerRolePermission.find("role_id_snowflake = ? and server_id = ?", roleId, serverId);
+
+            String rolePermissionsInfo;
+            if (permissions == null || permissions.isEmpty()) {
+                rolePermissionsInfo = "none";
+            } else {
+                StringBuilder stringBuilder = new StringBuilder();
+                stringBuilder.append("```diff\n");
+                for (ServerRolePermission perm : permissions) {
+                    Permission pId = Permission.findFirst("id = ?", perm.getPermissionId());
+                    String name = pId.getName();
+                    if (name.equals("everything")) {
+                        stringBuilder.append("+ All Permissions").append("\n");
+                    } else {
+                        stringBuilder.append("+ /").append(name).append("\n");
+                    }
+                }
+                stringBuilder.append("```");
+                rolePermissionsInfo = stringBuilder.toString();
+            }
+
+            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title("Role Permission Info")
+                    .addField("Role", roleInfo, false)
+                    .color(Color.ENDEAVOUR)
+                    .timestamp(Instant.now())
+                    .build();
+
+            if (rolePermissionsInfo.equals("none")) {
+                embed = EmbedCreateSpec.builder().from(embed)
+                        .description("This role has no permissions. To add permissions, use /permission add <role> <permission>.")
+                        .build();
+            } else {
+                embed = EmbedCreateSpec.builder().from(embed)
+                        .description(rolePermissionsInfo)
+                        .build();
+            }
+            event.reply().withEmbeds(embed).subscribe();
+            AuditLogger.addCommandToDB(event, true);
+            return Mono.empty();
+
         }
 
         if (event.getOption("add").isPresent()) {
@@ -194,15 +286,31 @@ public class PermissionCommand implements Command {
             int permissionToAddId = getIdOfPermissionToHandle(option);
 
             if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToAddId, role.getId().asLong()) != null) {
-                event.reply("This permission has already been assigned to this role in this guild.").withEphemeral(true).subscribe();
+                Notifier.notifyCommandUserOfError(event, "alreadyAssigned");
+                AuditLogger.addCommandToDB(event, false);
                 return Mono.empty();
             }
 
             ServerRolePermission serverRolePermission = ServerRolePermission.createIt("server_id", serverId, "permission_id", permissionToAddId, "role_id_snowflake", role.getId().asLong());
             serverRolePermission.save();
+            serverRolePermission.refresh();
+            Permission perm = Permission.findFirst("id = ?", serverRolePermission.getPermissionId());
+            String permName = "`/" + perm.getName() + "`";
 
-            event.reply("Permission added to role " + role.getName() + ".").withEphemeral(true).subscribe();
+            long roleId = role.getId().asLong();
+            String roleName = role.getName();
+            String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
+
+            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title("Success")
+                    .color(Color.SEA_GREEN)
+                    .description("Added permission to use " + permName + " and all subcommands to <@&" + roleId + ">")
+                    .addField("Role", roleInfo, false)
+                    .build();
+
+            event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
             logger.info("Permission added.");
+            AuditLogger.addCommandToDB(event, true);
             return Mono.empty();
         }
 
@@ -212,15 +320,31 @@ public class PermissionCommand implements Command {
             int permissionToRemoveId = getIdOfPermissionToHandle(option);
 
             if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong()) == null) {
-                event.reply("This permission has not been assigned to this role in this guild.").withEphemeral(true).subscribe();
+                Notifier.notifyCommandUserOfError(event, "404");
+                AuditLogger.addCommandToDB(event, false);
                 return Mono.empty();
             }
 
             ServerRolePermission serverRolePermission = ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong());
+            Permission perm = Permission.findFirst("id = ?", serverRolePermission.getPermissionId());
+
+            long roleId = role.getId().asLong();
+            String roleName = role.getName();
+            String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
+            String permName = "`/" + perm.getName() + "`";
+
             serverRolePermission.delete();
 
-            event.reply("Permission removed from role " + role.getName() + ".").withEphemeral(true).subscribe();
+            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title("Success")
+                    .color(Color.SEA_GREEN)
+                    .description("Removed permission to use " + permName + " and all subcommands from <@&" + roleId + ">")
+                    .addField("Role", roleInfo, false)
+                    .build();
+
+            event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
             logger.info("Permission removed.");
+            AuditLogger.addCommandToDB(event, true);
             return Mono.empty();
         }
 

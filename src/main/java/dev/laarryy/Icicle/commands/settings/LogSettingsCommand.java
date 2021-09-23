@@ -1,8 +1,7 @@
-package dev.laarryy.Icicle.commands.logging;
+package dev.laarryy.Icicle.commands.settings;
 
-import dev.laarryy.Icicle.managers.CacheManager;
-import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.commands.Command;
+import dev.laarryy.Icicle.managers.PropertiesCacheManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AddServerToDB;
@@ -134,7 +133,7 @@ public class LogSettingsCommand implements Command {
 
         DatabaseLoader.openConnectionIfClosed();
 
-        CacheManager.getManager().getCache().invalidate(guild.getId().asLong());
+        PropertiesCacheManager.getManager().getPropertiesCache().invalidate(guild.getId().asLong());
 
         String logType = event.getOption("unset").get().getOption("type").get().getValue().get().asString();
 
@@ -204,7 +203,7 @@ public class LogSettingsCommand implements Command {
 
         String logType = event.getOption("set").get().getOption("type").get().getValue().get().asString();
 
-        CacheManager.getManager().getCache().invalidate(guild.getId().asLong());
+        PropertiesCacheManager.getManager().getPropertiesCache().invalidate(guild.getId().asLong());
 
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
@@ -284,7 +283,8 @@ public class LogSettingsCommand implements Command {
                         false)
                 .addField("Punishment Log",
                         "This type logs punishments through this bot. Bans, warns, mutes, kicks, and cases. " +
-                                "It will also log unmutes and unbans through the bot.",
+                                "It will also log unmutes and unbans through the bot, in addition to cases where a " +
+                                "user attempts insubordination (punishing someone above them).",
                         false)
                 .addField("Command Use", "Run `/logsettings set <type>` in the channel you'd like to set as a logging channel. " +
                         "Run `/logsettings unset <type>` in the channel you'd like to unset as a logging channel.",

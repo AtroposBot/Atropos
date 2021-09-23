@@ -9,19 +9,19 @@ import org.apache.logging.log4j.Logger;
 
 import java.time.Duration;
 
-public class CacheManager {
-    private static CacheManager instance;
+public class PropertiesCacheManager {
+    private static PropertiesCacheManager instance;
     private final LoadingCache<Long, DiscordServerProperties> cache;
-    private static final Logger logger = LogManager.getLogger(CacheManager.class);
+    private static final Logger logger = LogManager.getLogger(PropertiesCacheManager.class);
 
 
-    public CacheManager(LoadingCache<Long, DiscordServerProperties> cache) {
+    public PropertiesCacheManager(LoadingCache<Long, DiscordServerProperties> cache) {
         this.cache = cache;
     }
 
-    public static CacheManager getManager() {
+    public static PropertiesCacheManager getManager() {
         if (instance == null) {
-            instance = new CacheManager(Caffeine.newBuilder()
+            instance = new PropertiesCacheManager(Caffeine.newBuilder()
                     .expireAfterWrite(Duration.ofMinutes(10))
                     .build(aLong -> {
                         DatabaseLoader.openConnectionIfClosed();
@@ -32,7 +32,7 @@ public class CacheManager {
         return instance;
     }
 
-    public LoadingCache<Long, DiscordServerProperties> getCache() {
+    public LoadingCache<Long, DiscordServerProperties> getPropertiesCache() {
         return cache;
     }
 }

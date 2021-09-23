@@ -111,4 +111,12 @@ public class DiscordServerProperties extends Model {
     public void setMutedRoleSnowflake(Long mutedRoleSnowflake) {
         setLong("muted_role_id_snowflake", mutedRoleSnowflake);
     }
+
+    public boolean getStopJoins() {
+        return getBoolean("stop_joins");
+    }
+
+    public void setStopJoins(boolean stopJoins) {
+        setBoolean("stop_joins", stopJoins);
+    }
 }

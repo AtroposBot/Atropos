@@ -2,6 +2,7 @@ package dev.laarryy.Icicle.commands.punishments;
 
 import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.commands.Command;
+import dev.laarryy.Icicle.managers.PunishmentManagerManager;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
@@ -57,7 +58,7 @@ public class BanCommand implements Command {
     public Mono<Void> execute(SlashCommandEvent event) {
 
         Icicle icicle = new Icicle();
-        PunishmentManager punishmentManager = icicle.getPunishmentManager();
+        PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
         Mono.just(event)
                 .subscribeOn(Schedulers.boundedElastic())

@@ -1,7 +1,7 @@
 package dev.laarryy.Icicle.services;
 
-import dev.laarryy.Icicle.managers.LoggingListenerManager;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;
+import dev.laarryy.Icicle.managers.LoggingListenerManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.users.DiscordUser;

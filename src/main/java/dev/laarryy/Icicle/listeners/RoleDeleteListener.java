@@ -2,8 +2,8 @@ package dev.laarryy.Icicle.listeners;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;
-import dev.laarryy.Icicle.managers.CacheManager;
 import dev.laarryy.Icicle.managers.LoggingListenerManager;
+import dev.laarryy.Icicle.managers.PropertiesCacheManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import discord4j.core.event.domain.role.RoleDeleteEvent;
@@ -30,7 +30,7 @@ public class RoleDeleteListener {
             return Mono.empty();
         }
 
-        LoadingCache<Long, DiscordServerProperties> cache = CacheManager.getManager().getCache();
+        LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
 
         DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
 

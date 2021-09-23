@@ -6,6 +6,11 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 @ConfigSerializable
 public class EmojiConfig {
 
+    protected @Nullable String boosted = "a";
+    protected @Nullable String membersOnline = "a";
+    protected @Nullable String membersOffline = "a";
+    protected @Nullable String serverRole = "a";
+    protected @Nullable String serverCategory = "a";
     protected @Nullable String newsChannel = "a";
     protected @Nullable String voiceChannel = "a";
     protected @Nullable String storeChannel = "a";
@@ -38,6 +43,48 @@ public class EmojiConfig {
     protected @Nullable String braveryBadge = "a";
     protected @Nullable String brillianceBadge = "a";
     protected @Nullable String triangleNitroBadge = "a";
+
+
+    public String getBoosted() {
+        return boosted;
+    }
+
+    public void setBoosted(String boosted) {
+        this.boosted = boosted;
+    }
+
+    public String getMembersOnline() {
+        return membersOnline;
+    }
+
+    public void setMembersOnline(String membersOnline) {
+        this.membersOnline = membersOnline;
+    }
+
+    public String getMembersOffline() {
+        return membersOffline;
+    }
+
+    public void setMembersOffline(String membersOffline) {
+        this.membersOffline = membersOffline;
+    }
+
+    public String getServerRole() {
+        return serverRole;
+    }
+
+    public void setServerRole(String serverRole) {
+        this.serverRole = serverRole;
+    }
+
+    public String getServerCategory() {
+        return serverCategory;
+    }
+
+    public void setServerCategory(String serverCategory) {
+        this.serverCategory = serverCategory;
+    }
+
 
     public String getNewsChannel() {
         return newsChannel;

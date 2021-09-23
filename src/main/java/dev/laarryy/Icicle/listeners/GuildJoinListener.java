@@ -1,6 +1,5 @@
 package dev.laarryy.Icicle.listeners;
 
-import dev.laarryy.Icicle.Icicle;
 import dev.laarryy.Icicle.utils.AddServerToDB;
 import discord4j.core.event.domain.guild.GuildCreateEvent;
 import discord4j.core.object.entity.Guild;

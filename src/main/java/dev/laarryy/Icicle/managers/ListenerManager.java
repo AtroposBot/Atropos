@@ -52,6 +52,7 @@ public class ListenerManager {
                         return Mono.empty();
                     })
                     .subscribeOn(Schedulers.boundedElastic())
+                    .onErrorResume(e -> Mono.empty())
                     .subscribe(logger::error);
         }
 
