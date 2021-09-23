@@ -9,7 +9,9 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
+import discord4j.common.util.TimestampFormat;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -25,13 +27,9 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.time.format.FormatStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.regex.Pattern;
 
 public class InfCommand implements Command {
@@ -233,20 +231,16 @@ public class InfCommand implements Command {
         }
 
         if (punishment.getEndDate() != null) {
-            endDate = DateTimeFormatter
-                    .ofLocalizedDateTime(FormatStyle.FULL)
-                    .withLocale(Locale.CANADA)
-                    .withZone(ZoneId.systemDefault())
-                    .format(Instant.ofEpochMilli(punishment.getEndDate()));
+            endDate = TimestampMaker.getTimestampFromEpochSecond(
+                            Instant.ofEpochMilli(punishment.getEndDate()).getEpochSecond(),
+                            TimestampMaker.TimestampType.RELATIVE);
         } else {
             endDate = "Not set.";
         }
 
-        String date = DateTimeFormatter
-                .ofLocalizedDateTime(FormatStyle.FULL)
-                .withLocale(Locale.CANADA)
-                .withZone(ZoneId.systemDefault())
-                .format(Instant.ofEpochMilli(punishment.getDateEntry()));
+        String date = TimestampMaker.getTimestampFromEpochSecond(
+                Instant.ofEpochMilli(punishment.getDateEntry()).getEpochSecond(),
+                TimestampMaker.TimestampType.RELATIVE);
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)

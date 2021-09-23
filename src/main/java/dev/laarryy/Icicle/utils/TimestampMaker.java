@@ -14,11 +14,6 @@ public final class TimestampMaker {
 
     private TimestampMaker() {}
 
-    public static String getTimestampFromDiscordMillis(long epochMill, TimestampType timestampType) {
-
-        return getTypeLetter(timestampType, epochMill);
-    }
-
     public static String getTimestampFromEpochSecond(long epochSecond, TimestampType timestampType) {
 
         return getTypeLetter(timestampType, epochSecond);
