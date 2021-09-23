@@ -1,9 +1,10 @@
 package dev.laarryy.Icicle.listeners.logging;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import dev.laarryy.Icicle.managers.CacheManager;
 import dev.laarryy.Icicle.listeners.EventListener;
+import dev.laarryy.Icicle.managers.PropertiesCacheManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
+import dev.laarryy.Icicle.models.guilds.ServerBlacklist;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.utils.LogExecutor;
 import discord4j.common.util.Snowflake;
@@ -28,12 +29,14 @@ import discord4j.core.event.domain.guild.MemberUpdateEvent;
 import discord4j.core.event.domain.guild.UnbanEvent;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.event.domain.message.MessageBulkDeleteEvent;
+import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageDeleteEvent;
 import discord4j.core.event.domain.message.MessageUpdateEvent;
 import discord4j.core.event.domain.role.RoleCreateEvent;
 import discord4j.core.event.domain.role.RoleDeleteEvent;
 import discord4j.core.event.domain.role.RoleUpdateEvent;
 import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.channel.TextChannel;
 import org.apache.logging.log4j.LogManager;
@@ -44,7 +47,7 @@ import reactor.core.scheduler.Schedulers;
 public final class LoggingListener {
     private final Logger logger = LogManager.getLogger(this);
 
-    LoadingCache<Long, DiscordServerProperties> cache = CacheManager.getManager().getCache();
+    LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
 
     public LoggingListener() {
     }
@@ -84,8 +87,39 @@ public final class LoggingListener {
         return Mono.just(channel);
     }
 
+    public void onAttemptedInsubordination(SlashCommandEvent event, Member target) {
+        Guild guild = event.getInteraction().getGuild().block();
+        if (guild == null) return;
+
+        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+            if (textChannel == null) return;
+            LogExecutor.logInsubordination(event, textChannel, target);
+        });
+    }
+
+    public void onBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment) {
+        Guild guild = event.getGuild().block();
+        if (guild == null) return;
+
+        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+            if (textChannel == null) return;
+            LogExecutor.logBlacklistTrigger(event, blacklist, punishment, textChannel);
+        });
+    }
+
     public void onPunishment(SlashCommandEvent event, Punishment punishment) {
         Guild guild = event.getInteraction().getGuild().block();
+        if (guild == null) return;
+
+        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+            if (textChannel == null) return;
+            LogExecutor.logPunishment(punishment, textChannel);
+        });
+
+    }
+
+    public void onPunishment(MessageCreateEvent event, Punishment punishment) {
+        Guild guild = event.getGuild().block();
         if (guild == null) return;
 
         getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {

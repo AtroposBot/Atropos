@@ -4,7 +4,6 @@ import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.permissions.ServerRolePermission;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import discord4j.common.util.Snowflake;
-import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;

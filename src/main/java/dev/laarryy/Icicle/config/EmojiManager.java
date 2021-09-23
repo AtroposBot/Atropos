@@ -8,6 +8,11 @@ import java.io.File;
 
 public class EmojiManager {
     private static final Logger logger = LogManager.getLogger(EmojiManager.class);
+    String boosted;
+    String membersOnline;
+    String membersOffline;
+    String serverRole;
+    String serverCategory;
     String newsChannel;
     String voiceChannel;
     String storeChannel;
@@ -58,6 +63,11 @@ public class EmojiManager {
         File configFile = new File("/", "emojiConfig.yml");
         configFile.mkdir();
 
+        this.boosted = emojiConfig.getBoosted();
+        this.membersOnline = emojiConfig.getMembersOnline();
+        this.membersOffline = emojiConfig.getMembersOffline();
+        this.serverRole = emojiConfig.getServerRole();
+        this.serverCategory = emojiConfig.getServerCategory();
         this.newsChannel = emojiConfig.getNewsChannel();
         this.voiceChannel = emojiConfig.getVoiceChannel();
         this.storeChannel = emojiConfig.getStoreChannel();
@@ -89,6 +99,26 @@ public class EmojiManager {
         this.braveryBadge = emojiConfig.getBraveryBadge();
         this.brillianceBadge = emojiConfig.getBrillianceBadge();
         this.triangleNitroBadge = emojiConfig.getTriangleNitroBadge();
+    }
+
+    public static String getServerCategory() {
+        return emojiConfig.getServerCategory();
+        }
+
+    public static String getServerRole() {
+        return emojiConfig.getServerRole();
+    }
+
+    public static String getMembersOffline() {
+        return emojiConfig.getMembersOffline();
+    }
+
+    public static String getMembersOnline() {
+        return emojiConfig.getMembersOnline();
+    }
+
+    public static String getBoosted() {
+        return emojiConfig.getBoosted();
     }
 
     public static String getNewsChannel() {

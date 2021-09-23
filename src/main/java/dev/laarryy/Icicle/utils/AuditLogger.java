@@ -47,7 +47,7 @@ public final class AuditLogger {
 
     }
 
-    private static String generateOptionString(ApplicationCommandInteractionOption option) {
+    public static String generateOptionString(ApplicationCommandInteractionOption option) {
         StringBuffer sb = new StringBuffer();
         if (option.getType().name().equals("SUB_COMMAND_GROUP") || option.getType().name().equals("SUB_COMMAND")) {
 

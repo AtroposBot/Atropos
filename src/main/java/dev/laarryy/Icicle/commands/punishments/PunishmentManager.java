@@ -1,7 +1,7 @@
 package dev.laarryy.Icicle.commands.punishments;
 
-import dev.laarryy.Icicle.managers.LoggingListenerManager;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;
+import dev.laarryy.Icicle.managers.LoggingListenerManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
@@ -114,7 +114,7 @@ public class PunishmentManager {
                         // Ensure nobody is trying to forceban their boss or a bot
 
                         if (guild.getMemberById(Snowflake.of(aLong)).onErrorReturn(Exception.class, null).block() != null) {
-                            if (!checkIfPunisherHasHighestRole(event.getInteraction().getMember().get(), guild.getMemberById(Snowflake.of(aLong)).block(), guild)) {
+                            if (!checkIfPunisherHasHighestRole(event.getInteraction().getMember().get(), guild.getMemberById(Snowflake.of(aLong)).block(), guild, event)) {
                                 return;
                             }
                             if (guild.getMemberById(Snowflake.of(aLong)).block().isBot()) {
@@ -141,20 +141,22 @@ public class PunishmentManager {
             AuditLogger.addCommandToDB(event, false);
             return Mono.empty();
         }
-
-        // Get the DB objects for both the punishing user and the punished.
-
         User punishedUser = event.getOption("user").get().getValue().get().asUser().block();
-        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
-        DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", punishedUser.getId().asLong());
+
+        // Make sure bot has the ability to punish the user
+
 
         // Make sure the punisher is higher up the food chain than the person they're trying to punish in the guild they're both in.
 
-        if (!checkIfPunisherHasHighestRole(member, punishedUser.asMember(guild.getId()).block(), guild)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
+        if (!checkIfPunisherHasHighestRole(member, punishedUser.asMember(guild.getId()).block(), guild, event)) {
             return Mono.empty();
         }
+        // Get the DB objects for both the punishing user and the punished.
+
+        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+        DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", punishedUser.getId().asLong());
+
+
 
         logger.info("Passed relative permission check.");
 
@@ -360,18 +362,33 @@ public class PunishmentManager {
 
     }
 
-    private boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild) {
+    private boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, SlashCommandEvent event) {
         if (permissionChecker.checkIsAdministrator(guild, punisher) && !permissionChecker.checkIsAdministrator(guild, punished)) {
             logger.info("Admin punisher and non-admin punished. You may pass.");
             return true;
         } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
             logger.info("Admin punished and non-admin punisher. No.");
-            // TODO: Log this in server log channel
+            Notifier.notifyCommandUserOfError(event, "noPermission");
+            AuditLogger.addCommandToDB(event, false);
+            loggingListener.onAttemptedInsubordination(event, punished);
             return false;
         }
 
         Set<Snowflake> snowflakeSet = Set.copyOf(punished.getRoles().map(Role::getId).collectList().block());
-        return punisher.hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block();
 
+        if (!guild.getSelfMember().block().hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
+            Notifier.notifyCommandUserOfError(event, "botRoleTooLow");
+            AuditLogger.addCommandToDB(event, false);
+            return false;
+        }
+
+        if (!punisher.hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
+            Notifier.notifyCommandUserOfError(event, "noPermission");
+            AuditLogger.addCommandToDB(event, false);
+            loggingListener.onAttemptedInsubordination(event, punished);
+            return false;
+        } else {
+            return true;
+        }
     }
 }

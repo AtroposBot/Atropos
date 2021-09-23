@@ -1,7 +1,7 @@
 package dev.laarryy.Icicle.commands.punishments;
 
-import dev.laarryy.Icicle.managers.LoggingListenerManager;
 import dev.laarryy.Icicle.listeners.logging.LoggingListener;
+import dev.laarryy.Icicle.managers.LoggingListenerManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.users.DiscordUser;
@@ -17,6 +17,7 @@ import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.units.qual.N;
 import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -51,8 +52,7 @@ public final class ManualPunishmentEnder {
                     .map(Long::valueOf)
                     .onErrorReturn(Exception.class, 0L)
                     .filter(aLong -> aLong != 0)
-                    .filter(aLong -> discordUnban(event.getInteraction().getGuild().block(), aLong, reason))
-                    .doOnComplete(() -> event.reply("Done.").withEphemeral(true).subscribe())
+                    .filter(aLong -> discordUnban(event.getInteraction().getGuild().block(), aLong, reason, event))
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(lo -> databaseEndPunishment(lo, event, reason));
         }
@@ -64,16 +64,16 @@ public final class ManualPunishmentEnder {
                     .flatMap(ApplicationCommandInteractionOptionValue::asUser)
                     .flatMap(user -> user.asMember(event.getInteraction().getGuildId().get()))
                     .filter(member -> discordUnmute(member, event, reason))
-                    .doOnSuccess(s -> event.reply("Done.").withEphemeral(true).subscribe())
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(member -> databaseEndPunishment(member.getId().asLong(), event, reason));
             logger.info("unmute mono subbed");
         }
     }
 
-    private boolean discordUnban(Guild guild, Long aLong, String reason) {
+    private boolean discordUnban(Guild guild, Long aLong, String reason, SlashCommandEvent event) {
         try {
             guild.unban(Snowflake.of(aLong), reason);
+            Notifier.notifyModOfUnban(event, reason, aLong);
             return true;
         } catch (Exception exception) {
             return false;
@@ -102,6 +102,7 @@ public final class ManualPunishmentEnder {
                 logger.info("Unmuting discord-side");
                 member.removeRole(Snowflake.of(mutedRoleId), reason).block();
                 AuditLogger.addCommandToDB(event, true);
+                Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
                 return true;
             } else {
                 Notifier.notifyCommandUserOfError(event, "userNotMuted");

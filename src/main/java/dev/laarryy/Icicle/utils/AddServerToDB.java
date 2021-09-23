@@ -10,10 +10,11 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
 
-public class AddServerToDB {
+public final class AddServerToDB {
     private static final Logger logger = LogManager.getLogger(Icicle.class);
 
     private AddServerToDB() {}
@@ -47,6 +48,7 @@ public class AddServerToDB {
         guild.getMembers()
                 .map(member -> AddServerToDB.addUserToDatabase(member, guild))
                 .doOnError(logger::error)
+                .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
 
         return true;

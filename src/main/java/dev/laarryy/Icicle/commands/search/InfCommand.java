@@ -7,7 +7,6 @@ import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
-import dev.laarryy.Icicle.utils.LogExecutor;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
@@ -38,6 +37,7 @@ import java.util.regex.Pattern;
 public class InfCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
     private final PermissionChecker permissionChecker = new PermissionChecker();
+    private final Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
             .name("inf")
@@ -276,7 +276,6 @@ public class InfCommand implements Command {
                 && event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().isPresent()) {
 
             String snowflakeString = event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().get().asString();
-            Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
 
             if (!snowflakePattern.matcher(snowflakeString).matches()) {
                 Notifier.notifyCommandUserOfError(event, "malformedInput");
@@ -447,7 +446,7 @@ public class InfCommand implements Command {
 
         rows.add("```");
 
-        StringBuffer stringBuffer = new StringBuffer();
+        StringBuilder stringBuffer = new StringBuilder();
         for (String row: rows) {
             stringBuffer.append(row);
         }

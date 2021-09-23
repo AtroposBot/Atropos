@@ -12,6 +12,7 @@ import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -55,7 +56,10 @@ public class CommandManager {
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
                                 .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
                                 .flatMap(entry -> entry.execute(event))
+                               // .onErrorResume(e -> Mono.empty())
                                 .next()))
+                .subscribeOn(Schedulers.boundedElastic())
+              //  .onErrorResume(e -> Mono.empty())
                 .subscribe();
 
         logger.info("Registered Slash Commands!");

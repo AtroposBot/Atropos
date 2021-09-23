@@ -86,21 +86,35 @@ public final class Notifier {
         }
     }
 
+    public static void notifyModOfUnban(SlashCommandEvent event, String reason, long userId) {
+        event.reply().withEmbeds(unbanEmbed(userId, reason)).subscribe();
+    }
+
+    public static void notifyModOfUnmute(SlashCommandEvent event, String username, String reason) {
+        event.reply().withEmbeds(unmuteEmbed(username, reason)).subscribe();
+    }
+
     public static void notifyCommandUserOfError(SlashCommandEvent event, String errorType) {
         switch (errorType) {
             case "noPermission" -> event.reply().withEmbeds(noPermissionsEmbed()).withEphemeral(true).subscribe();
             case "noBotPermission" -> event.reply().withEmbeds(noBotPermissionsEmbed()).withEphemeral(true).subscribe();
+            case "botRoleTooLow" -> event.reply().withEmbeds(botRoleTooLow()).withEphemeral(true).subscribe();
             case "nullServer" -> event.reply().withEmbeds(nullServerEmbed()).withEphemeral(true).subscribe();
             case "noUser" -> event.reply().withEmbeds(noUserEmbed()).withEphemeral(true).subscribe();
             case "invalidDuration" -> event.reply().withEmbeds(invalidDurationEmbed()).withEphemeral(true).subscribe();
+            case "alreadyAssigned" -> event.reply().withEmbeds(alreadyAssignedEmbed()).withEphemeral(true).subscribe();
+            case "alreadyBlacklisted" -> event.reply().withEmbeds(alreadyBlacklistedEmbed()).withEphemeral(true).subscribe();
             case "noMutedRole" -> event.reply().withEmbeds(noMutedRoleEmbed()).withEphemeral(true).subscribe();
             case "userNotMuted" -> event.reply().withEmbeds(userNotMutedEmbed()).withEphemeral(true).subscribe();
             case "alreadyApplied" -> event.reply().withEmbeds(punishmentAlreadyAppliedEmbed()).withEphemeral(true).subscribe();
             case "404" -> event.reply().withEmbeds(fourOhFourEmbed()).withEphemeral(true).subscribe();
             case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
             case "noResults" -> event.reply().withEmbeds(noResultsEmbed()).subscribe();
+            case "inputTooLong" -> event.reply().withEmbeds(inputTooLongEmbed()).withEphemeral(true).subscribe();
+            case "tooManyEntries" -> event.reply().withEmbeds(tooManyEntriesEmbed()).withEphemeral(true).subscribe();
             case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).subscribe();
             case "invalidChannel" -> event.reply().withEmbeds(invalidChannelEmbed()).subscribe();
+            case "durationTooLong" -> event.reply().withEmbeds(durationTooLongEmbed()).withEphemeral(true).subscribe();
             default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
         }
     }
@@ -150,7 +164,7 @@ public final class Notifier {
                 .build();
     }
 
-    private static EmbedCreateSpec unbanEmbed(String userId, String reason) {
+    private static EmbedCreateSpec unbanEmbed(long userId, String reason) {
         return EmbedCreateSpec.builder()
                 .title("Unbanned User: " + userId)
                 .description("Successfully stored a record of this unban.")
@@ -172,13 +186,12 @@ public final class Notifier {
                 .build();
     }
 
-    private static EmbedCreateSpec unmuteEmbed(String userName, String reason, String caseId) {
+    private static EmbedCreateSpec unmuteEmbed(String userName, String reason) {
         return EmbedCreateSpec.builder()
                 .title("Muted User: " + userName)
-                .description("Successfully stored a record of this mute.")
+                .description("Successfully stored a record of this unmute.")
                 .addField("Reason", reason, false)
                 .color(Color.ENDEAVOUR)
-                .footer("Case ID: " + caseId, "")
                 .timestamp(Instant.now())
                 .build();
     }
@@ -221,10 +234,67 @@ public final class Notifier {
                 .build();
     }
 
+    private static EmbedCreateSpec botRoleTooLow() {
+        return EmbedCreateSpec.builder()
+                .title("Error: Bot Role Too Low")
+                .description("Action aborted because my highest role is too low.")
+                .addField("Information", "In order to take this action, I need to have a higher role than the target.", false)
+                .color(Color.RUBY)
+                .timestamp(Instant.now())
+                .build();
+    }
+
     private static EmbedCreateSpec unableToDmEmbed() {
         return EmbedCreateSpec.builder()
                 .color(Color.RUBY)
                 .title("Unable to DM user.")
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec inputTooLongEmbed() {
+        return EmbedCreateSpec.builder()
+                .title("Error: Input Too Long")
+                .description("The entry must not be 200 characters or longer. It would be best if you aimed for a 2-15 character trigger.")
+                .color(Color.RUBY)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec durationTooLongEmbed() {
+        return EmbedCreateSpec.builder()
+                .title("Error: Duration Too Long")
+                .description("The duration must be no longer than 2 days.")
+                .color(Color.RUBY)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec tooManyEntriesEmbed() {
+        return EmbedCreateSpec.builder()
+                .title("Error: Too Many Entries")
+                .description("You may only set up to 30 entries in the blacklist. If you would like to catch more " +
+                        "things, you can use RegEx (regular expressions) in the entry field to craft comprehensive entries.")
+                .color(Color.RUBY)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec alreadyAssignedEmbed() {
+        return EmbedCreateSpec.builder()
+                .title("Error: Already Assigned")
+                .description("This permission is already assigned to this user in this guild.")
+                .color(Color.RUBY)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec alreadyBlacklistedEmbed() {
+        return EmbedCreateSpec.builder()
+                .title("Error: Already Blacklisted")
+                .description("This entry is already blacklisted in this guild.")
+                .color(Color.RUBY)
+                .timestamp(Instant.now())
                 .build();
     }
 
@@ -284,6 +354,9 @@ public final class Notifier {
                         "its permission granted to you. If you have been given permission, this action was denied due" +
                         " to its target having higher roles than you, or being an administrator while you are not. ",
                         true)
+                .footer("To gain permission, have an administrator run `/permission add <role> <command name>` for a " +
+                        "role that you have. If you have permission to run the `/permission` command, you can run " +
+                        "`/permission list <role>` to see a role's permissions", "")
                 .timestamp(Instant.now())
                 .build();
     }
