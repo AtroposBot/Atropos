@@ -9,6 +9,7 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
@@ -281,7 +282,9 @@ public class AuditCommand implements Command {
             }
             String auditId = c.getInteger("id").toString();
             Instant date = Instant.ofEpochMilli(c.getDate());
-            String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
+            String dateString = TimestampMaker.getTimestampFromEpochSecond(
+                    date.getEpochSecond(),
+                    TimestampMaker.TimestampType.RELATIVE);
             String preview;
             if (c.getCommandContents().length() > 4) {
                 preview = "/" + c.getCommandContents().substring(0,4) + "...";

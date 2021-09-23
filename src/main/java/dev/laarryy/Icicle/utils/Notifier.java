@@ -13,7 +13,6 @@ import org.apache.logging.log4j.Logger;
 
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 
 public final class Notifier {
@@ -29,7 +28,9 @@ public final class Notifier {
         String punishmentEnd;
         if (punishment.getEndDate() != null) {
             Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
-            punishmentEnd = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG).withZone(ZoneId.systemDefault()).format(endDate);
+            punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
+                    endDate.getEpochSecond(),
+                    TimestampMaker.TimestampType.RELATIVE);
         } else {
             punishmentEnd = "Never.";
         }
@@ -59,7 +60,9 @@ public final class Notifier {
         String punishmentEnd;
         if (punishment.getEndDate() != null) {
             Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
-            punishmentEnd = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.LONG).withZone(ZoneId.systemDefault()).format(endDate);
+            punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
+                    endDate.getEpochSecond(),
+                    TimestampMaker.TimestampType.RELATIVE);
         } else {
             punishmentEnd = "No end date provided.";
         }
