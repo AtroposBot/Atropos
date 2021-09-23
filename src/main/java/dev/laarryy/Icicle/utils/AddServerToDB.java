@@ -51,6 +51,8 @@ public final class AddServerToDB {
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
 
+        AddServerToDB.addUserToDatabase(guild.getSelfMember().block(), guild);
+
         return true;
     }
 
