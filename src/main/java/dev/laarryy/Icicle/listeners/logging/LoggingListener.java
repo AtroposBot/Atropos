@@ -77,7 +77,12 @@ public final class LoggingListener {
             return Mono.empty();
         }
 
-        TextChannel channel = guild.getChannelById(Snowflake.of(logChannelSnowflake)).ofType(TextChannel.class).block();
+        TextChannel channel;
+        try {
+            channel = guild.getChannelById(Snowflake.of(logChannelSnowflake)).ofType(TextChannel.class).block();
+        } catch (Exception e) {
+            return Mono.empty();
+        }
 
         if (channel == null) {
             logger.info("channel isn't a textchannel/is null");

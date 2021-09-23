@@ -43,7 +43,7 @@ public class CommandManager {
 
             client.getRestClient().getApplicationService()
                     .createGuildApplicationCommand(applicationId, Snowflake.asLong("724025797861572639"), command.getRequest())
-                    .block();
+                    .subscribe();
 
             logger.info("Command registration with discord sent.");
         }
@@ -56,10 +56,10 @@ public class CommandManager {
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
                                 .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
                                 .flatMap(entry -> entry.execute(event))
-                               // .onErrorResume(e -> Mono.empty())
+                                .onErrorResume(e -> logger::error)
                                 .next()))
                 .subscribeOn(Schedulers.boundedElastic())
-              //  .onErrorResume(e -> Mono.empty())
+                .onErrorResume(e -> logger::error)
                 .subscribe();
 
         logger.info("Registered Slash Commands!");
