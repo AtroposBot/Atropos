@@ -6,7 +6,9 @@ import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
 import dev.laarryy.Icicle.models.guilds.permissions.Permission;
 import dev.laarryy.Icicle.models.joins.ServerUser;
 import dev.laarryy.Icicle.models.users.DiscordUser;
+import dev.laarryy.Icicle.models.users.Punishment;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
+import dev.laarryy.Icicle.utils.AddServerToDB;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import dev.laarryy.Icicle.utils.TimestampMaker;
@@ -64,6 +66,12 @@ public class InfoCommand implements Command {
                             .required(false)
                             .build())
                     .build())
+            .addOption(ApplicationCommandOptionData.builder()
+                    .name("bot")
+                    .description("Show information about this bot")
+                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .required(false)
+                    .build())
             .defaultPermission(true)
             .build();
 
@@ -103,7 +111,66 @@ public class InfoCommand implements Command {
             return Mono.empty();
         }
 
+        if (event.getOption("bot").isPresent()) {
+            sendBotInfo(event);
+            return Mono.empty();
+        }
+
         return Mono.empty();
+    }
+
+    private void sendBotInfo(SlashCommandEvent event) {
+        DatabaseLoader.openConnectionIfClosed();
+        Guild guild = event.getInteraction().getGuild().block();
+        Member selfMember = guild.getSelfMember().block();
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
+
+        if (discordUser == null) {
+            Notifier.notifyCommandUserOfError(event, "noUser");
+            return;
+        }
+
+        if (discordServer == null) {
+            Notifier.notifyCommandUserOfError(event, "nullServer");
+        }
+
+        ServerUser serverUser = ServerUser.findFirst("user_id = ? and server_id = ?", discordUser.getUserId(), discordServer.getServerId());
+
+        if (serverUser == null) {
+            serverUser = ServerUser.create("user_id", discordUser.getUserId(), "server_id", discordServer.getServerId(), "date", Instant.now().toEpochMilli());
+            serverUser.save();
+            serverUser.refresh();
+        }
+
+        List<Punishment> punishments = Punishment.find("server_id = ?", discordServer.getServerId());
+
+        int punishmentsSize;
+        if (punishments == null || punishments.isEmpty()) {
+            punishmentsSize = 0;
+        } else {
+            punishmentsSize = punishments.size();
+        }
+
+        String botInfo = EmojiManager.getDeveloperBadge() + " **My Information**\n" +
+                "First Joined: " + TimestampMaker.getTimestampFromEpochSecond(
+                        Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(),
+                        TimestampMaker.TimestampType.LONG_DATETIME) + "\n" +
+                "Infractions Handled: `" + punishmentsSize + "`\n\n" +
+                // TODO: Name, URL, and Guide
+                "**[Usage Guide](https://google.com)**\n" +
+                "**[Support Discord](https://discord.gg/JH4ssYAQFU)**\n";
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(selfMember.getUsername())
+                .color(Color.ENDEAVOUR)
+                .thumbnail(selfMember.getAvatarUrl())
+                .description(botInfo)
+                .footer("For individual command information, start typing /<command>", "")
+                .timestamp(Instant.now())
+                .build();
+
+        event.reply().withEmbeds(embed).block();
     }
 
     private void sendUserInfo(SlashCommandEvent event) {
@@ -142,19 +209,34 @@ public class InfoCommand implements Command {
 
         Guild guild = event.getInteraction().getGuild().block();
 
+        Member member;
+        try {
+            member = guild.getMemberById(userIdSnowflake).block();
+        } catch (Exception e) {
+            member = null;
+        }
+
         DatabaseLoader.openConnectionIfClosed();
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake.asLong());
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
         if (discordUser == null) {
-            Notifier.notifyCommandUserOfError(event, "noUser");
-            return;
+            if (member != null) {
+                AddServerToDB.addUserToDatabase(guild.getMemberById(userIdSnowflake).block(), guild);
+                discordUser.refresh();
+            } else {
+                Notifier.notifyCommandUserOfError(event, "noUser");
+                return;
+            }
         }
 
         ServerUser serverUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId());
 
         if (serverUser == null) {
-            Notifier.notifyCommandUserOfError(event, "noUser");
+            ServerUser sU2 = ServerUser.create("server_id", discordServer.getServerId(), "user_id", discordUser.getUserId(), "date", Instant.now().toEpochMilli());
+            sU2.save();
+            sU2.refresh();
+            serverUser = sU2;
             return;
         }
 
@@ -253,7 +335,8 @@ public class InfoCommand implements Command {
         sb.append(EmojiManager.getUserIdentification()).append(" **Members**\n");
         sb.append("When I first joined: `").append(properties.getMembersOnFirstJoin()).append("`\n");
         if (guild.getMaxMembers().isPresent()) {
-            sb.append("Now: `").append(guild.getMemberCount()).append("/").append(guild.getMaxMembers().getAsInt()).append("`");
+            sb.append("Now: `").append(guild.getMemberCount()).append("`\n");
+            sb.append("Max Members: `").append(guild.getMaxMembers().getAsInt()).append("`");
         } else {
             sb.append("Now: `").append(guild.getMemberCount()).append("`");
         }
