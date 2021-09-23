@@ -191,7 +191,7 @@ public final class Notifier {
 
     private static EmbedCreateSpec unmuteEmbed(String userName, String reason) {
         return EmbedCreateSpec.builder()
-                .title("Muted User: " + userName)
+                .title("Unmuted User: " + userName)
                 .description("Successfully stored a record of this unmute.")
                 .addField("Reason", reason, false)
                 .color(Color.ENDEAVOUR)

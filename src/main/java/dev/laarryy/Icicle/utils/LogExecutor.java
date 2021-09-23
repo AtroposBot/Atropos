@@ -168,7 +168,7 @@ public final class LogExecutor {
                 .addField("Punished User", "`" + punishedUser.getUserIdSnowflake() + "`:<@" + punishedUser.getUserIdSnowflake() + ">", false)
                 .addField("Punishing User", "`" + punishingUser.getUserIdSnowflake() + "`:<@" + punishingUser.getUserIdSnowflake() + ">", false)
                 .addField("Reason", punishment.getPunishmentMessage(), false)
-                .footer("For more information, run /inf search case <id>", "")
+                .footer("For more information, run /inf search case " + punishment.getPunishmentId(), "")
                 .timestamp(Instant.now())
                 .build();
 

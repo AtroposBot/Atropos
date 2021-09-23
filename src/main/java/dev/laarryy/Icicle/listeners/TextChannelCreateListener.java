@@ -14,14 +14,14 @@ import reactor.core.scheduler.Schedulers;
 public class TextChannelCreateListener {
 
     @EventListener
-    private Mono<Void> on(TextChannelCreateEvent event) {
+    public Mono<Void> on(TextChannelCreateEvent event) {
         DatabaseLoader.openConnectionIfClosed();
         Guild guild = event.getChannel().getGuild().block();
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
         if (discordServerProperties != null && discordServerProperties.getMutedRoleSnowflake() != null && discordServerProperties.getMutedRoleSnowflake() != 0) {
             guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake()))
                     .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe(role -> event.getChannel().edit((TextChannelEditSpec.builder()
+                    .flatMap(role -> event.getChannel().edit((TextChannelEditSpec.builder()
                             .addPermissionOverwrite(PermissionOverwrite.forRole(role.getId(),
                                     PermissionSet.none(),
                                     PermissionSet.of(
@@ -29,7 +29,8 @@ public class TextChannelCreateListener {
                                             discord4j.rest.util.Permission.ADD_REACTIONS,
                                             discord4j.rest.util.Permission.CHANGE_NICKNAME
                                     )))
-                            .build())));
+                            .build())))
+                    .subscribe();
 
         }
         return Mono.empty();
