@@ -20,13 +20,19 @@ import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.ApplicationCommandOptionType;
 import discord4j.rest.util.Color;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
+
+import java.time.Instant;
 
 public class StopJoinsCommand implements Command {
 
     LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
     PermissionChecker permissionChecker = new PermissionChecker();
+    private final Logger logger = LogManager.getLogger(this);
+
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
             .name("stopjoins")
@@ -50,29 +56,14 @@ public class StopJoinsCommand implements Command {
         return this.request;
     }
 
-    @EventListener
-    public Mono<Void> on(MemberJoinEvent event) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) {
-            return Mono.empty();
-        }
-
-        DatabaseLoader.openConnectionIfClosed();
-
-        DiscordServerProperties discordServerProperties = cache.get(guild.getId().asLong());
-
-        if (discordServerProperties.getStopJoins()) {
-            event.getMember().kick("Automatically kicked as part of anti-raid measures.");
-        }
-        return Mono.empty();
-    }
-
     public Mono<Void> execute(SlashCommandEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) {
             Notifier.notifyCommandUserOfError(event, "nullServer");
             return Mono.empty();
         }
+
+        DatabaseLoader.openConnectionIfClosed();
 
         Permission permission = Permission.findOrCreateIt("permission", request.name());
         permission.save();
@@ -88,12 +79,27 @@ public class StopJoinsCommand implements Command {
         DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
 
         if (event.getOption("enable").isPresent()) {
+
+            if (serverProperties.getStopJoins()) {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title("Already Enabled")
+                        .description("Already kicking all new joins")
+                        .color(Color.RUBY)
+                        .timestamp(Instant.now())
+                        .build();
+
+                event.reply().withEmbeds(embed).subscribe();
+                return Mono.empty();
+            }
             serverProperties.setStopJoins(true);
             serverProperties.save();
+            serverProperties.refresh();
+            cache.invalidate(guild.getId().asLong());
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Success")
                     .description("Enabled the prevention of all joins.")
                     .color(Color.ENDEAVOUR)
+                    .timestamp(Instant.now())
                     .build();
 
             AuditLogger.addCommandToDB(event, true);
@@ -102,12 +108,26 @@ public class StopJoinsCommand implements Command {
         }
 
         if (event.getOption("disable").isPresent()) {
+            if (!serverProperties.getStopJoins()) {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title("Already Disabled")
+                        .description("Already not kicking all new joins.")
+                        .color(Color.RUBY)
+                        .timestamp(Instant.now())
+                        .build();
+
+                event.reply().withEmbeds(embed).subscribe();
+                return Mono.empty();
+            }
             serverProperties.setStopJoins(false);
             serverProperties.save();
+            serverProperties.refresh();
+            cache.invalidate(guild.getId().asLong());
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Success")
                     .description("Disabled the prevention of all joins.")
                     .color(Color.ENDEAVOUR)
+                    .timestamp(Instant.now())
                     .build();
 
             AuditLogger.addCommandToDB(event, true);

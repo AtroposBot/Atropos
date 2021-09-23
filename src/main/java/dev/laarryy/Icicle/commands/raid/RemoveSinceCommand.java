@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.commands.raid;
 
+import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.config.EmojiManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
 import dev.laarryy.Icicle.models.joins.ServerUser;
@@ -30,7 +31,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 
-public class RemoveSinceCommand {
+public class RemoveSinceCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
     private final PermissionChecker permissionChecker = new PermissionChecker();
 
@@ -59,7 +60,7 @@ public class RemoveSinceCommand {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("duration")
                     .description("Remove newly joined users since how long ago? Format: 1mo2w3d13h45m")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOptionType.STRING.getValue())
                     .required(false)
                     .build())
             .defaultPermission(true)
@@ -87,7 +88,7 @@ public class RemoveSinceCommand {
         }
 
         DatabaseLoader.openConnectionIfClosed();
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild);
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
         if (discordServer == null) {
             Notifier.notifyCommandUserOfError(event, "nullServer");
             return Mono.empty();
@@ -178,6 +179,14 @@ public class RemoveSinceCommand {
         long userId = discordUser.getUserIdSnowflake();
         Set<Snowflake> snowflakeSet = guild.getMemberById(Snowflake.of(userId)).block().getRoleIds();
 
+        if (guild.getSelfMember().block().getId().asLong() == userId) {
+            return "";
+        }
+
+        if (guild.getMemberById(Snowflake.of(userId)).block().isBot()) {
+            return "";
+        }
+
         if (!snowflakeSet.isEmpty() && !member.hasHigherRoles(snowflakeSet).block()) {
             return "none";
         }
@@ -190,10 +199,19 @@ public class RemoveSinceCommand {
         DatabaseLoader.openConnectionIfClosed();
         DiscordUser discordUser = DiscordUser.findFirst("id = ?", serverUser.getUserId());
         long userId = discordUser.getUserIdSnowflake();
+
+        if (guild.getSelfMember().block().getId().asLong() == userId) {
+            return "";
+        }
+
+        if (guild.getMemberById(Snowflake.of(userId)).block().isBot()) {
+            return "";
+        }
+
         Set<Snowflake> snowflakeSet = guild.getMemberById(Snowflake.of(userId)).block().getRoleIds();
 
         if (!snowflakeSet.isEmpty() && !member.hasHigherRoles(snowflakeSet).block()) {
-            return "none";
+            return "";
         }
 
         guild.kick(Snowflake.of(userId), "Kicked as part of anti-raid measures").block();
