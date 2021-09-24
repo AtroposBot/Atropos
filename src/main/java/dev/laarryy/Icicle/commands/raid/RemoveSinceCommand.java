@@ -11,6 +11,7 @@ import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.DurationParser;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.SlashCommandChecks;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
@@ -72,24 +73,11 @@ public class RemoveSinceCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
-        if (event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
+        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
             return Mono.empty();
         }
 
         Guild guild = event.getInteraction().getGuild().block();
-
-        DatabaseLoader.openConnectionIfClosed();
-        Permission permission = Permission.findOrCreateIt("permission", request.name());
-        permission.save();
-        permission.refresh();
-        int permissionId = permission.getInteger("id");
-
-        if (!permissionChecker.checkPermission(guild, event.getInteraction().getUser(), permissionId)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.empty();
-        }
 
         if (event.getOption("type").isEmpty()
                 || event.getOption("duration").isEmpty()

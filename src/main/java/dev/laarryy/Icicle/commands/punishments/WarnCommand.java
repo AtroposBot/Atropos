@@ -45,7 +45,6 @@ public class WarnCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
-        Icicle icicle = new Icicle();
         PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
         Mono.just(event)

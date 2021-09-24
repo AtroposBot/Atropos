@@ -9,6 +9,7 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.User;
+import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
 import org.apache.logging.log4j.LogManager;
@@ -18,11 +19,15 @@ import reactor.core.publisher.Flux;
 public final class PermissionChecker {
     private final Logger logger = LogManager.getLogger(this);
 
-    public boolean checkPermission(Guild guild, User user, int permissionId) {
+    public boolean checkPermission(Guild guild, User user, ApplicationCommandRequest request) {
         Snowflake guildIdSnowflake = guild.getId();
         Member member = user.asMember(guildIdSnowflake).block();
 
         DatabaseLoader.openConnectionIfClosed();
+        dev.laarryy.Icicle.models.guilds.permissions.Permission permission = dev.laarryy.Icicle.models.guilds.permissions.Permission.findOrCreateIt("permission", request.name());
+        permission.save();
+        permission.refresh();
+        int permissionId = permission.getInteger("id");
 
         logger.info("Permission check in progress - permission ID = " + permissionId);
         int guildId = DiscordServer.findFirst("server_id = ?", guildIdSnowflake.asLong()).getInteger("id");
@@ -120,4 +125,5 @@ public final class PermissionChecker {
         }
         return true;
     }
+
 }

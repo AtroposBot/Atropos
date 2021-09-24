@@ -9,6 +9,7 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.SlashCommandChecks;
 import dev.laarryy.Icicle.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
@@ -117,6 +118,10 @@ public class InfCommand implements Command {
 
     public Mono<Void> execute(SlashCommandEvent event) {
 
+        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
+            return Mono.empty();
+        }
+
         if (event.getOption("update").isPresent()) {
             Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::updatePunishment);
             return Mono.empty();
@@ -142,8 +147,6 @@ public class InfCommand implements Command {
 
     private void recentCases(SlashCommandEvent event) {
 
-        if (ensureGuildAndPermissionCheck(event)) return;
-
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
         Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
@@ -167,8 +170,6 @@ public class InfCommand implements Command {
 
 
     private void searchForCase(SlashCommandEvent event) {
-
-        if (ensureGuildAndPermissionCheck(event)) return;
 
         if (event.getOption("search").get().getOption("case").isEmpty() || event.getOption("search").get().getOption("case").get().getOption("caseid").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
@@ -261,8 +262,6 @@ public class InfCommand implements Command {
 
     private void searchPunishments(SlashCommandEvent event) {
 
-        if (ensureGuildAndPermissionCheck(event)) return;
-
         long userIdSnowflake;
         if (event.getOption("search").get().getOption("user").isPresent()
                 && event.getOption("search").get().getOption("user").get().getOption("snowflake").isPresent()
@@ -335,21 +334,7 @@ public class InfCommand implements Command {
     }
 
     private void updatePunishment(SlashCommandEvent event) {
-
-        if (event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            AuditLogger.addCommandToDB(event, false);
-            return;
-        }
-
         DatabaseLoader.openConnectionIfClosed();
-
-        int permissionID = Permission.findOrCreateIt("permission", "infupdate").getInteger("id");
-        if (!permissionChecker.checkPermission(event.getInteraction().getGuild().block(), event.getInteraction().getUser(), permissionID)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
-            return;
-        }
 
         if (event.getOption("update").get().getOption("id").isPresent()
                 && event.getOption("update").get().getOption("id").get().getValue().isPresent()) {
@@ -393,24 +378,6 @@ public class InfCommand implements Command {
             AuditLogger.addCommandToDB(event, true);
             event.reply().withEmbeds(spec).subscribe();
         }
-    }
-
-    private boolean ensureGuildAndPermissionCheck(SlashCommandEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
-
-        if (event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            AuditLogger.addCommandToDB(event, false);
-            return true;
-        }
-
-        int permissionID = Permission.findOrCreateIt("permission", "infsearch").getInteger("id");
-        if (!permissionChecker.checkPermission(event.getInteraction().getGuild().block(), event.getInteraction().getUser(), permissionID)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
-            return true;
-        }
-        return false;
     }
 
     private String createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList, SlashCommandEvent event) {

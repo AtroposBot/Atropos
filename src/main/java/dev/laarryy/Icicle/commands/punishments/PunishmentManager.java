@@ -64,14 +64,9 @@ public class PunishmentManager {
 
         DatabaseLoader.openConnectionIfClosed();
 
-        Permission permission = Permission.findOrCreateIt("permission", request.name());
-        permission.save();
-        permission.refresh();
-        int permissionId = permission.getInteger("id");
-
         // Make sure user has permission to do this, or stop here - PermissionId 69 is the wildcard/everything permission.
 
-        if (!permissionChecker.checkPermission(guild, user, permissionId)) {
+        if (!permissionChecker.checkPermission(guild, user, request)) {
             Notifier.notifyCommandUserOfError(event, "noPermission");
             return Mono.empty();
         }

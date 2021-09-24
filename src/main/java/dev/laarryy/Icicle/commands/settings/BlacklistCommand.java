@@ -11,6 +11,7 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.SlashCommandChecks;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
@@ -105,20 +106,12 @@ public class BlacklistCommand implements Command {
 
     public Mono<Void> execute(SlashCommandEvent event) {
 
-        DatabaseLoader.openConnectionIfClosed();
-
-        Permission permission = Permission.findOrCreateIt("permission", request.name());
-        permission.save();
-        permission.refresh();
-        int permissionId = permission.getInteger("id");
+        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
+            return Mono.empty();
+        }
 
         Guild guild = event.getInteraction().getGuild().block();
         User user = event.getInteraction().getUser();
-
-        if (!permissionChecker.checkPermission(guild, user, permissionId)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            return Mono.empty();
-        }
 
         if (event.getOption("add").isPresent()) {
             addBlacklistEntry(event);
@@ -144,11 +137,6 @@ public class BlacklistCommand implements Command {
     }
 
     private void getBlacklistEntryInfo(SlashCommandEvent event) {
-        if (event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            return;
-        }
-
         Guild guild = event.getInteraction().getGuild().block();
         long guildId = guild.getId().asLong();
 
@@ -194,11 +182,6 @@ public class BlacklistCommand implements Command {
     }
 
     private void listBlacklistEntries(SlashCommandEvent event) {
-        if (event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            return;
-        }
-
         Guild guild = event.getInteraction().getGuild().block();
         long guildId = guild.getId().asLong();
 
@@ -255,11 +238,6 @@ public class BlacklistCommand implements Command {
     }
 
     private void removeBlacklistEntry(SlashCommandEvent event) {
-        if (event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            return;
-        }
-
         if (event.getOption("remove").get().getOption("id").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             return;
@@ -304,11 +282,6 @@ public class BlacklistCommand implements Command {
     }
 
     private void addBlacklistEntry(SlashCommandEvent event) {
-        if (event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            return;
-        }
-
         if (event.getOption("add").get().getOption("type").get().getValue().isEmpty() || event.getOption("add").get().getOption("entry").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);

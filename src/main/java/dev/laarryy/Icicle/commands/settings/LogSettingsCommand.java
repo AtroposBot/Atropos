@@ -1,5 +1,6 @@
 package dev.laarryy.Icicle.commands.settings;
 
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.managers.PropertiesCacheManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServerProperties;
@@ -7,6 +8,7 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AddServerToDB;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
+import dev.laarryy.Icicle.utils.SlashCommandChecks;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.channel.MessageChannel;
@@ -98,6 +100,10 @@ public class LogSettingsCommand implements Command {
 
     public Mono<Void> execute(SlashCommandEvent event) {
 
+        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
+            return Mono.empty();
+        }
+
         if (event.getOption("info").isPresent()) {
             logSettingsInfo(event);
             return Mono.empty();
@@ -125,12 +131,6 @@ public class LogSettingsCommand implements Command {
         }
 
         Guild guild = event.getInteraction().getGuild().block();
-        if (guild == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            AuditLogger.addCommandToDB(event, false);
-            return;
-        }
-
         DatabaseLoader.openConnectionIfClosed();
 
         PropertiesCacheManager.getManager().getPropertiesCache().invalidate(guild.getId().asLong());
@@ -257,13 +257,25 @@ public class LogSettingsCommand implements Command {
     }
 
     private void logSettingsInfo(SlashCommandEvent event) {
-
         Guild guild = event.getInteraction().getGuild().block();
-        if (guild == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            AuditLogger.addCommandToDB(event, false);
-            return;
+
+        DatabaseLoader.openConnectionIfClosed();
+        LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
+        StringBuilder sb = new StringBuilder();
+        sb.append("**Current Log Settings:**\n");
+        if (cache.get(guild.getId().asLong()).getMemberLogChannelSnowflake() != null) {
+            sb.append("Member Log: `").append(cache.get(guild.getId().asLong()).getMemberLogChannelSnowflake()).append("`\n");
         }
+        if (cache.get(guild.getId().asLong()).getMessageLogChannelSnowflake() != null) {
+            sb.append("Message Log: `").append(cache.get(guild.getId().asLong()).getMessageLogChannelSnowflake()).append("`\n");
+        }
+        if (cache.get(guild.getId().asLong()).getGuildLogChannelSnowflake() != null) {
+            sb.append("Guild Log: `").append(cache.get(guild.getId().asLong()).getGuildLogChannelSnowflake()).append("`\n");
+        }
+        if (cache.get(guild.getId().asLong()).getPunishmentLogChannelSnowflake() != null) {
+            sb.append("Punishment Log: `").append(cache.get(guild.getId().asLong()).getPunishmentLogChannelSnowflake()).append("`\n");
+        }
+        String settings = sb.toString();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Log Settings")
@@ -289,6 +301,7 @@ public class LogSettingsCommand implements Command {
                 .addField("Command Use", "Run `/logsettings set <type>` in the channel you'd like to set as a logging channel. " +
                         "Run `/logsettings unset <type>` in the channel you'd like to unset as a logging channel.",
                         false)
+                .addField("\u200B", settings, false)
                 .build();
 
         event.reply().withEmbeds(embed).withEphemeral(true).subscribe();

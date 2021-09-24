@@ -11,6 +11,7 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AddServerToDB;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.SlashCommandChecks;
 import dev.laarryy.Icicle.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
@@ -80,19 +81,7 @@ public class InfoCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
-
-        DatabaseLoader.openConnectionIfClosed();
-
-        User user = event.getInteraction().getUser();
-        Permission permission = Permission.findOrCreateIt("permission", request.name());
-        permission.save();
-        permission.refresh();
-        int permissionId = permission.getInteger("id");
-        Guild guild = event.getInteraction().getGuild().block();
-
-
-        if (!permissionChecker.checkPermission(guild, user, permissionId)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
+        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
             return Mono.empty();
         }
 
@@ -329,8 +318,6 @@ public class InfoCommand implements Command {
                 }
             }
         }
-        logger.info("3 done");
-
 
         sb.append(EmojiManager.getUserIdentification()).append(" **Members**\n");
         sb.append("When I first joined: `").append(properties.getMembersOnFirstJoin()).append("`\n");
@@ -340,8 +327,6 @@ public class InfoCommand implements Command {
         } else {
             sb.append("Now: `").append(guild.getMemberCount()).append("`");
         }
-        logger.info("4 done");
-
 
         String description = sb.toString();
 
@@ -365,8 +350,6 @@ public class InfoCommand implements Command {
                 "` Text Channels\n" +
                 EmojiManager.getServerRole() + " `" +
                 guild.getRoles().count().block().toString() + "` Roles\n";
-        logger.info("5 done");
-
 
         String field2Content = EmojiManager.getStageChannel() + " `" +
                 guild.getChannels()
@@ -386,8 +369,6 @@ public class InfoCommand implements Command {
                         .count()
                         .block().toString() +
                 "` News Channels\n";
-        logger.info("6 done");
-
 
         String field3Content;
         StringBuilder f3 = new StringBuilder();
@@ -401,8 +382,6 @@ public class InfoCommand implements Command {
             f3.append("\n");
         }
         field3Content = f3.toString();
-
-        logger.info("done with strings doing me a send");
 
         Member requester = event.getInteraction().getMember().get();
         String username = requester.getUsername() + "#" + requester.getDiscriminator();
