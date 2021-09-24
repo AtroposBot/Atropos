@@ -146,11 +146,9 @@ public class AuditCommand implements Command {
         }
 
         Long userSnowflake = discordUser.getUserIdSnowflake();
-        String date = DateTimeFormatter
-                .ofLocalizedDateTime(FormatStyle.FULL)
-                .withLocale(Locale.CANADA)
-                .withZone(ZoneId.systemDefault())
-                .format(Instant.ofEpochMilli(commandUse.getDate()));
+        String date = TimestampMaker.getTimestampFromEpochSecond(
+                Instant.ofEpochMilli(commandUse.getDate()).getEpochSecond(),
+                TimestampMaker.TimestampType.LONG_DATETIME);
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
@@ -181,7 +179,7 @@ public class AuditCommand implements Command {
 
         EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
-                .title("Recent Cases")
+                .title("Recent Commands")
                 .description(results)
                 .footer("For detailed information, run /audit id <id>", "")
                 .timestamp(Instant.now())
@@ -262,7 +260,7 @@ public class AuditCommand implements Command {
     private String createFormattedAuditTable(LazyList<CommandUse> commandUseLazyList, SlashCommandEvent event) {
         List<String> rows = new ArrayList<>();
         rows.add("```");
-        rows.add(String.format("| %-6s | %-12s | %-18s | %-8s |\n", "ID", "Date", "User", "Preview"));
+        rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", "ID", "Date", "User", "Preview"));
         rows.add("---------------------------------------------------------\n");
 
         for (CommandUse c : commandUseLazyList) {
@@ -277,20 +275,18 @@ public class AuditCommand implements Command {
                 username = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
             } else username = userId;
 
-            if (username.length() > 18) {
-                username = username.substring(0,15) + "...";
+            if (username.length() > 15) {
+                username = username.substring(0,13) + "...";
             }
             String auditId = c.getInteger("id").toString();
             Instant date = Instant.ofEpochMilli(c.getDate());
-            String dateString = TimestampMaker.getTimestampFromEpochSecond(
-                    date.getEpochSecond(),
-                    TimestampMaker.TimestampType.RELATIVE);
+            String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
             String preview;
-            if (c.getCommandContents().length() > 4) {
-                preview = "/" + c.getCommandContents().substring(0,4) + "...";
+            if (c.getCommandContents().length() > 7) {
+                preview = "/" + c.getCommandContents().substring(0,7) + "...";
             } else preview = c.getCommandContents();
 
-            rows.add(String.format("| %-6s | %-12s | %-18s | %-8s |\n", auditId, dateString, username, preview));
+            rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
         }
 
         rows.add("```");

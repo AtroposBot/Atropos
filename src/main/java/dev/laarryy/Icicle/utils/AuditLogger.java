@@ -35,28 +35,32 @@ public final class AuditLogger {
         int commandUserId = user.getUserId();
 
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(event.getCommandName() + " ");
+        StringBuilder sb = new StringBuilder();
+
+        stringBuffer.append(event.getCommandName());
 
         Flux.fromIterable(event.getOptions())
-                .subscribe(option -> stringBuffer.append(generateOptionString(option)));
-
-        String commandContent = stringBuffer.toString();
-
-        CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", commandContent, "date", Instant.now().toEpochMilli(), "success", success);
-        commandUse.save();
-
+                .map(option -> stringBuffer.append(generateOptionString(option, sb)))
+                .doOnComplete(() -> {
+                    String commandContent = stringBuffer.toString();
+                    CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", commandContent, "date", Instant.now().toEpochMilli(), "success", success);
+                    commandUse.save();
+                })
+                .subscribe();
     }
 
-    public static String generateOptionString(ApplicationCommandInteractionOption option) {
-        StringBuffer sb = new StringBuffer();
-        if (option.getType().name().equals("SUB_COMMAND_GROUP") || option.getType().name().equals("SUB_COMMAND")) {
+    public static String generateOptionString(ApplicationCommandInteractionOption option, StringBuilder sb) {
 
-            option.getOptions().forEach(op -> {
-                sb.append(op.getName() + " " + generateOptionString(op));
-            });
+        if (option.getValue().isEmpty()) {
+            sb.append(" ").append(option.getName());
         } else {
-            String valuedOption = option.getName() + ":" + stringifyOptionValue(option) + " ";
-            sb.append(valuedOption);
+            sb.append(" ").append(option.getName()).append(":").append(stringifyOptionValue(option));
+        }
+
+        if (!option.getOptions().isEmpty()) {
+            for (ApplicationCommandInteractionOption opt : option.getOptions()) {
+                generateOptionString(opt, sb);
+            }
         }
         return sb.toString();
     }
@@ -67,15 +71,15 @@ public final class AuditLogger {
             return "";
         }
 
-        switch (option.getType().name()) {
-            case "USER": return option.getValue().get().asUser().block().getId().asString();
-            case "STRING": return option.getValue().get().asString();
-            case "INTEGER": return String.valueOf(option.getValue().get().asLong());
-            case "BOOLEAN": return String.valueOf(option.getValue().get().asBoolean());
-            case "CHANNEL": return option.getValue().get().asChannel().block().getId().asString();
-            case "ROLE": return option.getValue().get().asRole().block().getId().asString();
-            case "MENTIONABLE": return option.getValue().get().toString();
-            default: return option.getName();
-        }
+        return switch (option.getType().name()) {
+            case "USER" -> option.getValue().get().asUser().block().getId().asString();
+            case "STRING" -> option.getValue().get().asString();
+            case "INTEGER" -> String.valueOf(option.getValue().get().asLong());
+            case "BOOLEAN" -> String.valueOf(option.getValue().get().asBoolean());
+            case "CHANNEL" -> option.getValue().get().asChannel().block().getId().asString();
+            case "ROLE" -> option.getValue().get().asRole().block().getId().asString();
+            case "MENTIONABLE" -> option.getValue().get().toString();
+            default -> option.getName();
+        };
     }
 }

@@ -1,4 +1,4 @@
-Configutation:
+Configuration:
   status: warn
   name: Iciclogger
   properties:
@@ -12,12 +12,12 @@ Configutation:
       PatternLayout:
         Pattern: "ICICLOG: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1}:%M:%L - %msg%n"
     File:
-      name: File_Appender
+      name: File
       fileName: ${log-path}/logfile.log
       PatternLayout:
         pattern: "ICICLOG: [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n"
     RollingFile:
-      - name: RollingFile_Appender
+      - name: RollingFile
         fileName: ${log-path}/rollingfile.log
         filePattern: "logs/archive/rollingfile.log.%d{yyyy-MM-dd-hh-mm}.gz"
         PatternLayout:
@@ -26,7 +26,7 @@ Configutation:
           SizeBasedTriggeringPolicy:
             size: 1 MB
         DefaultRollOverStrategy:
-          max: 30
+          max: 2000
 
   Loggers:
     Root:
@@ -37,5 +37,6 @@ Configutation:
       - name: dev.laarryy.Icicle
         level: info
         AppenderRef:
-          - ref: File_Appender
-            level: error
+          - ref: File
+          - ref: RollingFile
+            level: info
