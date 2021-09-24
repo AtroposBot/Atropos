@@ -11,7 +11,6 @@ import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
 import dev.laarryy.Icicle.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
-import discord4j.common.util.TimestampFormat;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -418,7 +417,7 @@ public class InfCommand implements Command {
         Guild guild = event.getInteraction().getGuild().block();
         List<String> rows = new ArrayList<>();
         rows.add("```");
-        rows.add(String.format("| %-6s | %-5s | %-17s | %-17s |\n", "ID", "Type", "Mod", "Target"));
+        rows.add(String.format("| %-6s | %-8s | %-16s | %-15s |\n", "ID", "Type", "Mod", "Target"));
         rows.add("----------------------------------------------------------\n");
 
         for (Punishment p : punishmentLazyList) {
@@ -435,7 +434,7 @@ public class InfCommand implements Command {
             String punisher = getUsernameDefaultID(punishingUser, guild);
 
             String type = p.getPunishmentType();
-            rows.add(String.format("| %-6s | %-5s | %-17s | %-17s |\n", id, type, punisher, punished));
+            rows.add(String.format("| %-6s | %-8s | %-16s | %-15s |\n", id, type, punisher, punished));
         }
 
         rows.add("```");
@@ -451,12 +450,16 @@ public class InfCommand implements Command {
     private String getUsernameDefaultID(DiscordUser user, Guild guild) {
         Long userId = user.getUserIdSnowflake();
         String usernameOrId;
-        if (guild.getMemberById(Snowflake.of(userId)).block() != null) {
-            usernameOrId = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
-        } else usernameOrId = String.valueOf(userId);
+        try {
+            if (guild.getMemberById(Snowflake.of(userId)).block() != null) {
+                usernameOrId = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
+            } else usernameOrId = String.valueOf(userId);
+        } catch (Exception ignored) {
+            usernameOrId = userId.toString();
+        }
 
-        if (usernameOrId.length() > 17) {
-            usernameOrId = usernameOrId.substring(0,14) + "...";
+        if (usernameOrId.length() > 15) {
+            usernameOrId = usernameOrId.substring(0,12) + "...";
         }
 
         return usernameOrId;

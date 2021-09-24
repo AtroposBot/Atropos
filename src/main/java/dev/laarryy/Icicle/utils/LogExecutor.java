@@ -89,10 +89,12 @@ public final class LogExecutor {
         }
 
         StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(event.getCommandName() + " ");
+        stringBuffer.append(event.getCommandName());
+
+        StringBuilder sb = new StringBuilder();
 
         Flux.fromIterable(event.getOptions())
-                .subscribe(option -> stringBuffer.append(AuditLogger.generateOptionString(option)));
+                .subscribe(option -> stringBuffer.append(AuditLogger.generateOptionString(option, sb)));
 
         String commandContent = stringBuffer.toString();
 
