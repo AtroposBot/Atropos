@@ -14,6 +14,7 @@ import reactor.core.scheduler.Schedulers;
 
 public class BanCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
+    private final PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
             .name("ban")
@@ -56,9 +57,6 @@ public class BanCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
-
-        Icicle icicle = new Icicle();
-        PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
         Mono.just(event)
                 .subscribeOn(Schedulers.boundedElastic())

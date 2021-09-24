@@ -464,13 +464,21 @@ public final class LogExecutor {
 
         List<Message> messageList = event.getMessages().stream().toList();
         String messages;
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("```\n");
-        for (Message message : messageList) {
-            stringBuilder.append(message.getId().asLong()).append(" | ").append(message.getContent(), 0, 17).append("...\n");
+        if (messageList.isEmpty()) {
+            messages = "Unknown";
+        } else {
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append("```\n");
+            for (Message message : messageList) {
+                if (message.getContent().length() > 17) {
+                    stringBuilder.append(message.getId().asLong()).append(" | ").append(message.getContent(), 0, 17).append("...\n");
+                } else {
+                    stringBuilder.append(message.getId().asLong()).append(" | ").append(message.getContent()).append("\n");
+                }
+            }
+            stringBuilder.append("```");
+            messages = stringBuilder.toString();
         }
-        stringBuilder.append("```");
-        messages = stringBuilder.toString();
 
         if (messages.length() >= 4000) {
             messages = messages.substring(0, 3950) + "...```\n [Content too large, has been limited]";

@@ -6,15 +6,18 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.SlashCommandChecks;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.TextChannel;
+import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.ApplicationCommandOptionType;
+import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
@@ -43,25 +46,18 @@ public class PruneCommand implements Command {
         return this.request;
     }
 
-    //TODO: Make this work and refactor permission checking everywhere.
+    //TODO: Make this work
 
     public Mono<Void> execute(SlashCommandEvent event) {
-        if (event.getInteraction().getChannel().block() == null || event.getInteraction().getGuild().block() == null) {
+        if (event.getInteraction().getChannel().block() == null) {
             return Mono.empty();
         }
 
-        DatabaseLoader.openConnectionIfClosed();
-        Permission permission = Permission.findOrCreateIt("permission", request.name());
-        permission.save();
-        permission.refresh();
-        int permissionId = permission.getInteger("id");
+        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
+            return Mono.empty();
+        }
+
         Guild guild = event.getInteraction().getGuild().block();
-
-        if (!permissionChecker.checkPermission(guild, event.getInteraction().getUser(), permissionId)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.empty();
-        }
 
         if (event.getOption("number").isEmpty() || event.getOption("number").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
@@ -69,6 +65,13 @@ public class PruneCommand implements Command {
         }
 
         long number = event.getOption("number").get().getValue().get().asLong();
+
+        if (number < 2 || number > 100) {
+            Notifier.notifyCommandUserOfError(event, "malformedInput");
+            AuditLogger.addCommandToDB(event, false);
+            return Mono.empty();
+        }
+
         TextChannel channel = event.getInteraction().getChannel().ofType(TextChannel.class).block();
         channel.getMessagesBefore(Snowflake.of(Instant.now()))
                 .take(number)
@@ -76,6 +79,17 @@ public class PruneCommand implements Command {
                 .transform(channel::bulkDelete)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title("Success")
+                .color(Color.SEA_GREEN)
+                .description("Pruned `" + number + "` messages.")
+                .timestamp(Instant.now())
+                .build();
+
+        event.reply().withEmbeds(embed).subscribe();
+
+        AuditLogger.addCommandToDB(event, true);
 
         return Mono.empty();
     }

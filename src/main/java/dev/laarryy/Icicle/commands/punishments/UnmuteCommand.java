@@ -1,7 +1,12 @@
 package dev.laarryy.Icicle.commands.punishments;
 
 import dev.laarryy.Icicle.commands.Command;
+import dev.laarryy.Icicle.utils.AuditLogger;
+import dev.laarryy.Icicle.utils.Notifier;
+import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.SlashCommandChecks;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.object.entity.Guild;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.ApplicationCommandOptionType;
@@ -12,6 +17,8 @@ import reactor.core.scheduler.Schedulers;
 
 public class UnmuteCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
+    private final ManualPunishmentEnder manualPunishmentEnder = new ManualPunishmentEnder();
+    private final PermissionChecker permissionChecker = new PermissionChecker();
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
             .name("unmute")
@@ -36,7 +43,10 @@ public class UnmuteCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
-        ManualPunishmentEnder manualPunishmentEnder = new ManualPunishmentEnder();
+        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
+            return Mono.empty();
+        }
+
         Mono.just(event)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(event1 -> manualPunishmentEnder.endPunishment(event));

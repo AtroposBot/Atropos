@@ -9,6 +9,7 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.SlashCommandChecks;
 import dev.laarryy.Icicle.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
@@ -86,6 +87,10 @@ public class AuditCommand implements Command {
 
     public Mono<Void> execute(SlashCommandEvent event) {
 
+        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
+            return Mono.empty();
+        }
+
         if (event.getOption("user").isPresent()) {
             Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::searchAuditByUser);
             return Mono.empty();
@@ -104,7 +109,6 @@ public class AuditCommand implements Command {
     }
 
     private void searchAuditById(SlashCommandEvent event) {
-        if (ensureGuildAndPermissionCheck(event)) return;
 
         if (event.getOption("id").get().getOption("number").isEmpty() || event.getOption("id").get().getOption("number").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
@@ -166,8 +170,6 @@ public class AuditCommand implements Command {
 
     private void recentAudits(SlashCommandEvent event) {
 
-        if (ensureGuildAndPermissionCheck(event)) return;
-
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
         Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
@@ -189,8 +191,6 @@ public class AuditCommand implements Command {
     }
 
     private void searchAuditByUser(SlashCommandEvent event) {
-
-        if (ensureGuildAndPermissionCheck(event)) return;
 
         long userIdSnowflake;
         if (event.getOption("user").get().getOption("snowflake").isPresent()) {
@@ -297,23 +297,5 @@ public class AuditCommand implements Command {
         }
 
         return stringBuffer.toString();
-    }
-
-    private boolean ensureGuildAndPermissionCheck(SlashCommandEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
-
-        if (event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            AuditLogger.addCommandToDB(event, false);
-            return true;
-        }
-
-        int permissionID = Permission.findOrCreateIt("permission", "audit").getInteger("id");
-        if (!permissionChecker.checkPermission(event.getInteraction().getGuild().block(), event.getInteraction().getUser(), permissionID)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
-            return true;
-        }
-        return false;
     }
 }

@@ -8,6 +8,7 @@ import dev.laarryy.Icicle.storage.DatabaseLoader;
 import dev.laarryy.Icicle.utils.AuditLogger;
 import dev.laarryy.Icicle.utils.Notifier;
 import dev.laarryy.Icicle.utils.PermissionChecker;
+import dev.laarryy.Icicle.utils.SlashCommandChecks;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import discord4j.core.object.entity.Guild;
@@ -121,6 +122,11 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
+                    .name("/prune")
+                    .value("prune")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
                     .name("/info")
                     .value("info")
                     .build(),
@@ -192,8 +198,11 @@ public class PermissionCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
+        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
+            return Mono.empty();
+        }
 
-        if (event.getInteraction().getGuild().block() == null || event.getInteraction().getMember().isEmpty()) {
+        if (event.getInteraction().getMember().isEmpty()) {
             return Mono.empty();
         }
 
@@ -205,17 +214,6 @@ public class PermissionCommand implements Command {
         Long userIdSnowflake = member.getId().asLong();
 
         DatabaseLoader.openConnectionIfClosed();
-
-        Permission permission = Permission.findOrCreateIt("permission", request.name());
-        permission.save();
-        permission.refresh();
-        int permissionId = permission.getInteger("id");
-
-
-        if (!permissionChecker.checkIsAdministrator(guild, member) && !permissionChecker.checkPermission(guild, user, permissionId)) {
-            event.reply("You must be an administrator (or be given permission by an administrator) to use this command.").withEphemeral(true).subscribe();
-            return Mono.empty();
-        }
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildIdSnowflake);
         int serverId;

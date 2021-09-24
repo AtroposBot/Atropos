@@ -14,6 +14,7 @@ import reactor.core.scheduler.Schedulers;
 
 public class CaseCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
+    private final PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
             .name("case")
@@ -38,8 +39,7 @@ public class CaseCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
-        Icicle icicle = new Icicle();
-        PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
+
         Mono.just(event)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(event1 -> punishmentManager.doPunishment(request, event1));
