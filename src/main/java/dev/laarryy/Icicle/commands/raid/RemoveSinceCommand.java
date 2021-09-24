@@ -3,6 +3,7 @@ package dev.laarryy.Icicle.commands.raid;
 import dev.laarryy.Icicle.commands.Command;
 import dev.laarryy.Icicle.config.EmojiManager;
 import dev.laarryy.Icicle.models.guilds.DiscordServer;
+import dev.laarryy.Icicle.models.guilds.permissions.Permission;
 import dev.laarryy.Icicle.models.joins.ServerUser;
 import dev.laarryy.Icicle.models.users.DiscordUser;
 import dev.laarryy.Icicle.storage.DatabaseLoader;
@@ -77,6 +78,18 @@ public class RemoveSinceCommand implements Command {
         }
 
         Guild guild = event.getInteraction().getGuild().block();
+
+        DatabaseLoader.openConnectionIfClosed();
+        Permission permission = Permission.findOrCreateIt("permission", request.name());
+        permission.save();
+        permission.refresh();
+        int permissionId = permission.getInteger("id");
+
+        if (!permissionChecker.checkPermission(guild, event.getInteraction().getUser(), permissionId)) {
+            Notifier.notifyCommandUserOfError(event, "noPermission");
+            AuditLogger.addCommandToDB(event, false);
+            return Mono.empty();
+        }
 
         if (event.getOption("type").isEmpty()
                 || event.getOption("duration").isEmpty()
