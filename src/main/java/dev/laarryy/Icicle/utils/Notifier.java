@@ -6,6 +6,7 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import org.apache.logging.log4j.LogManager;
@@ -20,7 +21,11 @@ public final class Notifier {
     private final Logger logger = LogManager.getLogger(this);
 
     public static void notifyPunisherForcebanComplete(SlashCommandEvent event) {
-        event.reply("Forceban completed successfully.").withEphemeral(true).subscribe();
+        event.getInteractionResponse().editInitialResponse(
+                        WebhookMessageEditRequest
+                                .builder()
+                                .addEmbed(forceBanCompleteEmbed().asRequest())
+                                .build()).block();
     }
 
     public static void notifyPunisher(SlashCommandEvent event, Punishment punishment, String punishmentReason) {
@@ -163,6 +168,14 @@ public final class Notifier {
                 .addField("Ends", punishmentEnd, false)
                 .color(Color.ENDEAVOUR)
                 .footer("Case ID: " + caseId, "")
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec forceBanCompleteEmbed() {
+        return EmbedCreateSpec.builder()
+                .title("Forceban Complete")
+                .color(Color.SEA_GREEN)
                 .timestamp(Instant.now())
                 .build();
     }

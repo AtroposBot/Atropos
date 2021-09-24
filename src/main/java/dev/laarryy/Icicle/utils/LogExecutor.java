@@ -1288,7 +1288,7 @@ public final class LogExecutor {
                 .block();
 
         String responsibleUserId = getAuditResponsibleUser(userBan);
-        String targetUserId = getAuditTargetUser(userBan);
+        long targetUserId = event.getUser().getId().asLong();
         String reason;
         if (userBan.getReason().isPresent()) {
             reason = userBan.getReason().get();
@@ -1319,7 +1319,7 @@ public final class LogExecutor {
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserBan() + " User Banned")
                 .color(Color.JAZZBERRY_JAM)
-                .addField("Punished User", targetUserId, false)
+                .addField("Punished User", String.valueOf(targetUserId), false)
                 .addField("Punishing User", responsibleUserId, false)
                 .timestamp(Instant.now())
                 .build();
