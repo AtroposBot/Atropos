@@ -19,12 +19,12 @@ import reactor.core.publisher.Flux;
 public final class PermissionChecker {
     private final Logger logger = LogManager.getLogger(this);
 
-    public boolean checkPermission(Guild guild, User user, ApplicationCommandRequest request) {
+    public boolean checkPermission(Guild guild, User user, String requestName) {
         Snowflake guildIdSnowflake = guild.getId();
         Member member = user.asMember(guildIdSnowflake).block();
 
         DatabaseLoader.openConnectionIfClosed();
-        dev.laarryy.Eris.models.guilds.permissions.Permission permission = dev.laarryy.Eris.models.guilds.permissions.Permission.findOrCreateIt("permission", request.name());
+        dev.laarryy.Eris.models.guilds.permissions.Permission permission = dev.laarryy.Eris.models.guilds.permissions.Permission.findOrCreateIt("permission", requestName);
         permission.save();
         permission.refresh();
         int permissionId = permission.getInteger("id");

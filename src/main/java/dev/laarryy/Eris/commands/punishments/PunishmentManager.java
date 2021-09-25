@@ -65,7 +65,7 @@ public class PunishmentManager {
 
         // Make sure user has permission to do this, or stop here - PermissionId 69 is the wildcard/everything permission.
 
-        if (!permissionChecker.checkPermission(guild, user, request)) {
+        if (!permissionChecker.checkPermission(guild, user, request.name())) {
             Notifier.notifyCommandUserOfError(event, "noPermission");
             return Mono.empty();
         }
