@@ -36,7 +36,8 @@ public final class PermissionChecker {
                 guild.getRoles()
                         .filter(role ->
                                 (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null)
-                                        || (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null))
+                                        || (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null)
+                                        || role.getPermissions().contains(Permission.ADMINISTRATOR))
                         .any(role ->
                                 member.getRoles()
                                         .any(memberRole -> memberRole.equals(role))
@@ -108,7 +109,7 @@ public final class PermissionChecker {
                 Permission.MANAGE_MESSAGES,
                 Permission.READ_MESSAGE_HISTORY,
                 Permission.MUTE_MEMBERS
-                );
+        );
 
         PermissionSet selfPermissions = self.getBasePermissions().block();
         if (selfPermissions == null) {

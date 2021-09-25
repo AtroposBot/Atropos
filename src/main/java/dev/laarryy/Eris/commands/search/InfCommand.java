@@ -145,6 +145,7 @@ public class InfCommand implements Command {
     }
 
     private void recentCases(SlashCommandEvent event) {
+        DatabaseLoader.openConnectionIfClosed();
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 

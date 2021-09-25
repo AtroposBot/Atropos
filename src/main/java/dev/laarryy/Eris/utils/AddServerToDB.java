@@ -10,9 +10,11 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
+import java.util.List;
 
 public final class AddServerToDB {
     private static final Logger logger = LogManager.getLogger(Eris.class);
@@ -45,11 +47,18 @@ public final class AddServerToDB {
             properties.save();
         }
 
-        guild.getMembers()
-                .map(member -> this.addUserToDatabase(member, guild))
-                .doOnError(logger::error)
-                .subscribeOn(Schedulers.boundedElastic())
-                .subscribe();
+        List<Member> unregisteredMembers = guild.getMembers()
+                .filter(member -> {
+                    DatabaseLoader.openConnectionIfClosed();
+                    return DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong()) == null;
+                })
+                .collectList().block();
+
+        if (unregisteredMembers != null && !unregisteredMembers.isEmpty()) {
+            Flux.fromIterable(unregisteredMembers)
+                    .map(member -> addUserToDatabase(member, guild))
+                    .subscribe();
+        }
 
         this.addUserToDatabase(guild.getSelfMember().block(), guild);
 
@@ -57,10 +66,6 @@ public final class AddServerToDB {
     }
 
     public boolean addUserToDatabase(Member member, Guild guild) {
-
-        if (member.isBot()) {
-            return false;
-        }
 
         DatabaseLoader.openConnectionIfClosed();
 

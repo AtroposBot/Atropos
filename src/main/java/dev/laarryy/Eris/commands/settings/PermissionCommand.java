@@ -47,6 +47,16 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
+                    .name("/modmail")
+                    .value("modmail")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/modmailsettings")
+                    .value("modmailsettings")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
                     .name("/warn")
                     .value("warn")
                     .build(),

@@ -72,44 +72,20 @@ public class DiscordServerProperties extends Model {
         set("punishment_log_channel_snowflake", punishmentLogChannelSnowflake);
     }
 
-    public boolean getMessageLogEnabled() {
-        return getBoolean("message_log_enabled");
-    }
-
-    public void setMessageLogEnabled(boolean messageLogEnabled) {
-        setBoolean("message_log_enabled", messageLogEnabled);
-    }
-
-    public boolean getMemberLogEnabled() {
-        return getBoolean("member_log_enabled");
-    }
-
-    public void setMemberLogEnabled(boolean memberLogEnabled) {
-        setBoolean("member_log_enabled", memberLogEnabled);
-    }
-
-    public boolean getGuildLogEnabled() {
-        return getBoolean("guild_log_enabled");
-    }
-
-    public void setGuildLogEnabled(boolean guildLogEnabled) {
-        setBoolean("guild_log_enabled", guildLogEnabled);
-    }
-
-    public boolean getPunishmentLogEnabled() {
-        return getBoolean("punishment_log_enabled");
-    }
-
-    public void setPunishmentLogEnabled(boolean punishmentLogEnabled) {
-        setBoolean("punishment_log_enabled", punishmentLogEnabled);
-    }
-
     public Long getMutedRoleSnowflake() {
         return getLong("muted_role_id_snowflake");
     }
 
     public void setMutedRoleSnowflake(Long mutedRoleSnowflake) {
         setLong("muted_role_id_snowflake", mutedRoleSnowflake);
+    }
+
+    public Long getModMailChannelSnowflake() {
+        return getLong("modmail_channel_snowflake");
+    }
+
+    public void setModMailChannelSnowflake(Long modMailChannelSnowflake) {
+        setLong("modmail_channel_snowflake", modMailChannelSnowflake);
     }
 
     public boolean getStopJoins() {
