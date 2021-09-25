@@ -43,17 +43,14 @@ public class PruneCommand implements Command {
         return this.request;
     }
 
-    //TODO: Make this work
-
     public Mono<Void> execute(SlashCommandEvent event) {
-        if (event.getInteraction().getChannel().block() == null) {
-            return Mono.empty();
-        }
-
         if (!SlashCommandChecks.slashCommandChecks(event, request)) {
             return Mono.empty();
         }
 
+        if (event.getInteraction().getChannel().block() == null) {
+            return Mono.empty();
+        }
         Guild guild = event.getInteraction().getGuild().block();
 
         if (event.getOption("number").isEmpty() || event.getOption("number").get().getValue().isEmpty()) {

@@ -36,7 +36,7 @@ public class ClientManager {
                     .setSharding(ShardingStrategy.recommended())
                     .setInitialPresence(shardInfo -> ClientPresence.of(Status.DO_NOT_DISTURB,
                             ClientActivity.watching("Shard " + (shardInfo.getIndex() + 1) + " of " + shardInfo.getCount()
-                                    + " | DM for Modmail | Last Activated "
+                                    + " | Last Activated "
                                     + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(Instant.now())))
                     )
                     .login()

@@ -18,6 +18,7 @@ import dev.laarryy.Eris.storage.DatabaseLoader;
 import dev.laarryy.Eris.utils.AddServerToDB;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
+import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -83,12 +84,15 @@ public class Eris {
 
         DatabaseLoader.openConnectionIfClosed();
 
-        // TODO: Shelf this to only when joining servers. Don't need to do it every startup.
-        client.getGuilds()
+        List<Guild> unregisteredGuilds = client.getGuilds()
                 .filter(guild -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) != null)
-                .map(addServerToDB::addServerToDatabase)
-                .doOnError(logger::error)
-                .subscribe();
+                .collectList().block();
+
+        for (Guild guild: unregisteredGuilds) {
+            logger.info("Registering + " + guild.getId().asLong());
+            addServerToDB.addServerToDatabase(guild);
+        }
+
 
         client.onDisconnect().block();
     }
