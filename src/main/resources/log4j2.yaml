@@ -34,7 +34,7 @@ Configuration:
       AppenderRef:
         ref: Console
     Logger:
-      - name: dev.laarryy.Icicle
+      - name: dev.laarryy.Eris
         level: info
         AppenderRef:
           - ref: File
