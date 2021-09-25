@@ -89,7 +89,7 @@ public class ModMailCommand implements Command {
                     .timestamp(Instant.now())
                     .build();
 
-            event.reply().withEmbeds(embed2).block();
+            event.reply().withEmbeds(embed2).withEphemeral(true).block();
         } else {
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Unable To Send ModMail")

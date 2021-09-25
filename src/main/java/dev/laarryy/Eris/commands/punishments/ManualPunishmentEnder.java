@@ -71,7 +71,7 @@ public final class ManualPunishmentEnder {
 
     private boolean discordUnban(Guild guild, Long aLong, String reason, SlashCommandEvent event) {
         try {
-            guild.unban(Snowflake.of(aLong), reason);
+            guild.unban(Snowflake.of(aLong), reason).block();
             Notifier.notifyModOfUnban(event, reason, aLong);
             return true;
         } catch (Exception exception) {
