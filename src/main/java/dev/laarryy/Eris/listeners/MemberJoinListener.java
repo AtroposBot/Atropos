@@ -8,11 +8,13 @@ import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.object.entity.Guild;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.units.qual.A;
 import reactor.core.publisher.Mono;
 
 public class MemberJoinListener {
     LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
     private final Logger logger = LogManager.getLogger(this);
+    private final AddServerToDB addServerToDB = new AddServerToDB();
 
 
     @EventListener
@@ -29,7 +31,7 @@ public class MemberJoinListener {
             return Mono.empty();
         }
 
-        AddServerToDB.addUserToDatabase(event.getMember(), event.getGuild().block());
+        addServerToDB.addUserToDatabase(event.getMember(), event.getGuild().block());
         return Mono.empty();
     }
 }

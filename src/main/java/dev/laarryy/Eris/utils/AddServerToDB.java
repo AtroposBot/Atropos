@@ -17,9 +17,9 @@ import java.time.Instant;
 public final class AddServerToDB {
     private static final Logger logger = LogManager.getLogger(Eris.class);
 
-    private AddServerToDB() {}
+    public AddServerToDB() {}
 
-    public static boolean addServerToDatabase(Guild guild) {
+    public boolean addServerToDatabase(Guild guild) {
 
         long serverIdSnowflake = guild.getId().asLong();
         DatabaseLoader.openConnectionIfClosed();
@@ -46,17 +46,17 @@ public final class AddServerToDB {
         }
 
         guild.getMembers()
-                .map(member -> AddServerToDB.addUserToDatabase(member, guild))
+                .map(member -> this.addUserToDatabase(member, guild))
                 .doOnError(logger::error)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
 
-        AddServerToDB.addUserToDatabase(guild.getSelfMember().block(), guild);
+        this.addUserToDatabase(guild.getSelfMember().block(), guild);
 
         return true;
     }
 
-    public static boolean addUserToDatabase(Member member, Guild guild) {
+    public boolean addUserToDatabase(Member member, Guild guild) {
 
         if (member.isBot()) {
             return false;

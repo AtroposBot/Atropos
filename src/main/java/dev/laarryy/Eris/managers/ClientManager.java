@@ -35,8 +35,8 @@ public class ClientManager {
                     .setEnabledIntents(IntentSet.all())
                     .setSharding(ShardingStrategy.recommended())
                     .setInitialPresence(shardInfo -> ClientPresence.of(Status.DO_NOT_DISTURB,
-                            ClientActivity.playing("Shard " + (shardInfo.getIndex() + 1) + " of " + shardInfo.getCount()
-                                    + " | DM for ModMail | Last Activated "
+                            ClientActivity.watching("Shard " + (shardInfo.getIndex() + 1) + " of " + shardInfo.getCount()
+                                    + " | DM for Modmail | Last Activated "
                                     + DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(Instant.now())))
                     )
                     .login()

@@ -37,6 +37,7 @@ public class InfoCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
     private final Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
     private final PermissionChecker permissionChecker = new PermissionChecker();
+    private final AddServerToDB addServerToDB = new AddServerToDB();
 
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
@@ -210,7 +211,7 @@ public class InfoCommand implements Command {
 
         if (discordUser == null) {
             if (member != null) {
-                AddServerToDB.addUserToDatabase(guild.getMemberById(userIdSnowflake).block(), guild);
+                addServerToDB.addUserToDatabase(guild.getMemberById(userIdSnowflake).block(), guild);
                 discordUser.refresh();
             } else {
                 Notifier.notifyCommandUserOfError(event, "noUser");
