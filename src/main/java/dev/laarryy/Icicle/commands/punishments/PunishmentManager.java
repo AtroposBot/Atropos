@@ -283,7 +283,7 @@ public class PunishmentManager {
         }
     }
 
-    private void discordMuteUser(Guild guild, Long userIdSnowflake, DiscordServerProperties discordServerProperties) {
+    public void discordMuteUser(Guild guild, Long userIdSnowflake, DiscordServerProperties discordServerProperties) {
         DatabaseLoader.openConnectionIfClosed();
         if (discordServerProperties.getMutedRoleSnowflake() == null || discordServerProperties.getMutedRoleSnowflake() == 0) {
             logger.info("Creating missing Muted role.");
