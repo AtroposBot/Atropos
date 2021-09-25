@@ -28,6 +28,7 @@ import java.util.List;
 
 public class LogSettingsCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
+    private AddServerToDB addServerToDB = new AddServerToDB();
 
     List<ApplicationCommandOptionChoiceData> optionChoiceDataList = List.of(
             ApplicationCommandOptionChoiceData
@@ -148,7 +149,7 @@ public class LogSettingsCommand implements Command {
         }
 
         if (serverProperties == null) {
-            AddServerToDB.addServerToDatabase(guild);
+            addServerToDB.addServerToDatabase(guild);
             Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
             return;
@@ -208,7 +209,7 @@ public class LogSettingsCommand implements Command {
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
         if (serverProperties == null) {
-            AddServerToDB.addServerToDatabase(guild);
+            addServerToDB.addServerToDatabase(guild);
             Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
             return;

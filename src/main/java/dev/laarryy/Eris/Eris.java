@@ -11,6 +11,7 @@ import dev.laarryy.Eris.managers.ListenerManager;
 import dev.laarryy.Eris.managers.PropertiesCacheManager;
 import dev.laarryy.Eris.managers.PunishmentManagerManager;
 import dev.laarryy.Eris.models.guilds.Blacklist;
+import dev.laarryy.Eris.models.guilds.DiscordServer;
 import dev.laarryy.Eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.Eris.services.AutoPunishmentEnder;
 import dev.laarryy.Eris.storage.DatabaseLoader;
@@ -20,6 +21,7 @@ import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.entity.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.units.qual.A;
 
 import java.util.List;
 
@@ -75,12 +77,16 @@ public class Eris {
         PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
         AutoPunishmentEnder autoPunishmentEnder = new AutoPunishmentEnder(client);
+        AddServerToDB addServerToDB = new AddServerToDB();
 
         // Register all guilds and users in them to database
 
+        DatabaseLoader.openConnectionIfClosed();
+
         // TODO: Shelf this to only when joining servers. Don't need to do it every startup.
         client.getGuilds()
-                .map(AddServerToDB::addServerToDatabase)
+                .filter(guild -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) != null)
+                .map(addServerToDB::addServerToDatabase)
                 .doOnError(logger::error)
                 .subscribe();
 
