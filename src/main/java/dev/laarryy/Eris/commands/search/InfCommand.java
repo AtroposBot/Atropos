@@ -117,12 +117,15 @@ public class InfCommand implements Command {
 
     public Mono<Void> execute(SlashCommandEvent event) {
 
-        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
+        if (event.getOption("update").isPresent()) {
+            if (!permissionChecker.checkPermission(event.getInteraction().getGuild().block(), event.getInteraction().getUser(), "infupdate")) {
+                return Mono.empty();
+            }
+            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::updatePunishment);
             return Mono.empty();
         }
 
-        if (event.getOption("update").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::updatePunishment);
+        if (!SlashCommandChecks.slashCommandChecks(event, "infsearch")) {
             return Mono.empty();
         }
 

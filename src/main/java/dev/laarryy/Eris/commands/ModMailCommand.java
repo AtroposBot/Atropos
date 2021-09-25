@@ -45,7 +45,7 @@ public class ModMailCommand implements Command {
     }
 
     public Mono<Void> execute(SlashCommandEvent event) {
-        if (!SlashCommandChecks.slashCommandChecks(event, request)) {
+        if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
             return Mono.empty();
         }
 

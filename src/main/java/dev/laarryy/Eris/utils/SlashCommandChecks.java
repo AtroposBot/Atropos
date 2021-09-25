@@ -6,7 +6,7 @@ import discord4j.discordjson.json.ApplicationCommandRequest;
 
 public class SlashCommandChecks {
 
-    public static boolean slashCommandChecks(SlashCommandEvent event, ApplicationCommandRequest request) {
+    public static boolean slashCommandChecks(SlashCommandEvent event, String requestName) {
         PermissionChecker permissionChecker = new PermissionChecker();
 
         if (event.getInteraction().getGuild().block() == null) {
@@ -16,7 +16,7 @@ public class SlashCommandChecks {
 
         Guild guild = event.getInteraction().getGuild().block();
 
-        if (!permissionChecker.checkPermission(guild, event.getInteraction().getUser(), request)) {
+        if (!permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName)) {
             if (permissionChecker.checkIsAdministrator(guild, event.getInteraction().getMember().get())) {
                 return true;
             }
