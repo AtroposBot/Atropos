@@ -40,6 +40,7 @@ public final class PermissionChecker {
                                         || role.getPermissions().contains(Permission.ADMINISTRATOR))
                         .any(role ->
                                 member.getRoles()
+                                        .mergeWith(guild.getEveryoneRole())
                                         .any(memberRole -> memberRole.equals(role))
                                         .block())
                         .block();

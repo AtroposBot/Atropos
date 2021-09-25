@@ -368,9 +368,9 @@ public final class Notifier {
                         "its permission granted to you. If you have been given permission, this action was denied due" +
                         " to its target having higher roles than you, or being an administrator while you are not. ",
                         true)
-                .footer("To gain permission, have an administrator run `/permission add <role> <command name>` for a " +
-                        "role that you have. If you have permission to run the `/permission` command, you can run " +
-                        "`/permission list <role>` to see a role's permissions", "")
+                .footer("To gain permission, have an administrator run /permission add <role> <command name> for a " +
+                        "role that you have. If you have permission to run the /permission command, you can run " +
+                        "/permission list <role> to see a role's permissions", "")
                 .timestamp(Instant.now())
                 .build();
     }

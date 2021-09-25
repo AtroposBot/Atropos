@@ -42,7 +42,7 @@ public class CommandManager {
             logger.info("Beginning command registration with discord: " + command.getRequest().name());
 
             client.getRestClient().getApplicationService()
-                    .createGlobalApplicationCommand(applicationId, command.getRequest())
+                    .createGuildApplicationCommand(applicationId, Long.parseLong("724025797861572639"), command.getRequest())
                     .subscribe();
 
             logger.info("Command registration with discord sent.");

@@ -217,15 +217,6 @@ public class PunishmentManager {
             } else messageDeleteDays = (int) preliminaryResult;
         } else messageDeleteDays = 0;
 
-        // Actually do the punishment, discord-side. Nothing to do for warnings or cases.
-
-        DatabaseLoader.openConnectionIfClosed();
-        switch (punishment.getPunishmentType()) {
-            case "mute" -> discordMuteUser(guild, punished.getUserIdSnowflake(), DiscordServerProperties.findFirst("server_id = ?", discordServer.getServerId()));
-            case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
-            case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
-        }
-
         // DMing the punished user, notifying the punishing user that it's worked out
 
         if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
@@ -234,14 +225,19 @@ public class PunishmentManager {
             punishment.save();
             punishment.refresh();
 
-            Notifier.notifyPunisher(event, punishment, punishmentReason);
             Notifier.notifyPunished(event, punishment, punishmentReason);
-        } else {
-            Notifier.notifyPunisher(event, punishment, punishmentReason);
         }
 
-        loggingListener.onPunishment(event, punishment);
+        // Actually do the punishment, discord-side. Nothing to do for warnings or cases.
 
+        DatabaseLoader.openConnectionIfClosed();
+        switch (punishment.getPunishmentType()) {
+            case "mute" -> discordMuteUser(guild, punished.getUserIdSnowflake(), DiscordServerProperties.findFirst("server_id = ?", discordServer.getServerId()));
+            case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
+            case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
+        }
+        loggingListener.onPunishment(event, punishment);
+        Notifier.notifyPunisher(event, punishment, punishmentReason);
         AuditLogger.addCommandToDB(event, true);
 
         return Mono.empty();

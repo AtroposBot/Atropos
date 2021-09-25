@@ -234,13 +234,14 @@ public class PermissionCommand implements Command {
             return Mono.empty();
         }
 
-        if (event.getOption("list").isPresent()) {
-            if (event.getOption("list").get().getValue().isEmpty()) {
+        if (event.getOption("list").isPresent() && event.getOption("list").get().getOption("role").isPresent()) {
+            if (event.getOption("list").get().getOption("role").get().getValue().isEmpty()) {
                 Notifier.notifyCommandUserOfError(event, "malformedInput");
+                logger.info("it's empty, jeff.");
                 AuditLogger.addCommandToDB(event, false);
                 return Mono.empty();
             }
-            Role role = event.getOption("list").get().getValue().get().asRole().block();
+            Role role = event.getOption("list").get().getOption("role").get().getValue().get().asRole().block();
             long roleId = role.getId().asLong();
             String roleName = role.getName();
             String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
