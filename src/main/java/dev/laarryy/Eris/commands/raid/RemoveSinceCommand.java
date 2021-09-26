@@ -191,7 +191,7 @@ public class RemoveSinceCommand implements Command {
             return "none";
         }
 
-        guild.ban(Snowflake.of(userId)).withReason("Banned as part of anti-raid measures").block();
+        guild.ban(Snowflake.of(userId)).withReason("Banned as part of anti-raid measures").withDeleteMessageDays(2).block();
         return String.valueOf(userId);
     }
 
