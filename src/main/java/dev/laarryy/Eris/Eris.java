@@ -85,7 +85,7 @@ public class Eris {
         DatabaseLoader.openConnectionIfClosed();
 
         List<Guild> unregisteredGuilds = client.getGuilds()
-                .filter(guild -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) != null)
+                .filter(guild -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) == null)
                 .collectList().block();
 
         for (Guild guild: unregisteredGuilds) {

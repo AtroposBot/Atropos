@@ -673,6 +673,10 @@ public final class LogExecutor {
 
         String memberInfo;
         if (event.getOld().isPresent()) {
+            if (event.getOld().get().getNickname().get().equals(event.getMember().block().getNickname())
+                    && event.getOld().get().getRoles().collectList().block().equals(event.getMember().block().getRoles().collectList().block())) {
+                return;
+            }
             memberInfo = getMemberDiff(event.getOld().get().asFullMember().block(), event.getMember().block());
         } else {
             memberInfo = getMemberInformation(event.getMember().block());

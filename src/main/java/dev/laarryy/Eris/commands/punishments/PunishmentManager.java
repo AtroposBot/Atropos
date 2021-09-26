@@ -217,10 +217,16 @@ public class PunishmentManager {
             } else messageDeleteDays = (int) preliminaryResult;
         } else messageDeleteDays = 0;
 
+        if (event.getCommandName().equals("case")) {
+            punishment.setDMed(false);
+            punishment.save();
+            punishment.refresh();
+        }
+
         // DMing the punished user, notifying the punishing user that it's worked out
 
         if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
-                || (event.getOption("dm").isEmpty() || event.getCommandName().equals("case"))) {
+                || (event.getOption("dm").isEmpty())) {
             punishment.setDMed(true);
             punishment.save();
             punishment.refresh();

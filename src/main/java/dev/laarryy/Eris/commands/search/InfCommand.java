@@ -157,7 +157,10 @@ public class InfCommand implements Command {
 
         LazyList<Punishment> punishmentLazyList = Punishment.where("server_id = ? and punishment_date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
 
-        String results = createFormattedPunishmentsTable(punishmentLazyList, event);
+        String results = createFormattedRecentPunishmentsTable(punishmentLazyList, event);
+
+        String output = "Recent Cases:\n" + results + "\n" + "For detailed information, run `/inf search case <id>`";
+
 
         EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
@@ -166,7 +169,8 @@ public class InfCommand implements Command {
                 .footer("For detailed information, run /inf search case <id>", "")
                 .timestamp(Instant.now())
                 .build();
-        event.reply().withEmbeds(resultEmbed).subscribe();
+
+        event.reply(output).subscribe();
         AuditLogger.addCommandToDB(event, true);
     }
 
@@ -398,10 +402,10 @@ public class InfCommand implements Command {
 
             DiscordUser punishedUser = DiscordUser.findFirst("id = ?", p.getPunishedUserId());
 
-            String punished = getUsernameDefaultID(punishedUser, guild);
+            String punished = getUsernameDefaultID(punishedUser, guild, 15);
 
             DiscordUser punishingUser = DiscordUser.findFirst("id = ?", p.getPunishingUserId());
-            String punisher = getUsernameDefaultID(punishingUser, guild);
+            String punisher = getUsernameDefaultID(punishingUser, guild, 16);
 
             String type = p.getPunishmentType();
             rows.add(String.format("| %-6s | %-8s | %-16s | %-15s |\n", id, type, punisher, punished));
@@ -417,7 +421,52 @@ public class InfCommand implements Command {
         return stringBuffer.toString();
     }
 
-    private String getUsernameDefaultID(DiscordUser user, Guild guild) {
+    private String createFormattedRecentPunishmentsTable(LazyList<Punishment> punishmentLazyList, SlashCommandEvent event) {
+        Guild guild = event.getInteraction().getGuild().block();
+        List<String> rows = new ArrayList<>();
+        rows.add("```");
+        rows.add(String.format("| %-10s | %-10s | %-30s | %-30s | %-40s |\n", "ID", "Type", "Mod", "Target", "Reason"));
+        rows.add("----------------------------------------------------------------------------------------------------------------------------------------\n");
+
+        for (Punishment p : punishmentLazyList) {
+            if (p == null) {
+                continue;
+            }
+
+            DiscordUser punishedUser = DiscordUser.findFirst("id = ?", p.getPunishedUserId());
+            int id = p.getPunishmentId();
+
+            String punished = getUsernameDefaultID(punishedUser, guild, 30);
+            String reason = getStringOfLegalLength(p.getPunishmentMessage(), 40);
+
+            DiscordUser punishingUser = DiscordUser.findFirst("id = ?", p.getPunishingUserId());
+            String punisher = getUsernameDefaultID(punishingUser, guild, 30);
+
+            String type = p.getPunishmentType();
+            rows.add(String.format("| %-10s | %-10s | %-30s | %-30s | %-40s |\n", id, type, punisher, punished, reason));
+        }
+
+        rows.add("```");
+
+        StringBuilder stringBuffer = new StringBuilder();
+        for (String row: rows) {
+            stringBuffer.append(row);
+        }
+
+        return stringBuffer.toString();
+    }
+
+    private String getStringOfLegalLength(String reason, int length) {
+        String result;
+        if (reason.length() > length) {
+            result = reason.substring(0, length - 3) + "...";
+        } else {
+            result = reason;
+        }
+        return result;
+    }
+
+    private String getUsernameDefaultID(DiscordUser user, Guild guild, int allowedLength) {
         Long userId = user.getUserIdSnowflake();
         String usernameOrId;
         try {
@@ -428,8 +477,8 @@ public class InfCommand implements Command {
             usernameOrId = userId.toString();
         }
 
-        if (usernameOrId.length() > 15) {
-            usernameOrId = usernameOrId.substring(0,12) + "...";
+        if (usernameOrId.length() > allowedLength) {
+            usernameOrId = usernameOrId.substring(0, allowedLength - 3) + "...";
         }
 
         return usernameOrId;

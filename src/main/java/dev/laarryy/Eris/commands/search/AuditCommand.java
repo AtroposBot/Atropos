@@ -4,6 +4,7 @@ import dev.laarryy.Eris.commands.Command;
 import dev.laarryy.Eris.models.guilds.CommandUse;
 import dev.laarryy.Eris.models.guilds.DiscordServer;
 import dev.laarryy.Eris.models.users.DiscordUser;
+import dev.laarryy.Eris.storage.DatabaseLoader;
 import dev.laarryy.Eris.utils.AuditLogger;
 import dev.laarryy.Eris.utils.Notifier;
 import dev.laarryy.Eris.utils.PermissionChecker;
@@ -107,6 +108,7 @@ public class AuditCommand implements Command {
     }
 
     private void searchAuditById(SlashCommandEvent event) {
+        DatabaseLoader.openConnectionIfClosed();
 
         if (event.getOption("id").get().getOption("number").isEmpty() || event.getOption("id").get().getOption("number").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
@@ -167,6 +169,7 @@ public class AuditCommand implements Command {
     }
 
     private void recentAudits(SlashCommandEvent event) {
+        DatabaseLoader.openConnectionIfClosed();
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
@@ -190,6 +193,7 @@ public class AuditCommand implements Command {
 
     private void searchAuditByUser(SlashCommandEvent event) {
 
+        DatabaseLoader.openConnectionIfClosed();
         long userIdSnowflake;
         if (event.getOption("user").get().getOption("snowflake").isPresent()) {
             String snowflakeString = event.getOption("user").get().getOption("snowflake").get().getValue().get().asString();
