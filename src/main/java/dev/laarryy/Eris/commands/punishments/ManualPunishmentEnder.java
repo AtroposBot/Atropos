@@ -57,7 +57,6 @@ public final class ManualPunishmentEnder {
         }
 
         if (event.getOption("user").isPresent() && event.getOption("user").get().getValue().isPresent()) {
-            logger.info("user to unmute found");
             Mono.just(event.getOption("user").get().getValue().get())
                     .filter(returnVal -> returnVal.asUser().block() != null)
                     .flatMap(ApplicationCommandInteractionOptionValue::asUser)
@@ -65,7 +64,6 @@ public final class ManualPunishmentEnder {
                     .filter(member -> discordUnmute(member, event, reason))
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(member -> databaseEndPunishment(member.getId().asLong(), event, reason));
-            logger.info("unmute mono subbed");
         }
     }
 
@@ -80,7 +78,6 @@ public final class ManualPunishmentEnder {
     }
 
     private boolean discordUnmute(Member member, SlashCommandEvent event, String reason) {
-        logger.info("preparing to unmute discord-side");
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getInteraction().getGuildId().get().asLong());
         Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
@@ -98,7 +95,6 @@ public final class ManualPunishmentEnder {
             return false;
         }
             if (mutedRole != null && member.getRoles().any(role -> role.equals(mutedRole)).block()) {
-                logger.info("Unmuting discord-side");
                 member.removeRole(Snowflake.of(mutedRoleId), reason).block();
                 AuditLogger.addCommandToDB(event, true);
                 Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
@@ -115,7 +111,6 @@ public final class ManualPunishmentEnder {
         DatabaseLoader.openConnectionIfClosed();
 
         String commandName = event.getCommandName();
-        logger.info("Command name - " + commandName);
         String punishmentType = switch (commandName) {
             case "unban" -> "ban";
             case "unmute" -> "mute";
@@ -144,7 +139,6 @@ public final class ManualPunishmentEnder {
             Flux.fromIterable(punishmentLazyList)
                     .filter(punishment -> {
                                 if (punishment != null) {
-                                    logger.info("non-null punishment");
                                     return true;
                                 } else return false;
                             }
@@ -152,7 +146,6 @@ public final class ManualPunishmentEnder {
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(punishment -> {
                         DatabaseLoader.openConnectionIfClosed();
-                        logger.info("ending DB punishment: " + punishment.getPunishmentType());
                         punishment.setEnded(true);
                         punishment.setEndDate(Instant.now().toEpochMilli());
                         punishment.setEndReason(reason);
@@ -160,15 +153,12 @@ public final class ManualPunishmentEnder {
                         punishment.refresh();
 
                         if (punishmentType.equals("mute")) {
-                            logger.info("logging unmute now");
                             loggingListener.onUnmute(event.getInteraction().getGuild().block(), reason, punishment);
                         }
                         if (punishmentType.equals("ban")) {
-                            logger.info("logging unban now");
                             loggingListener.onUnban(event.getInteraction().getGuild().block(), reason, punishment);
                         }
                     });
-            logger.info("database punishment updated as ended.");
             return true;
         } else {
             return false;

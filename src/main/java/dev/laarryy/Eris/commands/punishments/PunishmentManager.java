@@ -119,7 +119,6 @@ public class PunishmentManager {
                         punishment.refresh();
                         punishment.setEnded(true);
                         punishment.save();
-                        logger.info("Saved forceban for ID: " + aLong);
                     });
             return Mono.empty();
         }
@@ -154,10 +153,6 @@ public class PunishmentManager {
 
         DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
         DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", punishedUser.getId().asLong());
-
-
-
-        logger.info("Passed relative permission check.");
 
         if (Punishment.findFirst("user_id_punished = ? and server_id = ? and punishment_type = ? and end_date_passed = ?",
                 punished.getUserId(),
@@ -287,7 +282,6 @@ public class PunishmentManager {
     public void discordMuteUser(Guild guild, Long userIdSnowflake, DiscordServerProperties discordServerProperties) {
         DatabaseLoader.openConnectionIfClosed();
         if (discordServerProperties.getMutedRoleSnowflake() == null || discordServerProperties.getMutedRoleSnowflake() == 0) {
-            logger.info("Creating missing Muted role.");
             Role mutedRole = guild.createRole(RoleCreateSpec.builder()
                     .name("Muted")
                     .permissions(PermissionSet.none())
@@ -297,22 +291,17 @@ public class PunishmentManager {
                     .build()).block();
 
             List<Role> selfRoleList = guild.getSelfMember().block().getRoles().collectList().block();
-            logger.info("Role list size - 1 is equal to: " + (selfRoleList.size() - 1));
             Role highestSelfRole = selfRoleList.get(selfRoleList.size() - 1);
-            logger.info("Highest role is " + highestSelfRole.getName());
 
             Flux<RoleData> roleDataFlux = Flux.fromIterable(guild.getRoles().map(Role::getData).collectList().block());
 
             Long roleCount = OrderUtil.orderRoles(roleDataFlux).takeWhile(role -> !role.equals(highestSelfRole)).count().block();
-            logger.info("Rolecount = " + roleCount);
             int roleInt = roleCount != null ? roleCount.intValue() - 1 : 1;
 
             if (mutedRole != null) {
-                logger.info("Attempting to hoist it real high.");
                 mutedRole.changePosition(roleInt).subscribe();
                 discordServerProperties.setMutedRoleSnowflake(mutedRole.getId().asLong());
                 discordServerProperties.save();
-                logger.info("Done hoisting and saving to db.");
             }
             discordServerProperties.save();
             discordServerProperties.refresh();
@@ -323,12 +312,7 @@ public class PunishmentManager {
         Member memberToMute = guild.getMemberById(Snowflake.of(userIdSnowflake)).block();
 
         if (memberToMute != null) {
-            logger.info("Adding role to user");
-            logger.info(discordServerProperties.getMutedRoleSnowflake());
             memberToMute.addRole(Snowflake.of(discordServerProperties.getMutedRoleSnowflake())).block();
-            logger.info("Role added.");
-        } else {
-            logger.info("MUTE ROLE NULL! WHYYYYYYY");
         }
 
     }
@@ -365,10 +349,8 @@ public class PunishmentManager {
 
     private boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, SlashCommandEvent event) {
         if (permissionChecker.checkIsAdministrator(guild, punisher) && !permissionChecker.checkIsAdministrator(guild, punished)) {
-            logger.info("Admin punisher and non-admin punished. You may pass.");
             return true;
         } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
-            logger.info("Admin punished and non-admin punisher. No.");
             Notifier.notifyCommandUserOfError(event, "noPermission");
             AuditLogger.addCommandToDB(event, false);
             loggingListener.onAttemptedInsubordination(event, punished);

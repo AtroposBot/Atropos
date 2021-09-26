@@ -39,7 +39,6 @@ public class AntiSpamListener {
     public Mono<Void> on(MessageCreateEvent event) {
 
         if (event.getGuildId().isEmpty() || event.getMember().isEmpty() || event.getMember().get().isBot()) {
-            logger.info("Guild or Member Empty");
             return Mono.empty();
         }
 

@@ -25,7 +25,6 @@ public class PropertiesCacheManager {
                     .expireAfterWrite(Duration.ofMinutes(10))
                     .build(aLong -> {
                         DatabaseLoader.openConnectionIfClosed();
-                        logger.info("Connecting to database to get properties for log.");
                         return DiscordServerProperties.findFirst("server_id_snowflake = ?", aLong);
                     }));
         }

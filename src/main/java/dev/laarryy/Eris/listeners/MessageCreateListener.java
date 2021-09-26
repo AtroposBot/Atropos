@@ -19,7 +19,6 @@ public class MessageCreateListener {
     public Mono<Void> on(MessageCreateEvent event) {
 
         if (event.getGuildId().isEmpty() || event.getMember().isEmpty()) {
-            logger.info("Guild or Member Empty");
             return Mono.empty();
         }
 
@@ -60,8 +59,6 @@ public class MessageCreateListener {
         message.setDateEpochMilli(Instant.now().toEpochMilli());
         message.setContent(content);
         message.setDeleted(false);
-
-        logger.info("Saving Message to DB.");
 
         message.saveIt();
 

@@ -37,18 +37,12 @@ public class AutoPunishmentEnder {
         Flux.interval(Duration.ofMinutes(1))
                 .doOnNext(this::checkPunishmentEnding)
                 .subscribe();
-
-        logger.info("Constructor called, Flux should be started.");
     }
 
     private void checkPunishmentEnding(Long l) {
-        logger.info("Checking punishment ending.");
 
-        logger.info("Opening connection.");
         DatabaseLoader.openConnectionIfClosed();
-        logger.info("Populating LazyList");
         LazyList<Punishment> punishmentsLazyList = Punishment.find("end_date_passed = ?", false);
-        logger.info("LazyList Populated, doing Flux.");
 
         Flux.fromIterable(punishmentsLazyList)
                 .filter(this::checkIfOverDue)
@@ -71,8 +65,6 @@ public class AutoPunishmentEnder {
 
         DatabaseLoader.openConnectionIfClosed();
 
-        logger.info("Ending punishment of type: " + punishment.getPunishmentType());
-
         String punishmentType = punishment.getPunishmentType();
         DiscordUser punishedUser = DiscordUser.findById(punishment.getPunishedUserId());
         DiscordServer server = DiscordServer.findById(punishment.getServerId());
@@ -86,7 +78,6 @@ public class AutoPunishmentEnder {
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(guild1 -> {
                     if (guild1 == null) return;
-                    logger.info("Ending punishment - should be subbed to boundedElastic");
                     DatabaseLoader.openConnectionIfClosed();
 
                     Member member;

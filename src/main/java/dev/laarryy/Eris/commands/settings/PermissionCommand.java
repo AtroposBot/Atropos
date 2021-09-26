@@ -237,7 +237,6 @@ public class PermissionCommand implements Command {
         if (event.getOption("list").isPresent() && event.getOption("list").get().getOption("role").isPresent()) {
             if (event.getOption("list").get().getOption("role").get().getValue().isEmpty()) {
                 Notifier.notifyCommandUserOfError(event, "malformedInput");
-                logger.info("it's empty, jeff.");
                 AuditLogger.addCommandToDB(event, false);
                 return Mono.empty();
             }
@@ -318,7 +317,6 @@ public class PermissionCommand implements Command {
                     .build();
 
             event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
-            logger.info("Permission added.");
             AuditLogger.addCommandToDB(event, true);
             return Mono.empty();
         }
@@ -352,7 +350,6 @@ public class PermissionCommand implements Command {
                     .build();
 
             event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
-            logger.info("Permission removed.");
             AuditLogger.addCommandToDB(event, true);
             return Mono.empty();
         }

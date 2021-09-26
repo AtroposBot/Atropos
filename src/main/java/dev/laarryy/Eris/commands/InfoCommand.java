@@ -195,8 +195,6 @@ public class InfoCommand implements Command {
             userIdSnowflake = Snowflake.of(snowflakeString);
         }
 
-        logger.info("got the user, proceeding");
-
         Guild guild = event.getInteraction().getGuild().block();
 
         Member member;
@@ -249,8 +247,6 @@ public class InfoCommand implements Command {
                 "Created: " + TimestampMaker.getTimestampFromEpochSecond(userIdSnowflake.getTimestamp().getEpochSecond(), TimestampMaker.TimestampType.RELATIVE) + "\n" +
                 "First Joined: " + joinTimestamp;
 
-        logger.info("built the string");
-
         String username = user.getUsername() + "#" + user.getDiscriminator();
         String eventUser = event.getInteraction().getUser().getUsername() + "#" + event.getInteraction().getUser().getDiscriminator();
 
@@ -291,8 +287,6 @@ public class InfoCommand implements Command {
         Instant created = guild.getId().getTimestamp();
 
 
-        logger.info("building strings");
-
         StringBuilder sb = new StringBuilder();
         sb.append("**Guild Information**\n");
         sb.append(EmojiManager.getModeratorBadge()).append(" **Owner:** ").append(guild.getOwner().block().getNicknameMention()).append("\n");
@@ -301,25 +295,20 @@ public class InfoCommand implements Command {
                 .append("\n");
 
 
-        logger.info("1 done");
-
         //TODO: Wait for this to work on D4J's end (issue #999)
 
         /*List<Region> regions = guild.getRegions().collectList().block();
         if (regions != null && !regions.isEmpty()) {
             sb.append(EmojiManager.getVoiceChannel()).append(" **Voice Regions:** ");
-            logger.info("regions not null - appended");
             for (Region region : regions) {
                 if (regions.indexOf(region) == regions.size() - 1) {
                     sb.append("`").append(region.getName()).append("`\n");
-                    logger.info("appended last region");
                 } else {
                     sb.append("`").append(region.getName()).append("`, ");
-                    logger.info("appended region");
                 }
             }
         }
-        logger.info("2 done");*/
+        */
 
         List<String> features = guild.getFeatures().stream().toList();
         if (!features.isEmpty()) {

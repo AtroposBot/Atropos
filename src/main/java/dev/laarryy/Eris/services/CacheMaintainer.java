@@ -25,7 +25,6 @@ public class CacheMaintainer {
     private void refreshPropertiesCache(AsyncLoadingCache<Long, DiscordServerProperties> cache) {
         DatabaseLoader.openConnectionIfClosed();
         LazyList<DiscordServerProperties> propertiesList = DiscordServerProperties.findAll();
-        logger.info("refreshing properties cache");
         Flux.fromIterable(propertiesList)
                 .subscribe(property -> {
                 });
