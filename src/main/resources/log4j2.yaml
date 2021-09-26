@@ -10,18 +10,18 @@ Configuration:
       name: Console
       target: SYSTEM_OUT
       PatternLayout:
-        Pattern: "ICICLOG: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1}:%M:%L - %msg%n"
+        Pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] - %msg%n"
     File:
       name: File
       fileName: ${log-path}/logfile.log
       PatternLayout:
-        pattern: "ICICLOG: [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n"
+        pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] - %msg%n"
     RollingFile:
       - name: RollingFile
         fileName: ${log-path}/rollingfile.log
         filePattern: "logs/archive/rollingfile.log.%d{yyyy-MM-dd-hh-mm}.gz"
         PatternLayout:
-          pattern: "ICICLOG: [%-5level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %c{1} - %msg%n"
+          pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] - %msg%n"
         Policies:
           SizeBasedTriggeringPolicy:
             size: 1 MB

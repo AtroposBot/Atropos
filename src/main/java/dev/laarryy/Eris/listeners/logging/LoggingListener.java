@@ -68,10 +68,6 @@ public final class LoggingListener {
             default -> null;
         };
 
-        logger.info("-----------");
-        logger.info(type);
-        logger.info(logChannelSnowflake);
-
         if (logChannelSnowflake == null) {
             logger.info("logChannelSnowflake is null");
             return Mono.empty();

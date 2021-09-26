@@ -28,6 +28,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -228,12 +229,25 @@ public class InfoCommand implements Command {
             serverUser = sU2;
             return;
         }
+        Member selfMember = guild.getSelfMember().block();
+        DiscordUser discordSelfUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
+        ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
+        Instant discordJoin = Instant.ofEpochMilli(serverUser.getDate());
+        Instant discordBotJoin = Instant.ofEpochMilli(serverSelfUser.getDate());
+
+        String joinTimestamp;
+
+        if (Duration.between(discordBotJoin, discordJoin).toMinutes() < 30) {
+            joinTimestamp = "Before I did!";
+        } else {
+            joinTimestamp = TimestampMaker.getTimestampFromEpochSecond(Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(), TimestampMaker.TimestampType.RELATIVE);
+        }
 
         String field1Content = EmojiManager.getUserIdentification() + " **User Information**\n" +
                 "Profile: " + user.getMention() + "\n" +
                 "ID: `" + userIdSnowflake.asLong() + "`\n" +
                 "Created: " + TimestampMaker.getTimestampFromEpochSecond(userIdSnowflake.getTimestamp().getEpochSecond(), TimestampMaker.TimestampType.RELATIVE) + "\n" +
-                "First Joined: " + TimestampMaker.getTimestampFromEpochSecond(Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(), TimestampMaker.TimestampType.RELATIVE);
+                "First Joined: " + joinTimestamp;
 
         logger.info("built the string");
 

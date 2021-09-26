@@ -6,6 +6,8 @@ import dev.laarryy.Eris.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.discordjson.json.ApplicationCommandData;
+import discord4j.rest.service.ApplicationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.reflections.Reflections;
@@ -17,6 +19,7 @@ import reactor.core.scheduler.Schedulers;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class CommandManager {
@@ -38,14 +41,22 @@ public class CommandManager {
 
             // Register the command with discord
             long applicationId = client.getRestClient().getApplicationId().block();
+            ApplicationService applicationService = client.getRestClient().getApplicationService();
 
-            logger.info("Beginning command registration with discord: " + command.getRequest().name());
+            Map<String, ApplicationCommandData> discordCommands = applicationService
+                    .getGlobalApplicationCommands(applicationId)
+                    .collectMap(ApplicationCommandData::name)
+                    .block();
 
-            client.getRestClient().getApplicationService()
-                    .createGuildApplicationCommand(applicationId, Long.parseLong("724025797861572639"), command.getRequest())
-                    .subscribe();
-
-            logger.info("Command registration with discord sent.");
+            if (!discordCommands.containsKey(command.getRequest().name())) {
+                logger.info("Beginning command registration with discord: " + command.getRequest().name());
+                client.getRestClient().getApplicationService()
+                        .createGlobalApplicationCommand(applicationId, command.getRequest())
+                        .subscribe();
+                logger.info("Command registration with discord sent.");
+            } else {
+                logger.info("Command already registered");
+            }
         }
 
         // Listen for command event and execute from map
@@ -56,10 +67,18 @@ public class CommandManager {
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
                                 .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
                                 .flatMap(entry -> entry.execute(event))
-                               // .onErrorResume(e -> logger::error)
+                                 .onErrorResume(e -> {
+                                     logger.error(e.getMessage());
+                                     logger.error(e.getStackTrace());
+                                     return Mono.empty();
+                                 })
                                 .next()))
                 .subscribeOn(Schedulers.boundedElastic())
-               // .onErrorResume(e -> logger::error)
+                .onErrorResume(e -> {
+                    logger.error(e.getMessage());
+                    logger.error(e.getStackTrace());
+                    return Mono.empty();
+                })
                 .subscribe();
 
         logger.info("Registered Slash Commands!");
