@@ -159,9 +159,6 @@ public class InfCommand implements Command {
 
         String results = createFormattedRecentPunishmentsTable(punishmentLazyList, event);
 
-        String output = "Recent Cases:\n" + results + "\n" + "For detailed information, run `/inf search case <id>`";
-
-
         EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
                 .title("Recent Cases")
@@ -170,7 +167,7 @@ public class InfCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply(output).subscribe();
+        event.reply().withEmbeds(resultEmbed).subscribe();
         AuditLogger.addCommandToDB(event, true);
     }
 
@@ -391,8 +388,8 @@ public class InfCommand implements Command {
         Guild guild = event.getInteraction().getGuild().block();
         List<String> rows = new ArrayList<>();
         rows.add("```");
-        rows.add(String.format("| %-6s | %-8s | %-16s | %-15s |\n", "ID", "Type", "Mod", "Target"));
-        rows.add("----------------------------------------------------------\n");
+        rows.add(String.format("| %-6s | %-8s | %-30s |\n", "ID", "Type", "Mod"));
+        rows.add("------------------------------------------------------\n");
 
         for (Punishment p : punishmentLazyList) {
             if (p == null) {
@@ -400,15 +397,11 @@ public class InfCommand implements Command {
             }
             int id = p.getPunishmentId();
 
-            DiscordUser punishedUser = DiscordUser.findFirst("id = ?", p.getPunishedUserId());
-
-            String punished = getUsernameDefaultID(punishedUser, guild, 15);
-
             DiscordUser punishingUser = DiscordUser.findFirst("id = ?", p.getPunishingUserId());
-            String punisher = getUsernameDefaultID(punishingUser, guild, 16);
+            String punisher = getUsernameDefaultID(punishingUser, guild, 30);
 
             String type = p.getPunishmentType();
-            rows.add(String.format("| %-6s | %-8s | %-16s | %-15s |\n", id, type, punisher, punished));
+            rows.add(String.format("| %-6s | %-8s | %-30s |\n", id, type, punisher));
         }
 
         rows.add("```");
@@ -425,8 +418,8 @@ public class InfCommand implements Command {
         Guild guild = event.getInteraction().getGuild().block();
         List<String> rows = new ArrayList<>();
         rows.add("```");
-        rows.add(String.format("| %-10s | %-10s | %-30s | %-30s | %-40s |\n", "ID", "Type", "Mod", "Target", "Reason"));
-        rows.add("----------------------------------------------------------------------------------------------------------------------------------------\n");
+        rows.add(String.format("| %-6s | %-8s | %-30s |\n", "ID", "Type", "Punished User"));
+        rows.add("------------------------------------------------------\n");
 
         for (Punishment p : punishmentLazyList) {
             if (p == null) {
@@ -437,13 +430,9 @@ public class InfCommand implements Command {
             int id = p.getPunishmentId();
 
             String punished = getUsernameDefaultID(punishedUser, guild, 30);
-            String reason = getStringOfLegalLength(p.getPunishmentMessage(), 40);
-
-            DiscordUser punishingUser = DiscordUser.findFirst("id = ?", p.getPunishingUserId());
-            String punisher = getUsernameDefaultID(punishingUser, guild, 30);
 
             String type = p.getPunishmentType();
-            rows.add(String.format("| %-10s | %-10s | %-30s | %-30s | %-40s |\n", id, type, punisher, punished, reason));
+            rows.add(String.format("| %-6s | %-8s | %-30s |\n", id, type, punished));
         }
 
         rows.add("```");
