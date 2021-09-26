@@ -50,7 +50,6 @@ public final class PermissionChecker {
 
     public boolean checkIsAdministrator(Guild guild, Member member) {
 
-        logger.info("Checking if Admin");
         Boolean hasRoleWithAdmin =
                 member.getRoles()
                         .map(Role::getPermissions)
@@ -66,24 +65,16 @@ public final class PermissionChecker {
         Boolean ownsGuild = Flux.just(member).any(member1 -> member1.equals(guild.getOwner().block())).block();
 
         if (hasRoleWithAdmin != null && hasRoleWithAdmin) {
-            logger.info("Has role with admin");
             return true;
-        } else {
-            logger.info("No role with admin");
         }
 
         if (isUserWithAdmin != null && isUserWithAdmin) {
-            logger.info("Is user with admin");
             return true;
-        } else {
-            logger.info("Is not user with admin");
         }
 
         if (ownsGuild != null && ownsGuild) {
-            logger.info("Owns guild");
             return true;
         } else {
-            logger.info("Does not own guild");
             return false;
         }
     }

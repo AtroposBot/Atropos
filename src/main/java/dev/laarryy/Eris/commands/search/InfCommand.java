@@ -279,7 +279,6 @@ public class InfCommand implements Command {
                 return;
             }
 
-            logger.info("Snowflake String is: ||" + snowflakeString + "||");
             userIdSnowflake = Long.parseLong(snowflakeString);
         } else if (event.getOption("search").get().getOption("user").isPresent()
                 && event.getOption("search").get().getOption("user").get().getOption("mention").isPresent()

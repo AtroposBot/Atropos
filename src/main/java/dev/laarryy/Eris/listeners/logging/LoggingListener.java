@@ -56,7 +56,6 @@ public final class LoggingListener {
         Long guildIdSnowflake = guild.getId().asLong();
         DiscordServerProperties serverProperties = cache.get(guildIdSnowflake);
         if (serverProperties == null) {
-            logger.info("serverProperties is null");
             return Mono.empty();
         }
 
@@ -69,7 +68,6 @@ public final class LoggingListener {
         };
 
         if (logChannelSnowflake == null) {
-            logger.info("logChannelSnowflake is null");
             return Mono.empty();
         }
 
@@ -81,7 +79,6 @@ public final class LoggingListener {
         }
 
         if (channel == null) {
-            logger.info("channel isn't a textchannel/is null");
             return Mono.empty();
         }
 

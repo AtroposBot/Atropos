@@ -30,7 +30,6 @@ public class BlacklistCacheManager {
                     .build(aLong -> {
                         DatabaseLoader.openConnectionIfClosed();
                         DiscordServer server = DiscordServer.findFirst("server_id = ?", aLong);
-                        logger.info("Connecting to database to get properties blacklist.");
                         List<ServerBlacklist> serverBlacklistList = ServerBlacklist.find("server_id = ?", server.getServerId());
                         List<Blacklist> blacklistList = new ArrayList<>();
                         for (ServerBlacklist serverBlacklist : serverBlacklistList) {
