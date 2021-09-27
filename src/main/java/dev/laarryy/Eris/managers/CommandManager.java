@@ -5,7 +5,7 @@ import dev.laarryy.Eris.commands.Command;
 import dev.laarryy.Eris.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.discordjson.json.ApplicationCommandData;
 import discord4j.rest.service.ApplicationService;
 import org.apache.logging.log4j.LogManager;
@@ -62,7 +62,7 @@ public class CommandManager {
 
         // Listen for command event and execute from map
 
-        client.getEventDispatcher().on(SlashCommandEvent.class)
+        client.getEventDispatcher().on(ChatInputInteractionEvent.class)
                 .filter(permissionChecker::checkBotPermission) // make sure bot has perms
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
@@ -70,14 +70,14 @@ public class CommandManager {
                                 .flatMap(entry -> entry.execute(event))
                                  .onErrorResume(e -> {
                                      logger.error(e.getMessage());
-                                     logger.error(e.getStackTrace());
+                                     logger.error("Error in Command: ", e);
                                      return Mono.empty();
                                  })
                                 .next()))
                 .subscribeOn(Schedulers.boundedElastic())
                 .onErrorResume(e -> {
                     logger.error(e.getMessage());
-                    logger.error(e.getStackTrace());
+                    logger.error("Error in Command: ", e);
                     return Mono.empty();
                 })
                 .subscribe();

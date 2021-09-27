@@ -3,10 +3,10 @@ package dev.laarryy.Eris.commands.punishments;
 import dev.laarryy.Eris.commands.Command;
 import dev.laarryy.Eris.utils.PermissionChecker;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.util.ApplicationCommandOptionType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
@@ -24,13 +24,13 @@ public class UnbanCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("id")
                     .description("ID of one user to unban OR space-delineated list of multiple users to unban.")
-                    .type(ApplicationCommandOptionType.STRING.getValue())
+                    .type(ApplicationCommandOption.Type.STRING.getValue())
                     .required(true)
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
                     .name("reason")
                     .description("Why?")
-                    .type(ApplicationCommandOptionType.STRING.getValue())
+                    .type(ApplicationCommandOption.Type.STRING.getValue())
                     .required(false)
                     .build())
             .defaultPermission(true)
@@ -40,7 +40,7 @@ public class UnbanCommand implements Command {
         return this.request;
     }
 
-    public Mono<Void> execute(SlashCommandEvent event) {
+    public Mono<Void> execute(ChatInputInteractionEvent event) {
         if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
             return Mono.empty();
         }

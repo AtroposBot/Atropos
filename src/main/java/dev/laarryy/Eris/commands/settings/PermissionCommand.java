@@ -9,8 +9,9 @@ import dev.laarryy.Eris.utils.AuditLogger;
 import dev.laarryy.Eris.utils.Notifier;
 import dev.laarryy.Eris.utils.PermissionChecker;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
+import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
@@ -19,7 +20,6 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.util.ApplicationCommandOptionType;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -153,18 +153,18 @@ public class PermissionCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("add")
                     .description("Add permissions to roles in this guild")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("role")
                             .description("Role to add permission to.")
-                            .type(ApplicationCommandOptionType.ROLE.getValue())
+                            .type(ApplicationCommandOption.Type.ROLE.getValue())
                             .required(true)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("permission")
                             .description("Permission to add to the role.")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .choices(optionChoiceDataList)
                             .required(true)
                             .build())
@@ -172,18 +172,18 @@ public class PermissionCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("remove")
                     .description("Remove permissions from roles in this guild.")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("role")
                             .description("Role to remove permission from.")
-                            .type(ApplicationCommandOptionType.ROLE.getValue())
+                            .type(ApplicationCommandOption.Type.ROLE.getValue())
                             .required(true)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("permission")
                             .description("Permission to remove from the role.")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .choices(optionChoiceDataList)
                             .required(true)
                             .build())
@@ -191,12 +191,12 @@ public class PermissionCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("list")
                     .description("List permissions of a role in this guild.")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("role")
                             .description("Role to list permissions of.")
-                            .type(ApplicationCommandOptionType.ROLE.getValue())
+                            .type(ApplicationCommandOption.Type.ROLE.getValue())
                             .required(true)
                             .build())
                     .build())
@@ -207,7 +207,7 @@ public class PermissionCommand implements Command {
         return this.request;
     }
 
-    public Mono<Void> execute(SlashCommandEvent event) {
+    public Mono<Void> execute(ChatInputInteractionEvent event) {
         if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
             return Mono.empty();
         }

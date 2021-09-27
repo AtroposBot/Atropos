@@ -14,7 +14,8 @@ import dev.laarryy.Eris.utils.PermissionChecker;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
 import dev.laarryy.Eris.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.User;
@@ -22,7 +23,6 @@ import discord4j.core.object.entity.channel.Channel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.util.ApplicationCommandOptionType;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import org.apache.logging.log4j.LogManager;
@@ -48,31 +48,31 @@ public class InfoCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("server")
                     .description("Show information for this server")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
                     .name("user")
                     .description("Show information for a user")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("mention")
                             .description("Search for user info by mention")
-                            .type(ApplicationCommandOptionType.USER.getValue())
+                            .type(ApplicationCommandOption.Type.USER.getValue())
                             .required(false)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("snowflake")
                             .description("Search for user info by snowflake")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .required(false)
                             .build())
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
                     .name("bot")
                     .description("Show information about this bot")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .build())
             .defaultPermission(true)
@@ -82,7 +82,7 @@ public class InfoCommand implements Command {
         return this.request;
     }
 
-    public Mono<Void> execute(SlashCommandEvent event) {
+    public Mono<Void> execute(ChatInputInteractionEvent event) {
         if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
             return Mono.empty();
         }
@@ -110,7 +110,7 @@ public class InfoCommand implements Command {
         return Mono.empty();
     }
 
-    private void sendBotInfo(SlashCommandEvent event) {
+    private void sendBotInfo(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
         Guild guild = event.getInteraction().getGuild().block();
         Member selfMember = guild.getSelfMember().block();
@@ -164,7 +164,7 @@ public class InfoCommand implements Command {
         event.reply().withEmbeds(embed).block();
     }
 
-    private void sendUserInfo(SlashCommandEvent event) {
+    private void sendUserInfo(ChatInputInteractionEvent event) {
 
         if (event.getOption("user").get().getOption("snowflake").isEmpty() && event.getOption("user").get().getOption("mention").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
@@ -205,18 +205,18 @@ public class InfoCommand implements Command {
             member = null;
         }
 
+        if (member == null) {
+            Notifier.notifyCommandUserOfError(event, "noUser");
+            return;
+        }
+
         DatabaseLoader.openConnectionIfClosed();
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake.asLong());
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
         if (discordUser == null) {
-            if (member != null) {
-                addServerToDB.addUserToDatabase(guild.getMemberById(userIdSnowflake).block(), guild);
-                discordUser.refresh();
-            } else {
-                Notifier.notifyCommandUserOfError(event, "noUser");
-                return;
-            }
+            addServerToDB.addUserToDatabase(guild.getMemberById(userIdSnowflake).block(), guild);
+            discordUser.refresh();
         }
 
         ServerUser serverUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId());
@@ -228,6 +228,7 @@ public class InfoCommand implements Command {
             serverUser = sU2;
             return;
         }
+
         Member selfMember = guild.getSelfMember().block();
         DiscordUser discordSelfUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
         ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
@@ -245,7 +246,7 @@ public class InfoCommand implements Command {
         StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
                 .append("Profile: ").append(user.getMention()).append("\n")
                 .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
-        if (member != null) {
+        if (member != null && !LogExecutor.getBadges(member).equals("none")) {
             field1Content.append("Badges: ").append(LogExecutor.getBadges(member)).append("\n");
         }
                 field1Content.append("Created: ")
@@ -271,7 +272,7 @@ public class InfoCommand implements Command {
 
     }
 
-    private void sendServerInfo(SlashCommandEvent event) {
+    private void sendServerInfo(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
         Long guildId = event.getInteraction().getGuildId().get().asLong();
         Guild guild = event.getInteraction().getGuild().block();

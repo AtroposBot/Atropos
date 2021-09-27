@@ -12,7 +12,7 @@ import dev.laarryy.Eris.utils.DurationParser;
 import dev.laarryy.Eris.utils.Notifier;
 import dev.laarryy.Eris.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.ExtendedPermissionOverwrite;
 import discord4j.core.object.PermissionOverwrite;
 import discord4j.core.object.entity.Guild;
@@ -26,7 +26,6 @@ import discord4j.core.spec.RoleCreateSpec;
 import discord4j.core.spec.TextChannelEditSpec;
 import discord4j.core.spec.VoiceChannelEditSpec;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.discordjson.json.OverwriteData;
 import discord4j.discordjson.json.RoleData;
 import discord4j.rest.util.OrderUtil;
 import discord4j.rest.util.PermissionSet;
@@ -47,7 +46,7 @@ public class PunishmentManager {
     PermissionChecker permissionChecker = new PermissionChecker();
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
 
-    public Mono<Void> doPunishment(ApplicationCommandRequest request, SlashCommandEvent event) {
+    public Mono<Void> doPunishment(ApplicationCommandRequest request, ChatInputInteractionEvent event) {
 
         // Make sure this is done in a guild or else stop right here.
 
@@ -381,7 +380,7 @@ public class PunishmentManager {
 
     }
 
-    private boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, SlashCommandEvent event) {
+    private boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ChatInputInteractionEvent event) {
         if (permissionChecker.checkIsAdministrator(guild, punisher) && !permissionChecker.checkIsAdministrator(guild, punished)) {
             return true;
         } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {

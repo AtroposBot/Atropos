@@ -5,7 +5,7 @@ import dev.laarryy.Eris.models.guilds.CommandUse;
 import dev.laarryy.Eris.models.guilds.DiscordServer;
 import dev.laarryy.Eris.models.users.DiscordUser;
 import dev.laarryy.Eris.storage.DatabaseLoader;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,7 +18,7 @@ public final class AuditLogger {
 
     private AuditLogger() {}
 
-    public static void addCommandToDB(SlashCommandEvent event, boolean success) {
+    public static void addCommandToDB(ChatInputInteractionEvent event, boolean success) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 

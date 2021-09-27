@@ -11,13 +11,13 @@ import dev.laarryy.Eris.utils.PermissionChecker;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
 import dev.laarryy.Eris.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.util.ApplicationCommandOptionType;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -75,47 +75,47 @@ public class InfCommand implements Command {
                     .name("search")
                     // TODO: Add 'type' (warn, ban, forceban, etc) as a non-req'd option for inf search recent
                     .description("Search infractions")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND_GROUP.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND_GROUP.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("user")
                             .description("Search by user ID")
-                            .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                            .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                             .required(false)
                             .addOption(ApplicationCommandOptionData.builder()
                                     .name("snowflake")
                                     .description("User ID to search")
-                                    .type(ApplicationCommandOptionType.STRING.getValue())
+                                    .type(ApplicationCommandOption.Type.STRING.getValue())
                                     .required(false)
                                     .build())
                             .addOption(ApplicationCommandOptionData.builder()
                                     .name("mention")
                                     .description("User mention to search")
-                                    .type(ApplicationCommandOptionType.USER.getValue())
+                                    .type(ApplicationCommandOption.Type.USER.getValue())
                                     .required(false)
                                     .build())
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("case")
                             .description("Search by case ID")
-                            .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                            .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                             .required(false)
                             .addOption(ApplicationCommandOptionData.builder()
                                     .name("caseid")
                                     .description("Case ID to search")
-                                    .type(ApplicationCommandOptionType.INTEGER.getValue())
+                                    .type(ApplicationCommandOption.Type.INTEGER.getValue())
                                     .required(true)
                                     .build())
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("recent")
                             .description("Show recent cases")
-                            .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                            .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                             .required(false)
                             .addOption(ApplicationCommandOptionData.builder()
                                     .name("type")
                                     .description("Type of punishment to filter for")
-                                    .type(ApplicationCommandOptionType.STRING.getValue())
+                                    .type(ApplicationCommandOption.Type.STRING.getValue())
                                     .choices(optionChoiceDataList)
                                     .required(false)
                                     .build())
@@ -124,24 +124,24 @@ public class InfCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("update")
                     .description("Update reason for infraction")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("id")
                             .description("ID of the infraction you want to modify")
-                            .type(ApplicationCommandOptionType.INTEGER.getValue())
+                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
                             .required(true)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("reason")
                             .description("New reason for infraction")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .required(true)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("which")
                             .description("Which reason to update - punishment or end punishment reason?")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .required(true)
                             .choices(List.of(
                                     ApplicationCommandOptionChoiceData.builder().name("punishment").value("punishment").build(),
@@ -155,7 +155,7 @@ public class InfCommand implements Command {
         return this.request;
     }
 
-    public Mono<Void> execute(SlashCommandEvent event) {
+    public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         if (event.getOption("update").isPresent()) {
             if (!permissionChecker.checkPermission(event.getInteraction().getGuild().block(), event.getInteraction().getUser(), "infupdate")) {
@@ -187,7 +187,7 @@ public class InfCommand implements Command {
         return Mono.empty();
     }
 
-    private void recentCases(SlashCommandEvent event) {
+    private void recentCases(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
@@ -224,7 +224,7 @@ public class InfCommand implements Command {
 
 
 
-    private void searchForCase(SlashCommandEvent event) {
+    private void searchForCase(ChatInputInteractionEvent event) {
 
         if (event.getOption("search").get().getOption("case").isEmpty() || event.getOption("search").get().getOption("case").get().getOption("caseid").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
@@ -317,7 +317,7 @@ public class InfCommand implements Command {
         AuditLogger.addCommandToDB(event, true);
     }
 
-    private void searchPunishments(SlashCommandEvent event) {
+    private void searchPunishments(ChatInputInteractionEvent event) {
 
         long userIdSnowflake;
         if (event.getOption("search").get().getOption("user").isPresent()
@@ -387,7 +387,7 @@ public class InfCommand implements Command {
         event.reply().withEmbeds(resultEmbed).subscribe();
     }
 
-    private void updatePunishment(SlashCommandEvent event) {
+    private void updatePunishment(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
         if (event.getOption("update").get().getOption("id").isPresent()
@@ -434,7 +434,7 @@ public class InfCommand implements Command {
         }
     }
 
-    private String createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList, SlashCommandEvent event) {
+    private String createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList, ChatInputInteractionEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
         List<String> rows = new ArrayList<>();
         rows.add("```");
@@ -464,7 +464,7 @@ public class InfCommand implements Command {
         return stringBuffer.toString();
     }
 
-    private String createFormattedRecentPunishmentsTable(LazyList<Punishment> punishmentLazyList, SlashCommandEvent event) {
+    private String createFormattedRecentPunishmentsTable(LazyList<Punishment> punishmentLazyList, ChatInputInteractionEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
         List<String> rows = new ArrayList<>();
         rows.add("```");

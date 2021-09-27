@@ -10,7 +10,7 @@ import dev.laarryy.Eris.storage.DatabaseLoader;
 import dev.laarryy.Eris.utils.AuditLogger;
 import dev.laarryy.Eris.utils.Notifier;
 import discord4j.common.util.Snowflake;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
@@ -30,7 +30,7 @@ public final class ManualPunishmentEnder {
 
     public ManualPunishmentEnder() {}
 
-    public void endPunishment(SlashCommandEvent event) {
+    public void endPunishment(ChatInputInteractionEvent event) {
 
         DatabaseLoader.openConnectionIfClosed();
 
@@ -67,7 +67,7 @@ public final class ManualPunishmentEnder {
         }
     }
 
-    private boolean discordUnban(Guild guild, Long aLong, String reason, SlashCommandEvent event) {
+    private boolean discordUnban(Guild guild, Long aLong, String reason, ChatInputInteractionEvent event) {
         try {
             guild.unban(Snowflake.of(aLong), reason).block();
             Notifier.notifyModOfUnban(event, reason, aLong);
@@ -77,7 +77,7 @@ public final class ManualPunishmentEnder {
         }
     }
 
-    private boolean discordUnmute(Member member, SlashCommandEvent event, String reason) {
+    private boolean discordUnmute(Member member, ChatInputInteractionEvent event, String reason) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getInteraction().getGuildId().get().asLong());
         Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
@@ -107,7 +107,7 @@ public final class ManualPunishmentEnder {
 
     }
 
-    private boolean databaseEndPunishment(Long aLong, SlashCommandEvent event, String reason) {
+    private boolean databaseEndPunishment(Long aLong, ChatInputInteractionEvent event, String reason) {
         DatabaseLoader.openConnectionIfClosed();
 
         String commandName = event.getCommandName();

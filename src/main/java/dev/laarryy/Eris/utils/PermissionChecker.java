@@ -4,7 +4,7 @@ import dev.laarryy.Eris.models.guilds.DiscordServer;
 import dev.laarryy.Eris.models.guilds.permissions.ServerRolePermission;
 import dev.laarryy.Eris.storage.DatabaseLoader;
 import discord4j.common.util.Snowflake;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
@@ -79,7 +79,7 @@ public final class PermissionChecker {
         }
     }
 
-    public boolean checkBotPermission(SlashCommandEvent event) {
+    public boolean checkBotPermission(ChatInputInteractionEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) {
             Notifier.notifyCommandUserOfError(event, "nullServer");

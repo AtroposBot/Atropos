@@ -2,10 +2,10 @@ package dev.laarryy.Eris.commands.punishments;
 
 import dev.laarryy.Eris.commands.Command;
 import dev.laarryy.Eris.managers.PunishmentManagerManager;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.util.ApplicationCommandOptionType;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
@@ -22,7 +22,7 @@ public class ForcebanCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("id")
                     .description("ID of one user to forceban OR space-delineated list of multiple users to forceban.")
-                    .type(ApplicationCommandOptionType.STRING.getValue())
+                    .type(ApplicationCommandOption.Type.STRING.getValue())
                     .required(true)
                     .build())
             .defaultPermission(true)
@@ -32,7 +32,7 @@ public class ForcebanCommand implements Command {
         return this.request;
     }
 
-    public Mono<Void> execute(SlashCommandEvent event) {
+    public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         Mono.just(event)
                 .subscribeOn(Schedulers.boundedElastic())
