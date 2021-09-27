@@ -3,7 +3,7 @@ package dev.laarryy.Eris.utils;
 import dev.laarryy.Eris.models.users.DiscordUser;
 import dev.laarryy.Eris.models.users.Punishment;
 import discord4j.common.util.Snowflake;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.PrivateChannel;
@@ -20,7 +20,7 @@ public final class Notifier {
     private Notifier() {}
     private final Logger logger = LogManager.getLogger(this);
 
-    public static void notifyPunisherForcebanComplete(SlashCommandEvent event) {
+    public static void notifyPunisherForcebanComplete(ChatInputInteractionEvent event) {
         event.getInteractionResponse().editInitialResponse(
                         WebhookMessageEditRequest
                                 .builder()
@@ -28,7 +28,7 @@ public final class Notifier {
                                 .build()).block();
     }
 
-    public static void notifyPunisher(SlashCommandEvent event, Punishment punishment, String punishmentReason) {
+    public static void notifyPunisher(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
 
         String punishmentEnd;
         if (punishment.getEndDate() != null) {
@@ -92,15 +92,15 @@ public final class Notifier {
         } catch (Exception ignored) {}
     }
 
-    public static void notifyModOfUnban(SlashCommandEvent event, String reason, long userId) {
+    public static void notifyModOfUnban(ChatInputInteractionEvent event, String reason, long userId) {
         event.reply().withEmbeds(unbanEmbed(userId, reason)).subscribe();
     }
 
-    public static void notifyModOfUnmute(SlashCommandEvent event, String username, String reason) {
+    public static void notifyModOfUnmute(ChatInputInteractionEvent event, String username, String reason) {
         event.reply().withEmbeds(unmuteEmbed(username, reason)).subscribe();
     }
 
-    public static void notifyCommandUserOfError(SlashCommandEvent event, String errorType) {
+    public static void notifyCommandUserOfError(ChatInputInteractionEvent event, String errorType) {
         switch (errorType) {
             case "noPermission" -> event.reply().withEmbeds(noPermissionsEmbed()).withEphemeral(true).subscribe();
             case "noBotPermission" -> event.reply().withEmbeds(noBotPermissionsEmbed()).withEphemeral(true).subscribe();

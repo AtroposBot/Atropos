@@ -11,12 +11,12 @@ import dev.laarryy.Eris.utils.PermissionChecker;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
 import dev.laarryy.Eris.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.util.ApplicationCommandOptionType;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -44,36 +44,36 @@ public class AuditCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("user")
                     .description("Search a user's commands.")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("snowflake")
                             .description("User ID to view commands of")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .required(false)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("mention")
                             .description("User mention to view commands of")
-                            .type(ApplicationCommandOptionType.USER.getValue())
+                            .type(ApplicationCommandOption.Type.USER.getValue())
                             .required(false)
                             .build())
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
                     .name("recent")
                     .description("View recent commands")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
                     .name("id")
                     .description("View details of an audit by its ID")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("number")
                             .description("The number of the audit you'd like to view")
-                            .type(ApplicationCommandOptionType.INTEGER.getValue())
+                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
                             .required(true)
                             .build())
                     .build())
@@ -84,7 +84,7 @@ public class AuditCommand implements Command {
         return this.request;
     }
 
-    public Mono<Void> execute(SlashCommandEvent event) {
+    public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
             return Mono.empty();
@@ -107,7 +107,7 @@ public class AuditCommand implements Command {
         return Mono.empty();
     }
 
-    private void searchAuditById(SlashCommandEvent event) {
+    private void searchAuditById(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
         if (event.getOption("id").get().getOption("number").isEmpty() || event.getOption("id").get().getOption("number").get().getValue().isEmpty()) {
@@ -168,7 +168,7 @@ public class AuditCommand implements Command {
 
     }
 
-    private void recentAudits(SlashCommandEvent event) {
+    private void recentAudits(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
@@ -191,7 +191,7 @@ public class AuditCommand implements Command {
         AuditLogger.addCommandToDB(event, true);
     }
 
-    private void searchAuditByUser(SlashCommandEvent event) {
+    private void searchAuditByUser(ChatInputInteractionEvent event) {
 
         DatabaseLoader.openConnectionIfClosed();
         long userIdSnowflake;
@@ -259,7 +259,7 @@ public class AuditCommand implements Command {
         AuditLogger.addCommandToDB(event, true);
     }
 
-    private String createFormattedAuditTable(LazyList<CommandUse> commandUseLazyList, SlashCommandEvent event) {
+    private String createFormattedAuditTable(LazyList<CommandUse> commandUseLazyList, ChatInputInteractionEvent event) {
         List<String> rows = new ArrayList<>();
         rows.add("```");
         rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", "ID", "Date", "User", "Preview"));

@@ -11,14 +11,14 @@ import dev.laarryy.Eris.utils.AuditLogger;
 import dev.laarryy.Eris.utils.Notifier;
 import dev.laarryy.Eris.utils.PermissionChecker;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.util.ApplicationCommandOptionType;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -77,25 +77,25 @@ public class BlacklistCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("add")
                     .description("Add a blacklist entry")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("type")
                             .description("Type of entry")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .choices(optionChoiceDataList)
                             .required(true)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("entry")
                             .description("Entry to add to the blacklist")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .required(true)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("action")
                             .description("What to do when blacklist is triggered")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .choices(optionChoiceDataList2)
                             .required(true)
                             .build())
@@ -103,30 +103,30 @@ public class BlacklistCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("remove")
                     .description("Remove a blacklist entry")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("id")
                             .description("ID of blacklist entry to remove")
-                            .type(ApplicationCommandOptionType.INTEGER.getValue())
+                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
                             .required(true)
                             .build())
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
                     .name("list")
                     .description("List blacklist entries for this guild")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
                     .name("info")
                     .description("Display info for a blacklist entry")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("id")
                             .description("ID of blacklist entry to show info for")
-                            .type(ApplicationCommandOptionType.INTEGER.getValue())
+                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
                             .required(true)
                             .build())
                     .build())
@@ -137,7 +137,7 @@ public class BlacklistCommand implements Command {
         return this.request;
     }
 
-    public Mono<Void> execute(SlashCommandEvent event) {
+    public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
             return Mono.empty();
@@ -169,7 +169,7 @@ public class BlacklistCommand implements Command {
         return Mono.empty();
     }
 
-    private void getBlacklistEntryInfo(SlashCommandEvent event) {
+    private void getBlacklistEntryInfo(ChatInputInteractionEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
         long guildId = guild.getId().asLong();
 
@@ -214,7 +214,7 @@ public class BlacklistCommand implements Command {
         event.reply().withEmbeds(embed).subscribe();
     }
 
-    private void listBlacklistEntries(SlashCommandEvent event) {
+    private void listBlacklistEntries(ChatInputInteractionEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
         long guildId = guild.getId().asLong();
 
@@ -270,7 +270,7 @@ public class BlacklistCommand implements Command {
         return stringBuilder.toString();
     }
 
-    private void removeBlacklistEntry(SlashCommandEvent event) {
+    private void removeBlacklistEntry(ChatInputInteractionEvent event) {
         if (event.getOption("remove").get().getOption("id").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             return;
@@ -314,7 +314,7 @@ public class BlacklistCommand implements Command {
         event.reply().withEmbeds(embed).subscribe();
     }
 
-    private void addBlacklistEntry(SlashCommandEvent event) {
+    private void addBlacklistEntry(ChatInputInteractionEvent event) {
         if (event.getOption("add").get().getOption("type").get().getValue().isEmpty()
                 || event.getOption("add").get().getOption("entry").get().getValue().isEmpty()
                 || event.getOption("add").get().getOption("action").get().getValue().isEmpty()) {

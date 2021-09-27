@@ -28,6 +28,7 @@ import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.guild.MemberLeaveEvent;
 import discord4j.core.event.domain.guild.MemberUpdateEvent;
 import discord4j.core.event.domain.guild.UnbanEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.event.domain.message.MessageBulkDeleteEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
@@ -64,7 +65,7 @@ public final class LogExecutor {
     private LogExecutor() {
     }
 
-    public static void logInsubordination(SlashCommandEvent event, TextChannel logChannel, Member target) {
+    public static void logInsubordination(ChatInputInteractionEvent event, TextChannel logChannel, Member target) {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) {
             return;

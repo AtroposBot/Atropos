@@ -27,7 +27,7 @@ import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.guild.MemberLeaveEvent;
 import discord4j.core.event.domain.guild.MemberUpdateEvent;
 import discord4j.core.event.domain.guild.UnbanEvent;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.event.domain.message.MessageBulkDeleteEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageDeleteEvent;
@@ -85,7 +85,7 @@ public final class LoggingListener {
         return Mono.just(channel);
     }
 
-    public void onAttemptedInsubordination(SlashCommandEvent event, Member target) {
+    public void onAttemptedInsubordination(ChatInputInteractionEvent event, Member target) {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) return;
 
@@ -105,7 +105,7 @@ public final class LoggingListener {
         });
     }
 
-    public void onPunishment(SlashCommandEvent event, Punishment punishment) {
+    public void onPunishment(ChatInputInteractionEvent event, Punishment punishment) {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) return;
 

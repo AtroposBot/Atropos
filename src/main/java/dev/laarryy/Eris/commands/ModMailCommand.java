@@ -7,14 +7,14 @@ import dev.laarryy.Eris.utils.Notifier;
 import dev.laarryy.Eris.utils.PermissionChecker;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
 import discord4j.common.util.Snowflake;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.util.ApplicationCommandOptionType;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,7 +34,7 @@ public class ModMailCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("message")
                     .description("What to send to staff")
-                    .type(ApplicationCommandOptionType.STRING.getValue())
+                    .type(ApplicationCommandOption.Type.STRING.getValue())
                     .required(true)
                     .build())
             .defaultPermission(true)
@@ -44,7 +44,7 @@ public class ModMailCommand implements Command {
         return this.request;
     }
 
-    public Mono<Void> execute(SlashCommandEvent event) {
+    public Mono<Void> execute(ChatInputInteractionEvent event) {
         if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
             return Mono.empty();
         }

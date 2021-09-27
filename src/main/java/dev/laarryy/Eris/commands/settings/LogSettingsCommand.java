@@ -9,7 +9,8 @@ import dev.laarryy.Eris.utils.AddServerToDB;
 import dev.laarryy.Eris.utils.AuditLogger;
 import dev.laarryy.Eris.utils.Notifier;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
+import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.TextChannel;
@@ -17,7 +18,6 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.rest.util.ApplicationCommandOptionType;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -63,12 +63,12 @@ public class LogSettingsCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("set")
                     .description("Sets this channel as a logging channel.")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("type")
                             .description("Logging type to send to this channel. Run /logsettings info to learn more.")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .choices(optionChoiceDataList)
                             .required(true)
                             .build())
@@ -76,12 +76,12 @@ public class LogSettingsCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("unset")
                     .description("Unsets this channel as a logging channel.")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("type")
                             .description("Logging type to stop sending to this channel. Run /logsettings info to learn more.")
-                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .type(ApplicationCommandOption.Type.STRING.getValue())
                             .choices(optionChoiceDataList)
                             .required(true)
                             .build())
@@ -89,7 +89,7 @@ public class LogSettingsCommand implements Command {
             .addOption(ApplicationCommandOptionData.builder()
                     .name("info")
                     .description("Info on logging types and what they log.")
-                    .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                     .required(false)
                     .build())
             .defaultPermission(true)
@@ -99,7 +99,7 @@ public class LogSettingsCommand implements Command {
         return this.request;
     }
 
-    public Mono<Void> execute(SlashCommandEvent event) {
+    public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
             return Mono.empty();
@@ -125,7 +125,7 @@ public class LogSettingsCommand implements Command {
         return Mono.empty();
     }
 
-    private void unsetLogChannel(SlashCommandEvent event) {
+    private void unsetLogChannel(ChatInputInteractionEvent event) {
         if (event.getOption("unset").get().getOption("type").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
@@ -186,7 +186,7 @@ public class LogSettingsCommand implements Command {
         AuditLogger.addCommandToDB(event, true);
     }
 
-    private void setLogChannel(SlashCommandEvent event) {
+    private void setLogChannel(ChatInputInteractionEvent event) {
         if (event.getOption("set").get().getOption("type").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
@@ -257,7 +257,7 @@ public class LogSettingsCommand implements Command {
 
     }
 
-    private void logSettingsInfo(SlashCommandEvent event) {
+    private void logSettingsInfo(ChatInputInteractionEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
 
         DatabaseLoader.openConnectionIfClosed();
