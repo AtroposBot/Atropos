@@ -278,7 +278,7 @@ public class AuditCommand implements Command {
             } else username = userId;
 
             if (username.length() > 15) {
-                username = username.substring(0,13) + "...";
+                username = username.substring(0,12) + "...";
             }
             String auditId = c.getInteger("id").toString();
             Instant date = Instant.ofEpochMilli(c.getDate());

@@ -41,6 +41,7 @@ public class InfCommand implements Command {
             .description("Search and manage infractions.")
             .addOption(ApplicationCommandOptionData.builder()
                     .name("search")
+                    // TODO: Add 'type' (warn, ban, forceban, etc) as a non-req'd option for inf search recent
                     .description("Search infractions.")
                     .type(ApplicationCommandOptionType.SUB_COMMAND_GROUP.getValue())
                     .required(false)
@@ -181,6 +182,8 @@ public class InfCommand implements Command {
             return;
         }
 
+        DatabaseLoader.openConnectionIfClosed();
+
         int caseInt = (int) event.getOption("search").get().getOption("case").get().getOption("caseid").get().getValue().get().asLong();
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
@@ -289,6 +292,8 @@ public class InfCommand implements Command {
         } else {
             userIdSnowflake = 0L;
         }
+
+        DatabaseLoader.openConnectionIfClosed();
 
 
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);

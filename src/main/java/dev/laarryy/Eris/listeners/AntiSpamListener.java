@@ -77,9 +77,8 @@ public class AntiSpamListener {
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());
         DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-        DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
-        punishmentManager.discordMuteUser(guild, userIdSnowflake, discordServerProperties);
+        punishmentManager.discordMuteUser(guild, userIdSnowflake);
 
         Punishment punishment = Punishment.create("user_id_punished", discordUser.getUserId(),
                 "user_id_punisher", bot.getUserId(),

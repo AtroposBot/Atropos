@@ -44,6 +44,33 @@ public class BlacklistCommand implements Command {
                     .value("string")
                     .build());
 
+    List<ApplicationCommandOptionChoiceData> optionChoiceDataList2 = List.of(
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Delete Message, ban user, log to punishments channel")
+                    .value("ban")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Delete Message, mute for 2 hours, log to punishments channel")
+                    .value("mute")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Delete Message, warn user, log to punishments channel")
+                    .value("warn")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Delete Message, create a case, log to punishments channel")
+                    .value("delete")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Create a case, log to punishments channel")
+                    .value("notify")
+                    .build());
+
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
             .name("blacklist")
             .description("Manage the blacklist - blacklisted strings or files will be auto-deleted")
@@ -63,6 +90,13 @@ public class BlacklistCommand implements Command {
                             .name("entry")
                             .description("Entry to add to the blacklist")
                             .type(ApplicationCommandOptionType.STRING.getValue())
+                            .required(true)
+                            .build())
+                    .addOption(ApplicationCommandOptionData.builder()
+                            .name("action")
+                            .description("What to do when blacklist is triggered")
+                            .type(ApplicationCommandOptionType.STRING.getValue())
+                            .choices(optionChoiceDataList2)
                             .required(true)
                             .build())
                     .build())
@@ -277,11 +311,13 @@ public class BlacklistCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
+        event.reply().withEmbeds(embed).subscribe();
     }
 
     private void addBlacklistEntry(SlashCommandEvent event) {
-        if (event.getOption("add").get().getOption("type").get().getValue().isEmpty() || event.getOption("add").get().getOption("entry").get().getValue().isEmpty()) {
+        if (event.getOption("add").get().getOption("type").get().getValue().isEmpty()
+                || event.getOption("add").get().getOption("entry").get().getValue().isEmpty()
+                || event.getOption("add").get().getOption("action").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
             return;
@@ -312,6 +348,8 @@ public class BlacklistCommand implements Command {
                 regexTrigger,
                 type);
 
+        String action = event.getOption("add").get().getOption("action").get().getValue().get().asString();
+
         if (serverBlacklist != null) {
             Notifier.notifyCommandUserOfError(event, "alreadyBlacklisted");
             AuditLogger.addCommandToDB(event, false);
@@ -328,7 +366,7 @@ public class BlacklistCommand implements Command {
             return;
         }
 
-        ServerBlacklist blacklist = ServerBlacklist.create("server_id", serverId, "type", type, "regex_trigger", regexTrigger);
+        ServerBlacklist blacklist = ServerBlacklist.create("server_id", serverId, "type", type, "regex_trigger", regexTrigger, "action", action);
         blacklist.save();
         blacklist.refresh();
         blacklistCache.invalidate(guild.getId().asLong());
@@ -340,6 +378,7 @@ public class BlacklistCommand implements Command {
                 .description("Created blacklist entry with ID `" + blacklist.getBlacklistId() + "`")
                 .addField("Blacklisted Entry", "`" + blacklist.getTrigger() + "`", false)
                 .addField("Type", blacklist.getType().toUpperCase(), false)
+                .addField("Action", blacklist.getAction().toUpperCase(), false)
                 .footer("To remove this entry, run /blacklist remove " + blacklist.getBlacklistId(), "")
                 .timestamp(Instant.now())
                 .build();

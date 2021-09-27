@@ -549,7 +549,7 @@ public final class LogExecutor {
         return guildIconUrl;
     }
 
-    private static String getBadges(Member member) {
+    public static String getBadges(Member member) {
         StringBuilder stringBuilder = new StringBuilder();
         if (member.getPublicFlags().contains(User.Flag.DISCORD_CERTIFIED_MODERATOR)) {
             stringBuilder.append(EmojiManager.getModeratorBadge()).append(" ");
@@ -1245,7 +1245,7 @@ public final class LogExecutor {
         String information;
         if (event.getOld().isPresent() && event.getTextChannel().isPresent()) {
             if (event.getOld().get().getName().equals(event.getCurrent().getName())
-                    && event.getOld().get().getCategory().block().equals(event.getNewsChannel().get().getCategory().block().getName())) {
+                    && event.getOld().get().getCategory().block().equals(event.getTextChannel().get().getCategory().block().getName())) {
                 information = getTextChannelDiff(event.getOld().get(), event.getTextChannel().get());
             } else {
                 information = getTextChannelDiff(event.getOld().get(), event.getTextChannel().get());
@@ -1391,7 +1391,7 @@ public final class LogExecutor {
         String roleName = event.getRole().getName();
         String role = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title("Role Created")
+                .title(EmojiManager.getServerRole() + " Role Created")
                 .color(Color.ENDEAVOUR)
                 .addField("User", responsibleUserId, false)
                 .addField("Role", role, false)
@@ -1419,7 +1419,7 @@ public final class LogExecutor {
             role = "Unknown";
         }
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title("Role Deleted")
+                .title(EmojiManager.getServerRole() + " Role Deleted")
                 .color(Color.JAZZBERRY_JAM)
                 .addField("User", responsibleUserId, false)
                 .addField("Role", role, false)
@@ -1458,7 +1458,7 @@ public final class LogExecutor {
         String name = "`" + event.getCurrent().getName() + "`:`" + roleId + "`:<@&" + roleId + ">";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getUserIdentification() + " Role Updated")
+                .title(EmojiManager.getServerRole() + "  Role Updated")
                 .color(Color.ENDEAVOUR)
                 .addField("Responsible User", responsibleUser, false)
                 .addField("Role", name, false)

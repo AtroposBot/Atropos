@@ -38,4 +38,12 @@ public class ServerBlacklist extends Model {
         setString("type", type);
     }
 
+    public String getAction() {
+        return getString("action");
+    }
+
+    public void setAction(String action) {
+        setString("action", action);
+    }
+
 }
