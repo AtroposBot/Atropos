@@ -182,7 +182,7 @@ public class LogSettingsCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
+        event.reply().withEmbeds(embed).subscribe();
         AuditLogger.addCommandToDB(event, true);
     }
 
@@ -252,7 +252,7 @@ public class LogSettingsCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
+        event.reply().withEmbeds(embed).subscribe();
         AuditLogger.addCommandToDB(event, true);
 
     }
@@ -305,7 +305,7 @@ public class LogSettingsCommand implements Command {
                 .addField("\u200B", settings, false)
                 .build();
 
-        event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
+        event.reply().withEmbeds(embed).subscribe();
 
     }
 }

@@ -1,6 +1,8 @@
 package dev.laarryy.Eris.utils;
 
+import dev.laarryy.Eris.models.users.DiscordUser;
 import dev.laarryy.Eris.models.users.Punishment;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
@@ -50,15 +52,15 @@ public final class Notifier {
         }
     }
 
-    public static void notifyPunished(SlashCommandEvent event, Punishment punishment, String punishmentReason) {
+    public static void notifyPunished(Guild guild, Punishment punishment, String punishmentReason) {
 
         if (punishment.getPunishmentType().equals("case")) {
             // Never notify of cases
             return;
         }
 
-        Guild guild = event.getInteraction().getGuild().block();
-        User punishedUser = event.getOption("user").get().getValue().get().asUser().block();
+        DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+        User punishedUser = guild.getClient().getUserById(Snowflake.of(discordUser.getUserIdSnowflake())).block();
 
         String punishmentEnd;
         if (punishment.getEndDate() != null) {
@@ -87,9 +89,7 @@ public final class Notifier {
         try {
             PrivateChannel privateChannel = punishedUser.getPrivateChannel().block();
             privateChannel.createMessage(embed).block();
-        } catch (Exception exception) {
-            event.getInteraction().getChannel().block().createMessage(unableToDmEmbed()).block();
-        }
+        } catch (Exception ignored) {}
     }
 
     public static void notifyModOfUnban(SlashCommandEvent event, String reason, long userId) {

@@ -8,6 +8,7 @@ import dev.laarryy.Eris.models.users.DiscordUser;
 import dev.laarryy.Eris.models.users.Punishment;
 import dev.laarryy.Eris.storage.DatabaseLoader;
 import dev.laarryy.Eris.utils.AddServerToDB;
+import dev.laarryy.Eris.utils.LogExecutor;
 import dev.laarryy.Eris.utils.Notifier;
 import dev.laarryy.Eris.utils.PermissionChecker;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
@@ -241,11 +242,17 @@ public class InfoCommand implements Command {
             joinTimestamp = TimestampMaker.getTimestampFromEpochSecond(Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(), TimestampMaker.TimestampType.RELATIVE);
         }
 
-        String field1Content = EmojiManager.getUserIdentification() + " **User Information**\n" +
-                "Profile: " + user.getMention() + "\n" +
-                "ID: `" + userIdSnowflake.asLong() + "`\n" +
-                "Created: " + TimestampMaker.getTimestampFromEpochSecond(userIdSnowflake.getTimestamp().getEpochSecond(), TimestampMaker.TimestampType.RELATIVE) + "\n" +
-                "First Joined: " + joinTimestamp;
+        StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
+                .append("Profile: ").append(user.getMention()).append("\n")
+                .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
+        if (member != null) {
+            field1Content.append("Badges: ").append(LogExecutor.getBadges(member));
+        }
+                field1Content.append("Created: ")
+                        .append(TimestampMaker.getTimestampFromEpochSecond(
+                                userIdSnowflake.getTimestamp().getEpochSecond(),
+                                TimestampMaker.TimestampType.RELATIVE)).append("\n")
+                        .append("First Joined: ").append(joinTimestamp);
 
         String username = user.getUsername() + "#" + user.getDiscriminator();
         String eventUser = event.getInteraction().getUser().getUsername() + "#" + event.getInteraction().getUser().getDiscriminator();
@@ -255,7 +262,7 @@ public class InfoCommand implements Command {
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(username)
                 .color(Color.ENDEAVOUR)
-                .description(field1Content)
+                .description(field1Content.toString())
                 .thumbnail(avatarUrl)
                 .footer("Requested by "+ eventUser, event.getInteraction().getUser().getAvatarUrl())
                 .build();

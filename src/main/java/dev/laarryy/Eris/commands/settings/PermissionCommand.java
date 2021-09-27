@@ -316,7 +316,7 @@ public class PermissionCommand implements Command {
                     .addField("Role", roleInfo, false)
                     .build();
 
-            event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
+            event.reply().withEmbeds(embed).subscribe();
             AuditLogger.addCommandToDB(event, true);
             return Mono.empty();
         }
@@ -349,7 +349,7 @@ public class PermissionCommand implements Command {
                     .addField("Role", roleInfo, false)
                     .build();
 
-            event.reply().withEmbeds(embed).withEphemeral(true).subscribe();
+            event.reply().withEmbeds(embed).subscribe();
             AuditLogger.addCommandToDB(event, true);
             return Mono.empty();
         }
