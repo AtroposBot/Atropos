@@ -66,7 +66,7 @@ public class PunishmentManager {
 
         DatabaseLoader.openConnectionIfClosed();
 
-        // Make sure user has permission to do this, or stop here - PermissionId 69 is the wildcard/everything permission.
+        // Make sure user has permission to do this, or stop here
 
         if (!permissionChecker.checkPermission(guild, user, request.name())) {
             Notifier.notifyCommandUserOfError(event, "noPermission");
