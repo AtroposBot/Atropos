@@ -36,66 +36,105 @@ public class InfCommand implements Command {
     private final PermissionChecker permissionChecker = new PermissionChecker();
     private final Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
 
+    List<ApplicationCommandOptionChoiceData> optionChoiceDataList = List.of(
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Case")
+                    .value("case")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Warn")
+                    .value("warn")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Mute")
+                    .value("mute")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Kick")
+                    .value("Kick")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Ban")
+                    .value("ban")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("Forceban")
+                    .value("forceban")
+                    .build());
+
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
             .name("inf")
             .description("Search and manage infractions.")
             .addOption(ApplicationCommandOptionData.builder()
                     .name("search")
                     // TODO: Add 'type' (warn, ban, forceban, etc) as a non-req'd option for inf search recent
-                    .description("Search infractions.")
+                    .description("Search infractions")
                     .type(ApplicationCommandOptionType.SUB_COMMAND_GROUP.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("user")
-                            .description("Search by user ID.")
+                            .description("Search by user ID")
                             .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
                             .required(false)
                             .addOption(ApplicationCommandOptionData.builder()
                                     .name("snowflake")
-                                    .description("User ID to search.")
+                                    .description("User ID to search")
                                     .type(ApplicationCommandOptionType.STRING.getValue())
                                     .required(false)
                                     .build())
                             .addOption(ApplicationCommandOptionData.builder()
                                     .name("mention")
-                                    .description("User mention to search.")
+                                    .description("User mention to search")
                                     .type(ApplicationCommandOptionType.USER.getValue())
                                     .required(false)
                                     .build())
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("case")
-                            .description("Search by case ID.")
+                            .description("Search by case ID")
                             .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
                             .required(false)
                             .addOption(ApplicationCommandOptionData.builder()
                                     .name("caseid")
-                                    .description("Case ID to search.")
+                                    .description("Case ID to search")
                                     .type(ApplicationCommandOptionType.INTEGER.getValue())
                                     .required(true)
                                     .build())
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("recent")
-                            .description("Show recent cases.")
+                            .description("Show recent cases")
                             .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
                             .required(false)
+                            .addOption(ApplicationCommandOptionData.builder()
+                                    .name("type")
+                                    .description("Type of punishment to filter for")
+                                    .type(ApplicationCommandOptionType.STRING.getValue())
+                                    .choices(optionChoiceDataList)
+                                    .required(false)
+                                    .build())
                             .build())
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
                     .name("update")
-                    .description("Update reason for infraction.")
+                    .description("Update reason for infraction")
                     .type(ApplicationCommandOptionType.SUB_COMMAND.getValue())
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("id")
-                            .description("ID of the infraction you want to modify.")
+                            .description("ID of the infraction you want to modify")
                             .type(ApplicationCommandOptionType.INTEGER.getValue())
                             .required(true)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("reason")
-                            .description("New reason for infraction.")
+                            .description("New reason for infraction")
                             .type(ApplicationCommandOptionType.STRING.getValue())
                             .required(true)
                             .build())
@@ -156,9 +195,20 @@ public class InfCommand implements Command {
         Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
         long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
 
-        LazyList<Punishment> punishmentLazyList = Punishment.where("server_id = ? and punishment_date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
+        LazyList<Punishment> punishmentLazyList;
+        if (event.getOption("search").get().getOption("recent").get().getOption("type").isEmpty()) {
+            punishmentLazyList = Punishment.where("server_id = ? and punishment_date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
+        } else {
+            String type = event.getOption("search").get().getOption("recent").get().getOption("type").get().getValue().get().asString();
+            punishmentLazyList = Punishment.where("server_id = ? and punishment_type = ? and punishment_date > ?", discordServer.getServerId(), type, tenDaysAgoStamp).limit(25).orderBy("id desc");
+        }
 
-        String results = createFormattedRecentPunishmentsTable(punishmentLazyList, event);
+        String results;
+        if (punishmentLazyList == null || punishmentLazyList.isEmpty()) {
+            results = "Nothing found in the past 10 days";
+        } else {
+            results = createFormattedRecentPunishmentsTable(punishmentLazyList, event);
+        }
 
         EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
@@ -316,22 +366,18 @@ public class InfCommand implements Command {
 
         int serverId = discordServer.getServerId();
 
-        Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
-        long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
+        LazyList<Punishment> punishmentLazyList = Punishment.find("user_id_punished = ? and server_id = ?", userId, serverId).limit(70).orderBy("id desc");
 
-        LazyList<Punishment> punishmentLazyList = Punishment.find("user_id_punished = ? and server_id = ? and punishment_date > ?", userId, serverId, tenDaysAgoStamp).limit(50).orderBy("id desc");
-
-        if (punishmentLazyList.isEmpty()) {
-            Notifier.notifyCommandUserOfError(event, "noResults");
-            AuditLogger.addCommandToDB(event, true);
-            return;
+        String results;
+        if (punishmentLazyList == null || punishmentLazyList.isEmpty()) {
+            results = "No results found for user.";
+        } else {
+            results = createFormattedPunishmentsTable(punishmentLazyList, event);
         }
-
-        String results = createFormattedPunishmentsTable(punishmentLazyList, event);
 
         EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
-                .title("Results for user " + userIdSnowflake)
+                .title("Results for User: " + userIdSnowflake)
                 .description(results)
                 .footer("For detailed information, run /inf search case <id>", "")
                 .timestamp(Instant.now())

@@ -48,6 +48,7 @@ public class CommandManager {
                     .collectMap(ApplicationCommandData::name)
                     .block();
 
+
             if (!discordCommands.containsKey(command.getRequest().name())) {
                 logger.info("Beginning command registration with discord: " + command.getRequest().name());
                 client.getRestClient().getApplicationService()

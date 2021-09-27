@@ -246,7 +246,7 @@ public class InfoCommand implements Command {
                 .append("Profile: ").append(user.getMention()).append("\n")
                 .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
         if (member != null) {
-            field1Content.append("Badges: ").append(LogExecutor.getBadges(member));
+            field1Content.append("Badges: ").append(LogExecutor.getBadges(member)).append("\n");
         }
                 field1Content.append("Created: ")
                         .append(TimestampMaker.getTimestampFromEpochSecond(
