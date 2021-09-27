@@ -392,7 +392,7 @@ public final class LogExecutor {
                 newContent = getStringWithLegalLength(event.getMessage().block().getContent(), 1000);
             }
         } else if (event.isEmbedsChanged()) {
-            if (event.getOld().isPresent()) {
+            if (event.getOld().isPresent() && !event.getOld().get().getEmbeds().isEmpty()) {
                 oldContent = makeEmbedsEntries(event.getOld().get().getEmbeds());
             } else {
                 oldContent = "Unknown embed(s)";
@@ -862,7 +862,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(channelCreate);
 
         long channelId = event.getChannel().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getChannel().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getNewsChannel() + " News Channel Created")
@@ -890,7 +891,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(channelDelete);
 
         long channelId = event.getChannel().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getChannel().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getNewsChannel() + " News Channel Deleted")
@@ -918,7 +920,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(newsUpdate);
 
         long channelId = event.getCurrent().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getCurrent().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         String information;
         if (event.getOld().isPresent() && event.getNewsChannel().isPresent()) {
@@ -965,7 +968,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(channelCreate);
 
         long channelId = event.getChannel().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getChannel().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getStoreChannel() + " Store Channel Created")
@@ -989,7 +993,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(channelDelete);
 
         long channelId = event.getChannel().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getChannel().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getStoreChannel() + " Store Channel Deleted")
@@ -1018,7 +1023,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(newsUpdate);
 
         long channelId = event.getCurrent().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getCurrent().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         String information;
         if (event.getOld().isPresent()) {
@@ -1065,7 +1071,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(channelCreate);
 
         long channelId = event.getChannel().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getChannel().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getVoiceChannel() + " Voice Channel Created")
@@ -1089,7 +1096,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(channelDelete);
 
         long channelId = event.getChannel().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getChannel().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getVoiceChannel() + " Voice Channel Deleted")
@@ -1118,7 +1126,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(newsUpdate);
 
         long channelId = event.getCurrent().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getCurrent().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         String information;
         if (event.getOld().isPresent()) {
@@ -1165,7 +1174,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(channelCreate);
 
         long channelId = event.getChannel().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getChannel().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getTextChannel() + " Text Channel Created")
@@ -1212,7 +1222,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(channelDelete);
 
         long channelId = event.getChannel().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getChannel().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getTextChannel() + " Text Channel Deleted")
@@ -1240,7 +1251,8 @@ public final class LogExecutor {
         String responsibleUserId = getAuditResponsibleUser(newsUpdate);
 
         long channelId = event.getCurrent().getId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+        String name = event.getCurrent().getName();
+        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
 
         String information;
         if (event.getOld().isPresent() && event.getTextChannel().isPresent()) {

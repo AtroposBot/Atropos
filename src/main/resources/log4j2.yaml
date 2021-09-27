@@ -1,6 +1,6 @@
 Configuration:
   status: warn
-  name: Iciclogger
+  name: ErisLogger
   properties:
     property:
       name: log-path
