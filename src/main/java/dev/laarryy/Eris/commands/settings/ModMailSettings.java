@@ -49,9 +49,6 @@ public class ModMailSettings {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
-            return Mono.empty();
-        }
 
         Guild guild = event.getInteraction().getGuild().block();
         TextChannel messageChannel = event.getInteraction().getChannel().ofType(TextChannel.class).block();

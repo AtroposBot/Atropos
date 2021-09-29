@@ -122,7 +122,7 @@ public class LogSettings implements Command {
     }
 
     private void unsetLogChannel(ChatInputInteractionEvent event) {
-        if (event.getOption("unset").get().getOption("type").isEmpty()) {
+        if (event.getOption("log").get().getOption("unset").get().getOption("type").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
         }
@@ -132,7 +132,7 @@ public class LogSettings implements Command {
 
         PropertiesCacheManager.getManager().getPropertiesCache().invalidate(guild.getId().asLong());
 
-        String logType = event.getOption("unset").get().getOption("type").get().getValue().get().asString();
+        String logType = event.getOption("log").get().getOption("unset").get().getOption("type").get().getValue().get().asString();
 
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
@@ -183,7 +183,7 @@ public class LogSettings implements Command {
     }
 
     private void setLogChannel(ChatInputInteractionEvent event) {
-        if (event.getOption("set").get().getOption("type").isEmpty()) {
+        if (event.getOption("log").get().getOption("set").get().getOption("type").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
             return;
@@ -198,7 +198,7 @@ public class LogSettings implements Command {
 
         DatabaseLoader.openConnectionIfClosed();
 
-        String logType = event.getOption("set").get().getOption("type").get().getValue().get().asString();
+        String logType = event.getOption("log").get().getOption("set").get().getOption("type").get().getValue().get().asString();
 
         PropertiesCacheManager.getManager().getPropertiesCache().invalidate(guild.getId().asLong());
 
