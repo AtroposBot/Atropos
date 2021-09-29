@@ -52,7 +52,7 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("/modmailsettings")
+                    .name("/settings modmail")
                     .value("modmailsettings")
                     .build(),
             ApplicationCommandOptionChoiceData
@@ -112,13 +112,13 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("/logsettings")
+                    .name("/settings log")
                     .value("logsettings")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("/blacklist")
-                    .value("blacklist")
+                    .name("/settings blacklist")
+                    .value("blacklistsettings")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
@@ -139,6 +139,11 @@ public class PermissionCommand implements Command {
                     .builder()
                     .name("/info")
                     .value("info")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/settings antispam")
+                    .value("antispamsettings")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()

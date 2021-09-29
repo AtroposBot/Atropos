@@ -6,12 +6,14 @@ import dev.laarryy.Eris.commands.punishments.PunishmentManager;
 import dev.laarryy.Eris.config.EmojiManager;
 import dev.laarryy.Eris.listeners.logging.LoggingListener;
 import dev.laarryy.Eris.managers.LoggingListenerManager;
+import dev.laarryy.Eris.managers.PropertiesCacheManager;
 import dev.laarryy.Eris.managers.PunishmentManagerManager;
 import dev.laarryy.Eris.models.guilds.DiscordServer;
 import dev.laarryy.Eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.Eris.models.users.DiscordUser;
 import dev.laarryy.Eris.models.users.Punishment;
 import dev.laarryy.Eris.storage.DatabaseLoader;
+import dev.laarryy.Eris.utils.Pair;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
@@ -29,9 +31,16 @@ public class AntiSpamListener {
 
     private final Logger logger = LogManager.getLogger(this);
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
+    LoadingCache<Long, DiscordServerProperties> propertiesCache = PropertiesCacheManager.getManager().getPropertiesCache();
     PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
-    LoadingCache<Long, Integer> history = Caffeine.newBuilder()
-            .expireAfterWrite(Duration.ofSeconds(5))
+    LoadingCache<Pair<Long, Long>, Integer> messageHistory = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofSeconds(6))
+            .build(aLong -> 0);
+    LoadingCache<Pair<Long, Long>, Integer> pingHistory = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofSeconds(6))
+            .build(aLong -> 0);
+    LoadingCache<Pair<Long, Long>, Integer> warnHistory = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofMinutes(10))
             .build(aLong -> 0);
 
 
@@ -42,36 +51,56 @@ public class AntiSpamListener {
             return Mono.empty();
         }
 
-        if (!event.getMessage().getUserMentions().isEmpty() && event.getMessage().getUserMentions().size() > 5) {
-            muteUserForSpam(event, "pings");
-            return Mono.empty();
-        }
+        long guildId = event.getGuildId().get().asLong();
+
+        DiscordServerProperties properties = propertiesCache.get(guildId);
 
         Member member = event.getMember().get();
         long userId = member.getId().asLong();
+        Pair<Long, Long> pair = new Pair<>(userId, guildId);
 
-        history.get(userId);
+        int messagesToWarn = properties.getMessagesToWarn();
+        int pingsToWarn = properties.getPingsToWarn();
+        int warnsToMute = properties.getWarnsToMute();
 
-        Integer histInt = history.get(userId) + 1;
-        history.put(userId, histInt);
+        int initialInt = messageHistory.get(pair);
+        int pingInt = pingHistory.get(pair);
+        int warnInt = warnHistory.get(pair);
 
-        if (histInt >= 7) {
-            muteUserForSpam(event, "spam");
-        } else if (histInt == 4) {
+        messageHistory.put(pair, initialInt + 1);
+
+        int histInt = messageHistory.get(pair);
+
+        if (!event.getMessage().getUserMentions().isEmpty()) {
+            int userMentions = event.getMessage().getUserMentions().size();
+            pingHistory.put(pair, pingInt + userMentions);
+        }
+
+        if (warnsToMute > 0 && warnInt >= warnsToMute) {
+            muteUserForSpam(event);
+            warnHistory.invalidate(pair);
+            return Mono.empty();
+        }
+
+        if (pingsToWarn > 0 && pingInt == pingsToWarn) {
             warnUserForSpam(event);
+            warnHistory.put(pair, warnInt + 1);
+            return Mono.empty();
+        }
+
+        if (messagesToWarn > 0 && histInt == messagesToWarn) {
+            warnUserForSpam(event);
+            warnHistory.put(pair, warnInt + 1);
+            return Mono.empty();
         }
 
         return Mono.empty();
     }
 
-    private void muteUserForSpam(MessageCreateEvent event, String reason) {
+    private void muteUserForSpam(MessageCreateEvent event) {
         Guild guild = event.getGuild().block();
         Member member = event.getMember().get();
-        String punishmentMessage = switch (reason) {
-          case "spam" -> "ANTI-SPAM: Muted for two hours for severe spam.";
-          case "pings" -> "ANTI-SPAM: Muted for pinging more than five people.";
-            default -> "ANTI-SPAM: Muted for severe spam.";
-        };
+        String punishmentMessage = "ANTI-SPAM: Muted for two hours for severe spam.";
         long userIdSnowflake = event.getMember().get().getId().asLong();
         DatabaseLoader.openConnectionIfClosed();
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());

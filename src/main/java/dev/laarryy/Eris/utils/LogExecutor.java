@@ -29,7 +29,6 @@ import discord4j.core.event.domain.guild.MemberLeaveEvent;
 import discord4j.core.event.domain.guild.MemberUpdateEvent;
 import discord4j.core.event.domain.guild.UnbanEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.event.domain.interaction.SlashCommandEvent;
 import discord4j.core.event.domain.message.MessageBulkDeleteEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.event.domain.message.MessageDeleteEvent;
@@ -58,6 +57,7 @@ import discord4j.rest.util.Image;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
@@ -188,7 +188,10 @@ public final class LogExecutor {
                 .block();
 
         String responsibleUserId;
-        if (recentDelete == null || recentDelete.getResponsibleUser().isEmpty()) {
+        if (recentDelete == null
+                || recentDelete.getResponsibleUser().isEmpty()
+                || !recentDelete.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15)))
+        ) {
             responsibleUserId = "Unknown";
         } else {
             String id = recentDelete.getResponsibleUser().get().getId().asString();

@@ -95,4 +95,28 @@ public class DiscordServerProperties extends Model {
     public void setStopJoins(boolean stopJoins) {
         setBoolean("stop_joins", stopJoins);
     }
+
+    public @NonNull Integer getMessagesToWarn() {
+        return getInteger("messages_to_warn");
+    }
+
+    public void setMessagesToWarn(int messagesToWarn) {
+        setInteger("messages_to_warn", messagesToWarn);
+    }
+
+    public @NonNull Integer getPingsToWarn() {
+        return getInteger("pings_to_warn");
+    }
+
+    public void setPingsToWarn(int pingsToWarn) {
+        setInteger("pings_to_warn", pingsToWarn);
+    }
+
+    public @NonNull Integer getWarnsToMute() {
+        return getInteger("warns_to_mute");
+    }
+
+    public void setWarnsToMute(int warnsToMute) {
+        setInteger("warns_to_mute", warnsToMute);
+    }
 }
