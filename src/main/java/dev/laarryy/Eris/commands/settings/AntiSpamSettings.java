@@ -76,9 +76,9 @@ public class AntiSpamSettings {
     }
 
     private void setAntiSpam(ChatInputInteractionEvent event) {
-        if (event.getOption("set").get().getOption("messages").isEmpty()
-                && event.getOption("set").get().getOption("pings").isEmpty()
-                && event.getOption("set").get().getOption("warns").isEmpty()
+        if (event.getOption("antispam").get().getOption("set").get().getOption("messages").isEmpty()
+                && event.getOption("antispam").get().getOption("set").get().getOption("pings").isEmpty()
+                && event.getOption("antispam").get().getOption("set").get().getOption("warns").isEmpty()
         ) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             return;
@@ -89,9 +89,9 @@ public class AntiSpamSettings {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
-        if (event.getOption("set").get().getOption("messages").isPresent()
-                && event.getOption("set").get().getOption("messages").get().getValue().isPresent()) {
-            long messagesToWarn = event.getOption("set").get().getOption("messages").get().getValue().get().asLong();
+        if (event.getOption("antispam").get().getOption("set").get().getOption("messages").isPresent()
+                && event.getOption("antispam").get().getOption("set").get().getOption("messages").get().getValue().isPresent()) {
+            long messagesToWarn = event.getOption("antispam").get().getOption("set").get().getOption("messages").get().getValue().get().asLong();
             if (messagesToWarn < 0) {
                 Notifier.notifyCommandUserOfError(event, "malformedInput");
                 return;
@@ -99,9 +99,9 @@ public class AntiSpamSettings {
             discordServerProperties.setMessagesToWarn((int) messagesToWarn);
         }
 
-        if (event.getOption("set").get().getOption("pings").isPresent()
-                && event.getOption("set").get().getOption("pings").get().getValue().isPresent()) {
-            long pingsToWarn = event.getOption("set").get().getOption("pings").get().getValue().get().asLong();
+        if (event.getOption("antispam").get().getOption("set").get().getOption("pings").isPresent()
+                && event.getOption("antispam").get().getOption("set").get().getOption("pings").get().getValue().isPresent()) {
+            long pingsToWarn = event.getOption("antispam").get().getOption("set").get().getOption("pings").get().getValue().get().asLong();
             if (pingsToWarn < 0) {
                 Notifier.notifyCommandUserOfError(event, "malformedInput");
                 return;
@@ -109,9 +109,9 @@ public class AntiSpamSettings {
             discordServerProperties.setPingsToWarn((int) pingsToWarn);
         }
 
-        if (event.getOption("set").get().getOption("warns").isPresent()
-                && event.getOption("set").get().getOption("warns").get().getValue().isPresent()) {
-            long warnsToMute = event.getOption("set").get().getOption("warns").get().getValue().get().asLong();
+        if (event.getOption("antispam").get().getOption("set").get().getOption("warns").isPresent()
+                && event.getOption("antispam").get().getOption("set").get().getOption("warns").get().getValue().isPresent()) {
+            long warnsToMute = event.getOption("antispam").get().getOption("set").get().getOption("warns").get().getValue().get().asLong();
             if (warnsToMute < 0) {
                 Notifier.notifyCommandUserOfError(event, "malformedInput");
                 return;

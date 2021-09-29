@@ -169,7 +169,7 @@ public class BlacklistSettings {
         Guild guild = event.getInteraction().getGuild().block();
         long guildId = guild.getId().asLong();
 
-        if (event.getOption("info").get().getOption("id").isEmpty() || event.getOption("info").get().getOption("id").get().getValue().isEmpty()) {
+        if (event.getOption("blacklist").get().getOption("info").get().getOption("id").isEmpty() || event.getOption("info").get().getOption("id").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
             return;
@@ -267,7 +267,7 @@ public class BlacklistSettings {
     }
 
     private void removeBlacklistEntry(ChatInputInteractionEvent event) {
-        if (event.getOption("remove").get().getOption("id").isEmpty()) {
+        if (event.getOption("blacklist").get().getOption("remove").get().getOption("id").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             return;
         }
@@ -282,11 +282,11 @@ public class BlacklistSettings {
             return;
         }
 
-        if (event.getOption("remove").get().getOption("id").get().getValue().isEmpty()) {
+        if (event.getOption("blacklist").get().getOption("remove").get().getOption("id").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
         }
 
-        long blacklistId = event.getOption("remove").get().getOption("id").get().getValue().get().asLong();
+        long blacklistId = event.getOption("blacklist").get().getOption("remove").get().getOption("id").get().getValue().get().asLong();
 
         ServerBlacklist serverBlacklist = ServerBlacklist.findFirst("id = ?", blacklistId);
 
@@ -311,9 +311,9 @@ public class BlacklistSettings {
     }
 
     private void addBlacklistEntry(ChatInputInteractionEvent event) {
-        if (event.getOption("add").get().getOption("type").get().getValue().isEmpty()
-                || event.getOption("add").get().getOption("entry").get().getValue().isEmpty()
-                || event.getOption("add").get().getOption("action").get().getValue().isEmpty()) {
+        if (event.getOption("blacklist").get().getOption("add").get().getOption("type").get().getValue().isEmpty()
+                || event.getOption("blacklist").get().getOption("add").get().getOption("entry").get().getValue().isEmpty()
+                || event.getOption("blacklist").get().getOption("add").get().getOption("action").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
             return;
@@ -329,22 +329,22 @@ public class BlacklistSettings {
             return;
         }
 
-        if (event.getOption("add").get().getOption("entry").get().getValue().get().asString().length() >= 200) {
+        if (event.getOption("blacklist").get().getOption("add").get().getOption("entry").get().getValue().get().asString().length() >= 200) {
             Notifier.notifyCommandUserOfError(event, "inputTooLong");
             AuditLogger.addCommandToDB(event, false);
             return;
         }
 
         long serverId = discordServer.getServerId();
-        String type = event.getOption("add").get().getOption("type").get().getValue().get().asString().replaceAll("\\.", "");
-        String regexTrigger = event.getOption("add").get().getOption("entry").get().getValue().get().asString();
+        String type = event.getOption("blacklist").get().getOption("add").get().getOption("type").get().getValue().get().asString().replaceAll("\\.", "");
+        String regexTrigger = event.getOption("blacklist").get().getOption("add").get().getOption("entry").get().getValue().get().asString();
 
         ServerBlacklist serverBlacklist = ServerBlacklist.findFirst("server_id = ? and regex_trigger = ? and type = ?",
                 serverId,
                 regexTrigger,
                 type);
 
-        String action = event.getOption("add").get().getOption("action").get().getValue().get().asString();
+        String action = event.getOption("blacklist").get().getOption("add").get().getOption("action").get().getValue().get().asString();
 
         if (serverBlacklist != null) {
             Notifier.notifyCommandUserOfError(event, "alreadyBlacklisted");

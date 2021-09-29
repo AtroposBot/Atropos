@@ -33,21 +33,20 @@ public class CommandManager {
         Reflections reflections = new Reflections("dev.laarryy.Eris.commands", new SubTypesScanner());
         Set<Class<? extends Command>> commandsToRegister = reflections.getSubTypesOf(Command.class);
 
+        long applicationId = client.getRestClient().getApplicationId().block();
+        ApplicationService applicationService = client.getRestClient().getApplicationService();
+        Map<String, ApplicationCommandData> discordCommands = applicationService
+                .getGlobalApplicationCommands(applicationId)
+                .collectMap(ApplicationCommandData::name)
+                .block();
+
         for (Class<? extends Command> registerableCommand : commandsToRegister) {
             final Command command = registerableCommand.getDeclaredConstructor().newInstance();
 
-            // Add to commands map
+            // Add to command list
             COMMANDS.add(command);
 
             // Register the command with discord
-            long applicationId = client.getRestClient().getApplicationId().block();
-            ApplicationService applicationService = client.getRestClient().getApplicationService();
-
-            Map<String, ApplicationCommandData> discordCommands = applicationService
-                    .getGlobalApplicationCommands(applicationId)
-                    .collectMap(ApplicationCommandData::name)
-                    .block();
-
 
             if (!discordCommands.containsKey(command.getRequest().name())) {
                 logger.info("Beginning command registration with discord: " + command.getRequest().name());
