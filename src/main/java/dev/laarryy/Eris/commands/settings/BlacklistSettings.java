@@ -27,7 +27,7 @@ import reactor.core.publisher.Mono;
 import java.time.Instant;
 import java.util.List;
 
-public class BlacklistCommand implements Command {
+public class BlacklistSettings {
 
     private final Logger logger = LogManager.getLogger(this);
     private final PermissionChecker permissionChecker = new PermissionChecker();
@@ -139,29 +139,25 @@ public class BlacklistCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
-            return Mono.empty();
-        }
-
         Guild guild = event.getInteraction().getGuild().block();
         User user = event.getInteraction().getUser();
 
-        if (event.getOption("add").isPresent()) {
+        if (event.getOption("blacklist").get().getOption("add").isPresent()) {
             addBlacklistEntry(event);
             return Mono.empty();
         }
 
-        if (event.getOption("remove").isPresent()) {
+        if (event.getOption("blacklist").get().getOption("remove").isPresent()) {
             removeBlacklistEntry(event);
             return Mono.empty();
         }
 
-        if (event.getOption("list").isPresent()) {
+        if (event.getOption("blacklist").get().getOption("list").isPresent()) {
             listBlacklistEntries(event);
             return Mono.empty();
         }
 
-        if (event.getOption("info").isPresent()) {
+        if (event.getOption("blacklist").get().getOption("info").isPresent()) {
             getBlacklistEntryInfo(event);
             return Mono.empty();
         }

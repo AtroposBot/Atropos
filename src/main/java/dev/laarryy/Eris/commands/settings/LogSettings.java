@@ -26,7 +26,7 @@ import reactor.core.publisher.Mono;
 import java.time.Instant;
 import java.util.List;
 
-public class LogSettingsCommand implements Command {
+public class LogSettings implements Command {
     private final Logger logger = LogManager.getLogger(this);
     private AddServerToDB addServerToDB = new AddServerToDB();
 
@@ -101,21 +101,17 @@ public class LogSettingsCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
-            return Mono.empty();
-        }
-
-        if (event.getOption("info").isPresent()) {
+        if (event.getOption("log").get().getOption("info").isPresent()) {
             logSettingsInfo(event);
             return Mono.empty();
         }
 
-        if (event.getOption("set").isPresent()) {
+        if (event.getOption("log").get().getOption("set").isPresent()) {
             setLogChannel(event);
             return Mono.empty();
         }
 
-        if (event.getOption("unset").isPresent()) {
+        if (event.getOption("log").get().getOption("unset").isPresent()) {
             unsetLogChannel(event);
             return Mono.empty();
         }

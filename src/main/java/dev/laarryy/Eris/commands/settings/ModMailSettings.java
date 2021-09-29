@@ -4,6 +4,7 @@ import dev.laarryy.Eris.commands.Command;
 import dev.laarryy.Eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.Eris.storage.DatabaseLoader;
 import dev.laarryy.Eris.utils.AddServerToDB;
+import dev.laarryy.Eris.utils.Notifier;
 import dev.laarryy.Eris.utils.PermissionChecker;
 import dev.laarryy.Eris.utils.SlashCommandChecks;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
@@ -20,7 +21,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 
-public class ModMailSettingsCommand implements Command {
+public class ModMailSettings {
     private final Logger logger = LogManager.getLogger(this);
     private final PermissionChecker permissionChecker = new PermissionChecker();
     private final AddServerToDB addServerToDB = new AddServerToDB();
@@ -58,7 +59,7 @@ public class ModMailSettingsCommand implements Command {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
-        if (event.getOption("set").isPresent()) {
+        if (event.getOption("modmail").get().getOption("set").isPresent()) {
             discordServerProperties.setModMailChannelSnowflake(messageChannel.getId().asLong());
             discordServerProperties.save();
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -68,9 +69,10 @@ public class ModMailSettingsCommand implements Command {
                     .timestamp(Instant.now())
                     .build();
             event.reply().withEmbeds(embed).subscribe();
+            return Mono.empty();
         }
 
-        if (event.getOption("unset").isPresent()) {
+        if (event.getOption("modmail").get().getOption("unset").isPresent()) {
             discordServerProperties.setModMailChannelSnowflake(null);
             discordServerProperties.save();
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -80,8 +82,10 @@ public class ModMailSettingsCommand implements Command {
                     .timestamp(Instant.now())
                     .build();
             event.reply().withEmbeds(embed).subscribe();
+            return Mono.empty();
         }
 
+        Notifier.notifyCommandUserOfError(event, "malformedInput");
         return Mono.empty();
     }
 }
