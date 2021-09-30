@@ -34,7 +34,7 @@ Configuration:
       AppenderRef:
         ref: Console
     Logger:
-      - name: dev.laarryy.Eris
+      - name: dev.laarryy.eris
         level: info
         AppenderRef:
           - ref: File
