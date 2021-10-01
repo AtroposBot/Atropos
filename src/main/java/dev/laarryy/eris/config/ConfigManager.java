@@ -13,6 +13,8 @@ public class ConfigManager {
     String username;
     String password;
     String token;
+    String controlGuildId;
+    String controllerId;
 
     private static final ConfigLoader configLoader = new ConfigLoader();
     private static ConfigSettings configSettings;
@@ -36,6 +38,8 @@ public class ConfigManager {
         this.username = configSettings.getUsername();
         this.password = configSettings.getPassword();
         this.token = configSettings.getToken();
+        this.controlGuildId = configSettings.getControlGuildId();
+        this.controllerId = configSettings.getControllerId();
     }
 
     public static String getAddress() {
@@ -52,5 +56,13 @@ public class ConfigManager {
 
     public static String getToken() {
         return configSettings.getToken();
+    }
+
+    public static String getControlGuildId() {
+        return configSettings.getControlGuildId();
+    }
+
+    public static String getControllerId() {
+        return configSettings.getControllerId();
     }
 }

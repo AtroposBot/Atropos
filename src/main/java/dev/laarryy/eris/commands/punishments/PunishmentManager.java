@@ -150,7 +150,6 @@ public class PunishmentManager {
         try {
             punishedMember = punishedUser.asMember(guild.getId()).block();
             if (!checkIfPunisherHasHighestRole(member, punishedMember, guild, event)) {
-                Notifier.notifyCommandUserOfError(event, "noPermission");
                 return Mono.empty();
             }
         } catch (Exception ignored) {}
@@ -248,6 +247,7 @@ public class PunishmentManager {
             case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
             case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
         }
+
         loggingListener.onPunishment(event, punishment);
         Notifier.notifyPunisher(event, punishment, punishmentReason);
         AuditLogger.addCommandToDB(event, true);
@@ -389,6 +389,12 @@ public class PunishmentManager {
     }
 
     private boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ChatInputInteractionEvent event) {
+
+        if (punisher.equals(punished)) {
+            Notifier.notifyCommandUserOfError(event, "noPermission");
+            return false;
+        }
+
         if (permissionChecker.checkIsAdministrator(guild, punisher) && !permissionChecker.checkIsAdministrator(guild, punished)) {
             return true;
         } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
