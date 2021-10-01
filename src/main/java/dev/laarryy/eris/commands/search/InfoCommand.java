@@ -1,5 +1,6 @@
-package dev.laarryy.eris.commands;
+package dev.laarryy.eris.commands.search;
 
+import dev.laarryy.eris.commands.Command;
 import dev.laarryy.eris.config.EmojiManager;
 import dev.laarryy.eris.models.guilds.DiscordServer;
 import dev.laarryy.eris.models.guilds.DiscordServerProperties;

@@ -1,5 +1,6 @@
-package dev.laarryy.eris.commands;
+package dev.laarryy.eris.commands.punishments;
 
+import dev.laarryy.eris.commands.Command;
 import dev.laarryy.eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.AddServerToDB;

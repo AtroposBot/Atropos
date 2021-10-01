@@ -2,6 +2,8 @@ package dev.laarryy.eris.managers;
 
 import dev.laarryy.eris.Eris;
 import dev.laarryy.eris.commands.Command;
+import dev.laarryy.eris.config.ConfigManager;
+import dev.laarryy.eris.config.ConfigSettings;
 import dev.laarryy.eris.utils.PermissionChecker;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
@@ -26,7 +28,6 @@ public class CommandManager {
     private final Logger logger = LogManager.getLogger(Eris.class);
     private final PermissionChecker permissionChecker = new PermissionChecker();
 
-
     public void registerCommands(GatewayDiscordClient client) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         // Register slash commands with Discord
         Reflections reflections = new Reflections("dev.laarryy.eris.commands", new SubTypesScanner());
@@ -49,10 +50,16 @@ public class CommandManager {
 
             if (!discordCommands.containsKey(command.getRequest().name())) {
                 logger.info("Beginning command registration with discord: " + command.getRequest().name());
-                client.getRestClient().getApplicationService()
-                        .createGlobalApplicationCommand(applicationId, command.getRequest())
-                        .subscribe();
-                logger.info("Command registration with discord sent.");
+                if (registerableCommand.getName().equals("PresenceCommand")) {
+                    client.getRestClient().getApplicationService()
+                            .createGuildApplicationCommand(applicationId, Long.parseLong(ConfigManager.getControlGuildId()), command.getRequest())
+                            .subscribe();
+                } else {
+                    client.getRestClient().getApplicationService()
+                            .createGlobalApplicationCommand(applicationId, command.getRequest())
+                            .subscribe();
+                    logger.info("Command registration with discord sent.");
+                }
             } else {
                 logger.info("Command already registered");
             }

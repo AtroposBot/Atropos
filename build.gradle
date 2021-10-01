@@ -6,9 +6,9 @@ plugins {
     id "de.schablinski.activejdbc-gradle-plugin" version "2.0"
 }
 
-mainClassName = 'dev.laarryy.eris.eris'
+mainClassName = 'dev.laarryy.eris.Eris'
 group 'dev.laarryy'
-version '1.0-SNAPSHOT'
+version 'BETA'
 def log4j2Version = '2.14.1'
 def activejdbcVersion = '3.0-SNAPSHOT'
 def mysqlconnectorjavaVersion = '8.0.25'
@@ -31,8 +31,8 @@ repositories {
 dependencies {
     implementation "com.discord4j:discord4j-core:$discord4jVersion"
     implementation "org.spongepowered:configurate-yaml:$configurateVersion"
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: "$log4j2Version"
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: "$log4j2Version"
     implementation "org.javalite:activejdbc:$activejdbcVersion"
@@ -54,4 +54,12 @@ compileJava.options.encoding = 'UTF-8'
 
 test {
     useJUnitPlatform()
+}
+
+tasks {
+    distZip { finalizedBy(installDist) }
+
+    run {
+        jvmArgs("-Xms100M -Xmx1G")
+    }
 }
