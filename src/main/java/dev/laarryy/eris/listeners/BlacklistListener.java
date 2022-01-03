@@ -152,6 +152,7 @@ public class BlacklistListener {
         punishment.save();
         punishment.refresh();
         loggingListener.onPunishment(event, punishment);
+        DatabaseLoader.closeConnectionIfOpen();
         return punishment;
     }
 }

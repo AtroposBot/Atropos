@@ -37,6 +37,7 @@ public class AutoPunishmentEnder {
         Flux.interval(Duration.ofMinutes(1))
                 .doOnNext(this::checkPunishmentEnding)
                 .subscribe();
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void checkPunishmentEnding(Long l) {
@@ -47,7 +48,9 @@ public class AutoPunishmentEnder {
         Flux.fromIterable(punishmentsLazyList)
                 .filter(this::checkIfOverDue)
                 .doOnNext(pun -> logger.info("handling overdue punishment"))
+                .doFinally(signalType -> logger.info("============= Flux Done"))
                 .subscribe(this::endPunishment);
+        DatabaseLoader.closeConnectionIfOpen();
 
     }
 
@@ -58,6 +61,7 @@ public class AutoPunishmentEnder {
         Instant endInstant = Instant.ofEpochMilli(endDate);
         Instant nowInstant = Instant.now();
 
+        DatabaseLoader.closeConnectionIfOpen();
         return endInstant.isBefore(nowInstant);
     }
 
@@ -70,14 +74,17 @@ public class AutoPunishmentEnder {
         DiscordServer server = DiscordServer.findById(punishment.getServerId());
         Snowflake userId = Snowflake.of(punishedUser.getUserIdSnowflake());
 
-        // Ensure bot is still in guild - if not, nothing more is required.
-
-
         client.getGuildById(Snowflake.of(server.getServerSnowflake()))
                 .onErrorReturn(Exception.class, null)
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(guild1 -> {
-                    if (guild1 == null) return;
+                    if (guild1 == null) {
+                        // Ensure bot is still in guild - if not, nothing more is required.
+                        punishment.setEnded(true);
+                        punishment.save();
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return;
+                    }
                     DatabaseLoader.openConnectionIfClosed();
 
                     Member member;
@@ -90,7 +97,9 @@ public class AutoPunishmentEnder {
                         case "mute" -> discordUnmuteUser(server, punishment, member, guild1);
                         default -> punishment.setEnded(true);
                     }
+                    punishment.save();
                 });
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void discordUnbanUser(Guild guild, Punishment punishment, Snowflake userId) {
@@ -101,6 +110,7 @@ public class AutoPunishmentEnder {
         punishment.save();
         punishment.refresh();
         loggingListener.onUnban(guild, "Automatically unbanned on timer.", punishment);
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void discordUnmuteUser(DiscordServer server, Punishment punishment, Member member, Guild guild) {
@@ -114,6 +124,7 @@ public class AutoPunishmentEnder {
         punishment.setEndReason("Automatically unmuted on timer.");
         punishment.save();
         loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment);
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
 }

@@ -163,6 +163,7 @@ public class InfoCommand implements Command {
                 .build();
 
         event.reply().withEmbeds(embed).block();
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void sendUserInfo(ChatInputInteractionEvent event) {
@@ -270,7 +271,7 @@ public class InfoCommand implements Command {
                 .build();
 
         event.reply().withEmbeds(embed).block();
-
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void sendServerInfo(ChatInputInteractionEvent event) {
@@ -410,5 +411,6 @@ public class InfoCommand implements Command {
                 .build();
 
         event.reply().withEmbeds(embedCreateSpec).block();
+        DatabaseLoader.closeConnectionIfOpen();
     }
 }

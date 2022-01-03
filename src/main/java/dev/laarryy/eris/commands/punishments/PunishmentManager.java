@@ -19,9 +19,12 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.User;
+import discord4j.core.object.entity.channel.CategorizableChannel;
+import discord4j.core.object.entity.channel.Category;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.BanQuerySpec;
+import discord4j.core.spec.CategoryEditSpec;
 import discord4j.core.spec.RoleCreateSpec;
 import discord4j.core.spec.TextChannelEditSpec;
 import discord4j.core.spec.VoiceChannelEditSpec;
@@ -80,6 +83,7 @@ public class PunishmentManager {
             serverId = discordServer.getServerId();
         } else {
             Notifier.notifyCommandUserOfError(event, "nullServer");
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -123,6 +127,7 @@ public class PunishmentManager {
                         punishment.setEnded(true);
                         punishment.save();
                     });
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -132,6 +137,7 @@ public class PunishmentManager {
             if (event.getOption("user").get().getValue().get().asUser().block().isBot()) {
                 Notifier.notifyCommandUserOfError(event, "cannotTargetBots");
                 AuditLogger.addCommandToDB(event, false);
+                DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
         }
@@ -140,6 +146,7 @@ public class PunishmentManager {
         if (event.getOption("user").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "noUser");
             AuditLogger.addCommandToDB(event, false);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
         User punishedUser = event.getOption("user").get().getValue().get().asUser().block();
@@ -150,6 +157,7 @@ public class PunishmentManager {
         try {
             punishedMember = punishedUser.asMember(guild.getId()).block();
             if (!checkIfPunisherHasHighestRole(member, punishedMember, guild, event)) {
+                DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
         } catch (Exception ignored) {}
@@ -171,6 +179,7 @@ public class PunishmentManager {
                 false) != null) {
             Notifier.notifyCommandUserOfError(event, "alreadyApplied");
             AuditLogger.addCommandToDB(event, false);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -205,6 +214,7 @@ public class PunishmentManager {
                 Notifier.notifyCommandUserOfError(event, "invalidDuration");
                 AuditLogger.addCommandToDB(event, false);
                 punishment.delete();
+                DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
         } else {
@@ -251,6 +261,7 @@ public class PunishmentManager {
         loggingListener.onPunishment(event, punishment);
         Notifier.notifyPunisher(event, punishment, punishmentReason);
         AuditLogger.addCommandToDB(event, true);
+        DatabaseLoader.closeConnectionIfOpen();
 
         return Mono.empty();
     }
@@ -331,22 +342,69 @@ public class PunishmentManager {
         int roleInt = roleCount != null ? roleCount.intValue() - 2 : 1;
 
         if (mutedRole != null) {
-            mutedRole.changePosition(roleInt).blockLast();
             discordServerProperties.setMutedRoleSnowflake(mutedRole.getId().asLong());
             discordServerProperties.save();
+
+            mutedRole.changePosition(roleInt)
+                    .onErrorResume(e -> {
+                        logger.error(e.getMessage());
+                        logger.error(e.getMessage(), e);
+                        return Mono.empty();
+                    })
+                    .subscribe();
         }
 
         discordServerProperties.save();
         discordServerProperties.refresh();
-        Member memberToMute = guild.getMemberById(Snowflake.of(userIdSnowflake)).block();
+        Member memberToMute = guild
+                .getMemberById(Snowflake.of(userIdSnowflake))
+                .onErrorResume(e -> {
+                    logger.error(e.getMessage());
+                    logger.error(e.getMessage(), e);
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return Mono.empty();
+                })
+                .block();
 
         if (memberToMute != null) {
-            memberToMute.addRole(mutedRole.getId()).block();
+            memberToMute.addRole(mutedRole.getId())
+                    .onErrorResume(e -> {
+                        logger.error(e.getMessage());
+                        logger.error(e.getMessage(), e);
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return Mono.empty();
+                    })
+                    .block();
         }
-
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     public void updateMutedRoleInAllChannels(Guild guild, Role mutedRole) {
+
+        guild.getChannels().ofType(Category.class)
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(category -> {
+                    Set<ExtendedPermissionOverwrite> overwrites = category.getPermissionOverwrites();
+                    Set<PermissionOverwrite> newOverwrites = new HashSet<>(overwrites);
+                    newOverwrites.add(PermissionOverwrite.forRole(mutedRole.getId(),
+                            PermissionSet.none(),
+                            PermissionSet.of(
+                                    discord4j.rest.util.Permission.SEND_MESSAGES,
+                                    discord4j.rest.util.Permission.ADD_REACTIONS,
+                                    discord4j.rest.util.Permission.CHANGE_NICKNAME
+                            )));
+                    category.edit(CategoryEditSpec.builder()
+                                    .addAllPermissionOverwrites(newOverwrites.stream().toList())
+                                    .build())
+                            .onErrorResume(e -> {
+                                logger.error(e.getMessage());
+                                logger.error(e.getMessage(), e);
+                                return Mono.empty();
+                            })
+                            .block();
+                    return Mono.empty();
+                })
+                .subscribe();
 
         guild.getChannels().ofType(TextChannel.class)
                 .subscribeOn(Schedulers.boundedElastic())
@@ -362,7 +420,13 @@ public class PunishmentManager {
                             )));
                     textChannel.edit(TextChannelEditSpec.builder()
                             .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                            .build()).block();
+                            .build())
+                            .onErrorResume(e -> {
+                                logger.error(e.getMessage());
+                                logger.error(e.getMessage(), e);
+                                return Mono.empty();
+                            })
+                            .block();
                     return Mono.empty();
                 })
                 .subscribe();
@@ -381,7 +445,13 @@ public class PunishmentManager {
                             )));
                     voiceChannel.edit(VoiceChannelEditSpec.builder()
                             .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                            .build()).block();
+                            .build())
+                            .onErrorResume(e -> {
+                                logger.error(e.getMessage());
+                                logger.error(e.getMessage(), e);
+                                return Mono.empty();
+                            })
+                            .block();
                     return Mono.empty();
                 })
                 .subscribe();

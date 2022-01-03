@@ -142,24 +142,29 @@ public class BlacklistSettings {
 
         if (event.getOption("blacklist").get().getOption("add").isPresent()) {
             addBlacklistEntry(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         if (event.getOption("blacklist").get().getOption("remove").isPresent()) {
             removeBlacklistEntry(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         if (event.getOption("blacklist").get().getOption("list").isPresent()) {
             listBlacklistEntries(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         if (event.getOption("blacklist").get().getOption("info").isPresent()) {
             getBlacklistEntryInfo(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 

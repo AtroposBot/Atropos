@@ -60,15 +60,18 @@ public class AntiSpamSettings {
 
         if (event.getOption("antispam").get().getOption("info").isPresent()) {
             antiSpamInfo(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         if (event.getOption("antispam").get().getOption("set").isPresent()) {
             setAntiSpam(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         Notifier.notifyCommandUserOfError(event, "malformedInput");
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 

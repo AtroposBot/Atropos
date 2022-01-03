@@ -102,21 +102,25 @@ public class LogSettings implements Command {
 
         if (event.getOption("log").get().getOption("info").isPresent()) {
             logSettingsInfo(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         if (event.getOption("log").get().getOption("set").isPresent()) {
             setLogChannel(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         if (event.getOption("log").get().getOption("unset").isPresent()) {
             unsetLogChannel(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         AuditLogger.addCommandToDB(event, false);
         Notifier.notifyCommandUserOfError(event, "malformedInput");
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 

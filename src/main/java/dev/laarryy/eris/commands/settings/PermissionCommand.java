@@ -236,6 +236,7 @@ public class PermissionCommand implements Command {
         if (discordServer != null) {
             serverId = discordServer.getServerId();
         } else {
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -243,6 +244,7 @@ public class PermissionCommand implements Command {
             if (event.getOption("list").get().getOption("role").get().getValue().isEmpty()) {
                 Notifier.notifyCommandUserOfError(event, "malformedInput");
                 AuditLogger.addCommandToDB(event, false);
+                DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
             Role role = event.getOption("list").get().getOption("role").get().getValue().get().asRole().block();
@@ -289,6 +291,7 @@ public class PermissionCommand implements Command {
             }
             event.reply().withEmbeds(embed).subscribe();
             AuditLogger.addCommandToDB(event, true);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
 
         }
@@ -301,6 +304,7 @@ public class PermissionCommand implements Command {
             if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToAddId, role.getId().asLong()) != null) {
                 Notifier.notifyCommandUserOfError(event, "alreadyAssigned");
                 AuditLogger.addCommandToDB(event, false);
+                DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
 
@@ -323,6 +327,7 @@ public class PermissionCommand implements Command {
 
             event.reply().withEmbeds(embed).subscribe();
             AuditLogger.addCommandToDB(event, true);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -334,6 +339,7 @@ public class PermissionCommand implements Command {
             if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong()) == null) {
                 Notifier.notifyCommandUserOfError(event, "404");
                 AuditLogger.addCommandToDB(event, false);
+                DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
 
@@ -356,6 +362,7 @@ public class PermissionCommand implements Command {
 
             event.reply().withEmbeds(embed).subscribe();
             AuditLogger.addCommandToDB(event, true);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 

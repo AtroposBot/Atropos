@@ -134,6 +134,7 @@ public class AntiSpamListener {
         event.getMessage().getChannel().block().createMessage(embed).block();
 
         loggingListener.onPunishment(event, punishment);
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void warnUserForSpam(MessageCreateEvent event) {
@@ -167,5 +168,6 @@ public class AntiSpamListener {
         event.getMessage().getChannel().block().createMessage(embed).block();
 
         loggingListener.onPunishment(event, punishment);
+        DatabaseLoader.closeConnectionIfOpen();
     }
 }

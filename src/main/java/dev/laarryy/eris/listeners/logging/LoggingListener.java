@@ -157,7 +157,7 @@ public final class LoggingListener {
                 .subscribe();
     }
 
-    public void onMutedRoleDelete(Guild guild, Role mutedRole) {
+    public void onMutedRoleDelete(Guild guild, Long roleId) {
         if (guild == null) {
             return;
         }
@@ -166,7 +166,7 @@ public final class LoggingListener {
                 .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
-                        LogExecutor.logMutedRoleDelete(mutedRole, textChannel);
+                        LogExecutor.logMutedRoleDelete(roleId, textChannel);
                     }
                 });
     }

@@ -1602,9 +1602,8 @@ public final class LogExecutor {
         logChannel.createMessage(embed).block();
     }
 
-    public static void logMutedRoleDelete(Role mutedRole, TextChannel logChannel) {
-        long roleId = mutedRole.getId().asLong();
-        String role = "`" + mutedRole.getName() + "`:`" + roleId + "`";
+    public static void logMutedRoleDelete(Long roleId, TextChannel logChannel) {
+        String role = "`" + roleId + "`";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .color(Color.JAZZBERRY_JAM)

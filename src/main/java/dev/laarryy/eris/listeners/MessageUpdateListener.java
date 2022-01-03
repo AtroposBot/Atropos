@@ -20,17 +20,17 @@ public class MessageUpdateListener {
         DatabaseLoader.openConnectionIfClosed();
         long guildId = event.getGuildId().get().asLong();
         long snowflakeId = event.getMessageId().asLong();
-        DatabaseLoader.openConnectionIfClosed();
 
         ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guildId, snowflakeId);
 
         if (serverMessage == null) {
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         } else {
             serverMessage.setContent(event.getMessage().block().getContent());
             serverMessage.save();
         }
-
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

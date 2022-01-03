@@ -18,7 +18,7 @@ public class MessageDeleteListener {
             serverMessage.setDeleted(true);
             serverMessage.save();
         }
-
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

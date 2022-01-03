@@ -64,6 +64,7 @@ public class ModMailSettings {
                     .timestamp(Instant.now())
                     .build();
             event.reply().withEmbeds(embed).subscribe();
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -77,10 +78,12 @@ public class ModMailSettings {
                     .timestamp(Instant.now())
                     .build();
             event.reply().withEmbeds(embed).subscribe();
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         Notifier.notifyCommandUserOfError(event, "malformedInput");
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

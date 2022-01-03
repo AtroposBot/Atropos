@@ -91,6 +91,7 @@ public class RemoveSinceCommand implements Command {
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
         if (discordServer == null) {
             Notifier.notifyCommandUserOfError(event, "nullServer");
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -103,6 +104,7 @@ public class RemoveSinceCommand implements Command {
         if (duration.toDays() > 2) {
             Notifier.notifyCommandUserOfError(event, "durationTooLong");
             AuditLogger.addCommandToDB(event, false);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -112,6 +114,7 @@ public class RemoveSinceCommand implements Command {
 
         if (serverUserList == null || serverUserList.isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "404");
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -169,7 +172,7 @@ public class RemoveSinceCommand implements Command {
                         event.reply().withEmbeds(embed).block();
                     });
         }
-
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 

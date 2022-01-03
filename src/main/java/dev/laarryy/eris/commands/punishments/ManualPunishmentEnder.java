@@ -65,6 +65,7 @@ public final class ManualPunishmentEnder {
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(member -> databaseEndPunishment(member.getId().asLong(), event, reason));
         }
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private boolean discordUnban(Guild guild, Long aLong, String reason, ChatInputInteractionEvent event) {
@@ -98,13 +99,14 @@ public final class ManualPunishmentEnder {
                 member.removeRole(Snowflake.of(mutedRoleId), reason).block();
                 AuditLogger.addCommandToDB(event, true);
                 Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
+                DatabaseLoader.closeConnectionIfOpen();
                 return true;
             } else {
                 Notifier.notifyCommandUserOfError(event, "userNotMuted");
                 AuditLogger.addCommandToDB(event, false);
+                DatabaseLoader.closeConnectionIfOpen();
                 return false;
             }
-
     }
 
     private boolean databaseEndPunishment(Long aLong, ChatInputInteractionEvent event, String reason) {
@@ -159,8 +161,10 @@ public final class ManualPunishmentEnder {
                             loggingListener.onUnban(event.getInteraction().getGuild().block(), reason, punishment);
                         }
                     });
+            DatabaseLoader.closeConnectionIfOpen();
             return true;
         } else {
+            DatabaseLoader.closeConnectionIfOpen();
             return false;
         }
     }
