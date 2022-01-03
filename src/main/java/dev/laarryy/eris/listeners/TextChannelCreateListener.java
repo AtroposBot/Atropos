@@ -46,6 +46,7 @@ public class TextChannelCreateListener {
                     .subscribe();
 
         }
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

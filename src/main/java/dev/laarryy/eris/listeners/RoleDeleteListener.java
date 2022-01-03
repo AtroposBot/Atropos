@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono;
 public class RoleDeleteListener {
 
     private final Logger logger = LogManager.getLogger(this);
+    LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
 
     @EventListener
     public Mono<Void> on(RoleDeleteEvent event) {
@@ -25,32 +26,30 @@ public class RoleDeleteListener {
 
         DatabaseLoader.openConnectionIfClosed();
         Guild guild = event.getGuild().block();
-        Role role = event.getRole().orElse(null);
-        if (role == null) {
-            return Mono.empty();
-        }
-
-        LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
+        Long roleId = event.getRoleId().asLong();
 
         DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
 
         if (serverProperties == null) {
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         Long mutedRole = serverProperties.getMutedRoleSnowflake();
         if (mutedRole == null || mutedRole == 0) {
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
-        if (mutedRole.equals(role.getId().asLong())) {
+        if (mutedRole.equals(roleId)) {
             serverProperties.setMutedRoleSnowflake(null);
             serverProperties.save();
             serverProperties.refresh();
             cache.invalidate(guild.getId().asLong());
             LoggingListener listener = LoggingListenerManager.getManager().getLoggingListener();
-            listener.onMutedRoleDelete(guild, role);
+            listener.onMutedRoleDelete(guild, roleId);
         }
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

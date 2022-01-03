@@ -20,6 +20,7 @@ public class CacheMaintainer {
                 .doOnNext(l -> refreshPropertiesCache(cache))
                 .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void refreshPropertiesCache(AsyncLoadingCache<Long, DiscordServerProperties> cache) {
@@ -28,5 +29,6 @@ public class CacheMaintainer {
         Flux.fromIterable(propertiesList)
                 .subscribe(property -> {
                 });
+        DatabaseLoader.closeConnectionIfOpen();
     }
 }

@@ -220,6 +220,7 @@ public class InfCommand implements Command {
 
         event.reply().withEmbeds(resultEmbed).subscribe();
         AuditLogger.addCommandToDB(event, true);
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
 
@@ -315,6 +316,7 @@ public class InfCommand implements Command {
 
         event.reply().withEmbeds(embed).subscribe();
         AuditLogger.addCommandToDB(event, true);
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void searchPunishments(ChatInputInteractionEvent event) {
@@ -385,6 +387,7 @@ public class InfCommand implements Command {
 
         AuditLogger.addCommandToDB(event, true);
         event.reply().withEmbeds(resultEmbed).subscribe();
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void updatePunishment(ChatInputInteractionEvent event) {
@@ -432,6 +435,7 @@ public class InfCommand implements Command {
             AuditLogger.addCommandToDB(event, true);
             event.reply().withEmbeds(spec).subscribe();
         }
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private String createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList, ChatInputInteractionEvent event) {

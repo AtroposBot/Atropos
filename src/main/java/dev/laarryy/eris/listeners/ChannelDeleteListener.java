@@ -50,7 +50,7 @@ public class ChannelDeleteListener {
         serverProperties.save();
         serverProperties.refresh();
         cache.invalidate(guild.getId().asLong());
-
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

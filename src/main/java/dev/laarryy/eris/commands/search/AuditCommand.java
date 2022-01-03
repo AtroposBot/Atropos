@@ -113,6 +113,7 @@ public class AuditCommand implements Command {
         if (event.getOption("id").get().getOption("number").isEmpty() || event.getOption("id").get().getOption("number").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
+            DatabaseLoader.closeConnectionIfOpen();
             return;
         }
 
@@ -122,6 +123,7 @@ public class AuditCommand implements Command {
         if (discordServer == null) {
             Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
+            DatabaseLoader.closeConnectionIfOpen();
             return;
         }
 
@@ -131,6 +133,7 @@ public class AuditCommand implements Command {
         if (commandUse == null) {
             Notifier.notifyCommandUserOfError(event, "404");
             AuditLogger.addCommandToDB(event, false);
+            DatabaseLoader.closeConnectionIfOpen();
             return;
         }
 
@@ -139,6 +142,7 @@ public class AuditCommand implements Command {
         if (discordUser == null) {
             Notifier.notifyCommandUserOfError(event, "noUser");
             AuditLogger.addCommandToDB(event, false);
+            DatabaseLoader.closeConnectionIfOpen();
             return;
         }
 
@@ -165,7 +169,7 @@ public class AuditCommand implements Command {
 
         event.reply().withEmbeds(embed).subscribe();
 
-
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void recentAudits(ChatInputInteractionEvent event) {

@@ -73,6 +73,7 @@ public class StopJoinsCommand implements Command {
                         .build();
 
                 event.reply().withEmbeds(embed).subscribe();
+                DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
             serverProperties.setStopJoins(true);
@@ -88,6 +89,7 @@ public class StopJoinsCommand implements Command {
 
             AuditLogger.addCommandToDB(event, true);
             event.reply().withEmbeds(embed).subscribe();
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -101,6 +103,7 @@ public class StopJoinsCommand implements Command {
                         .build();
 
                 event.reply().withEmbeds(embed).subscribe();
+                DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
             serverProperties.setStopJoins(false);
@@ -116,9 +119,11 @@ public class StopJoinsCommand implements Command {
 
             AuditLogger.addCommandToDB(event, true);
             event.reply().withEmbeds(embed).subscribe();
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

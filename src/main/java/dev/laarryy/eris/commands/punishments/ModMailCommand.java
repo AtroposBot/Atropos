@@ -101,7 +101,7 @@ public class ModMailCommand implements Command {
             event.reply().withEmbeds(embed).withEphemeral(true).block();
         }
 
-
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

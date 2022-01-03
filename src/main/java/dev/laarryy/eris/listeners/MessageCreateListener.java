@@ -61,7 +61,7 @@ public class MessageCreateListener {
         message.setDeleted(false);
 
         message.saveIt();
-
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

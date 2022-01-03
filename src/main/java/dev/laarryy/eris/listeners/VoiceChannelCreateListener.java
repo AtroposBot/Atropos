@@ -44,6 +44,7 @@ public class VoiceChannelCreateListener {
                     .subscribe();
 
         }
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

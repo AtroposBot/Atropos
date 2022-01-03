@@ -1,6 +1,7 @@
 package dev.laarryy.eris.commands.settings;
 
 import dev.laarryy.eris.commands.Command;
+import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.Notifier;
 import dev.laarryy.eris.utils.SlashCommandChecks;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
@@ -255,6 +256,7 @@ public class SettingsCommand implements Command {
                 return Mono.empty();
             }
             antiSpamSettings.execute(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -263,6 +265,7 @@ public class SettingsCommand implements Command {
                 return Mono.empty();
             }
             blacklistSettings.execute(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -271,6 +274,7 @@ public class SettingsCommand implements Command {
                 return Mono.empty();
             }
             logSettings.execute(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
@@ -279,10 +283,12 @@ public class SettingsCommand implements Command {
                 return Mono.empty();
             }
             modMailSettings.execute(event);
+            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         Notifier.notifyCommandUserOfError(event, "malformedInput");
+        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }
