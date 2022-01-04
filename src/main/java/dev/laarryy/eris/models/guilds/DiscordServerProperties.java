@@ -119,4 +119,12 @@ public class DiscordServerProperties extends Model {
     public void setWarnsToMute(int warnsToMute) {
         setInteger("warns_to_mute", warnsToMute);
     }
+
+    public @NonNull Integer getJoinsToAntiraid() {
+        return getInteger("joins_to_antiraid");
+    }
+
+    public void setJoinsToAntiraid(int warnsToMute) {
+        setInteger("joins_to_antiraid", warnsToMute);
+    }
 }

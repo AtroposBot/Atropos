@@ -1617,4 +1617,27 @@ public final class LogExecutor {
         logChannel.createMessage(embed).block();
     }
 
+    public static void logStopJoinsEnabled(TextChannel logChannel) {
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .color(Color.MOON_YELLOW)
+                .title(EmojiManager.getUserWarn() + " Anti-Raid Enabled")
+                .description("This server has had anti-raid (the stopjoins feature) enabled. To disable it, run `/stopjoins disable`. " +
+                        "Until you do, all new members will be kicked with a message to try again later.")
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
+    }
+
+    public static void logStopJoinsDisabled(TextChannel logChannel) {
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .color(Color.MOON_YELLOW)
+                .title(EmojiManager.getUserWarn() + " Anti-Raid Disabled")
+                .description("This server has had anti-raid (the stopjoins feature) disabled.")
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
+    }
+
 }

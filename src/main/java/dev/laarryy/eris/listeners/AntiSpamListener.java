@@ -13,7 +13,9 @@ import dev.laarryy.eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.models.users.Punishment;
 import dev.laarryy.eris.storage.DatabaseLoader;
+import dev.laarryy.eris.utils.LogExecutor;
 import dev.laarryy.eris.utils.Pair;
+import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
@@ -42,7 +44,37 @@ public class AntiSpamListener {
     LoadingCache<Pair<Long, Long>, Integer> warnHistory = Caffeine.newBuilder()
             .expireAfterWrite(Duration.ofMinutes(10))
             .build(aLong -> 0);
+    LoadingCache<Long, Integer> joinHistory = Caffeine.newBuilder()
+            .expireAfterWrite(Duration.ofSeconds(30))
+            .build(aLong -> 0);
 
+
+    @EventListener
+    public Mono<Void> on(MemberJoinEvent event) {
+        if (event.getMember().isBot()) {
+            return Mono.empty();
+        }
+
+        long guildId = event.getGuildId().asLong();
+        DiscordServerProperties properties = propertiesCache.get(guildId);
+        Member member = event.getMember();
+
+        long userId = member.getId().asLong();
+        Long aLong = guildId;
+
+        int joinsToAntiraid = properties.getJoinsToAntiraid();
+        int joinInt = joinHistory.get(aLong);
+
+        joinHistory.put(guildId, joinInt + 1);
+
+        int histInt = joinHistory.get(guildId);
+
+        if (joinsToAntiraid > 0 && histInt >= joinsToAntiraid) {
+            enableAntiraid(event);
+            return Mono.empty();
+        }
+        return Mono.empty();
+    }
 
     @EventListener
     public Mono<Void> on(MessageCreateEvent event) {
@@ -95,6 +127,17 @@ public class AntiSpamListener {
         }
 
         return Mono.empty();
+    }
+
+    private void enableAntiraid(MemberJoinEvent event) {
+        DatabaseLoader.openConnectionIfClosed();
+        DiscordServerProperties properties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getGuildId().asLong());
+        properties.setStopJoins(true);
+        properties.save();
+        properties.refresh();
+        loggingListener.onStopJoinsEnable(event.getGuild().block());
+        propertiesCache.invalidate(event.getGuildId().asLong());
+
     }
 
     private void muteUserForSpam(MessageCreateEvent event) {

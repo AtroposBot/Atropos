@@ -82,10 +82,10 @@ public class AutoPunishmentEnder {
                         // Ensure bot is still in guild - if not, nothing more is required.
                         punishment.setEnded(true);
                         punishment.save();
+                        punishment.refresh();
                         DatabaseLoader.closeConnectionIfOpen();
                         return;
                     }
-                    DatabaseLoader.openConnectionIfClosed();
 
                     Member member;
                     try { member = guild1.getMemberById(userId).block(); } catch (Exception exception) {
@@ -123,6 +123,7 @@ public class AutoPunishmentEnder {
         punishment.setEnded(true);
         punishment.setEndReason("Automatically unmuted on timer.");
         punishment.save();
+        punishment.refresh();
         loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment);
         DatabaseLoader.closeConnectionIfOpen();
     }

@@ -171,6 +171,34 @@ public final class LoggingListener {
                 });
     }
 
+    public void onStopJoinsEnable(Guild guild) {
+        if (guild == null) {
+            return;
+        }
+
+        getLogChannel(guild, "guild")
+                .subscribeOn(Schedulers.boundedElastic())
+                .doOnSuccess(textChannel -> {
+                    if (textChannel != null) {
+                        LogExecutor.logStopJoinsEnabled(textChannel);
+                    }
+                });
+    }
+
+    public void onStopJoinsDisable(Guild guild) {
+        if (guild == null) {
+            return;
+        }
+
+        getLogChannel(guild, "guild")
+                .subscribeOn(Schedulers.boundedElastic())
+                .doOnSuccess(textChannel -> {
+                    if (textChannel != null) {
+                        LogExecutor.logStopJoinsDisabled(textChannel);
+                    }
+                });
+    }
+
     @EventListener
     public Mono<Void> on(MessageDeleteEvent event) {
         Guild guild = event.getGuild().block();

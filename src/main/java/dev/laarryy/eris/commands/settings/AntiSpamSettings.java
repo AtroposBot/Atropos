@@ -16,46 +16,6 @@ import java.time.Instant;
 
 public class AntiSpamSettings {
 
-    private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
-            .name("spamsettings")
-            .description("Modify and view anti-spam settings")
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("set")
-                    .description("Set anti-spam thresholds. Must input one or more of the following sub-options")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("messages")
-                            .description("How many messages sent within 6 seconds will cause the user to be warned?")
-                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
-                            .required(false)
-                            .build())
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("pings")
-                            .description("How many pings sent within 6 seconds will cause the user to be warned?")
-                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
-                            .required(false)
-                            .build())
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("warns")
-                            .description("How many anti-spam warnings within 10 minutes before user is muted for 2 hours?")
-                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
-                            .required(false)
-                            .build())
-                    .build())
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("info")
-                    .description("Display current anti-spam settings")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .build())
-            .defaultPermission(true)
-            .build();
-
-    public ApplicationCommandRequest getRequest() {
-        return this.request;
-    }
-
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         if (event.getOption("antispam").get().getOption("info").isPresent()) {
@@ -79,6 +39,7 @@ public class AntiSpamSettings {
         if (event.getOption("antispam").get().getOption("set").get().getOption("messages").isEmpty()
                 && event.getOption("antispam").get().getOption("set").get().getOption("pings").isEmpty()
                 && event.getOption("antispam").get().getOption("set").get().getOption("warns").isEmpty()
+                && event.getOption("antispam").get().getOption("set").get().getOption("antiraid").isEmpty()
         ) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             return;
@@ -119,12 +80,23 @@ public class AntiSpamSettings {
             discordServerProperties.setWarnsToMute((int) warnsToMute);
         }
 
+        if (event.getOption("antispam").get().getOption("set").get().getOption("antiraid").isPresent()
+                && event.getOption("antispam").get().getOption("set").get().getOption("antiraid").get().getValue().isPresent()) {
+            long joinsToAntiraid = event.getOption("antispam").get().getOption("set").get().getOption("antiraid").get().getValue().get().asLong();
+            if (joinsToAntiraid < 0) {
+                Notifier.notifyCommandUserOfError(event, "malformedInput");
+                return;
+            }
+            discordServerProperties.setJoinsToAntiraid((int) joinsToAntiraid);
+        }
+
         discordServerProperties.save();
         discordServerProperties.refresh();
 
         int messagesToWarn = discordServerProperties.getMessagesToWarn();
         int pingsToWarn = discordServerProperties.getPingsToWarn();
         int warnsToMute = discordServerProperties.getWarnsToMute();
+        int joinsToAntiraid = discordServerProperties.getJoinsToAntiraid();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Success")
@@ -132,8 +104,9 @@ public class AntiSpamSettings {
                 .description("Set anti-spam values successfully. Current values are:\n" +
                         "Messages to Warn: `" + messagesToWarn + "`\n" +
                         "Pings to Warn: `" + pingsToWarn + "`\n" +
-                        "Warns to Mute: `" + warnsToMute + "`")
-                .footer("For more information, run /spamsettings info", "")
+                        "Warns to Mute: `" + warnsToMute + "`" +
+                        "Joins to Antiraid: `" + joinsToAntiraid + "`")
+                .footer("For more information, run /settings antispam info", "")
                 .timestamp(Instant.now())
                 .build();
 
@@ -147,6 +120,7 @@ public class AntiSpamSettings {
         int messagesToWarn = discordServerProperties.getMessagesToWarn();
         int pingsToWarn = discordServerProperties.getPingsToWarn();
         int warnsToMute = discordServerProperties.getWarnsToMute();
+        int joinsToAntiRaid = discordServerProperties.getJoinsToAntiraid();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Anti-Spam Settings")
@@ -155,6 +129,7 @@ public class AntiSpamSettings {
                 .addField("Messages to Warn: " + messagesToWarn, "If a player sends `" + messagesToWarn + "` messages within 6 seconds, they will be warned for spam.", false)
                 .addField("Pings to Warn: " + pingsToWarn, "If a player sends `" + pingsToWarn + "` pings (mentions) within 6 seconds, they will be warned for spam.", false)
                 .addField("Warns to Mute: " + warnsToMute, "If a player is warned for spamming `" + warnsToMute + "` times within 10 minutes, they will be muted for 2 hours.", false)
+                .addField("Joins to Antiraid: " + joinsToAntiRaid, "If `" + joinsToAntiRaid + "` users join within 30 seconds, the `/stopjoins` anti-raid system will be automatically enabled.", false)
                 .timestamp(Instant.now())
                 .build();
 

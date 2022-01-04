@@ -28,112 +28,6 @@ import java.util.List;
 public class BlacklistSettings {
 
     private final Logger logger = LogManager.getLogger(this);
-    private final PermissionChecker permissionChecker = new PermissionChecker();
-
-    List<ApplicationCommandOptionChoiceData> optionChoiceDataList = List.of(
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("File (jar, exe, etc.)")
-                    .value("file")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("String (regex)")
-                    .value("string")
-                    .build());
-
-    List<ApplicationCommandOptionChoiceData> optionChoiceDataList2 = List.of(
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("Delete Message, ban user, log to punishments channel")
-                    .value("ban")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("Delete Message, mute for 2 hours, log to punishments channel")
-                    .value("mute")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("Delete Message, warn user, log to punishments channel")
-                    .value("warn")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("Delete Message, create a case, log to punishments channel")
-                    .value("delete")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("Create a case, log to punishments channel")
-                    .value("notify")
-                    .build());
-
-    private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
-            .name("blacklist")
-            .description("Manage the blacklist - blacklisted strings or files will be auto-deleted")
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("add")
-                    .description("Add a blacklist entry")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("type")
-                            .description("Type of entry")
-                            .type(ApplicationCommandOption.Type.STRING.getValue())
-                            .choices(optionChoiceDataList)
-                            .required(true)
-                            .build())
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("entry")
-                            .description("Entry to add to the blacklist")
-                            .type(ApplicationCommandOption.Type.STRING.getValue())
-                            .required(true)
-                            .build())
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("action")
-                            .description("What to do when blacklist is triggered")
-                            .type(ApplicationCommandOption.Type.STRING.getValue())
-                            .choices(optionChoiceDataList2)
-                            .required(true)
-                            .build())
-                    .build())
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("remove")
-                    .description("Remove a blacklist entry")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("id")
-                            .description("ID of blacklist entry to remove")
-                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
-                            .required(true)
-                            .build())
-                    .build())
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("list")
-                    .description("List blacklist entries for this guild")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .build())
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("info")
-                    .description("Display info for a blacklist entry")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("id")
-                            .description("ID of blacklist entry to show info for")
-                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
-                            .required(true)
-                            .build())
-                    .build())
-            .defaultPermission(true)
-            .build();
-
-    public ApplicationCommandRequest getRequest() {
-        return this.request;
-    }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
@@ -172,7 +66,7 @@ public class BlacklistSettings {
         Guild guild = event.getInteraction().getGuild().block();
         long guildId = guild.getId().asLong();
 
-        if (event.getOption("blacklist").get().getOption("info").get().getOption("id").isEmpty() || event.getOption("info").get().getOption("id").get().getValue().isEmpty()) {
+        if (event.getOption("blacklist").get().getOption("info").get().getOption("id").isEmpty() || event.getOption("blacklist").get().getOption("info").get().getOption("id").get().getValue().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
             return;
@@ -187,7 +81,7 @@ public class BlacklistSettings {
         }
 
         int serverId = discordServer.getServerId();
-        long inputId = event.getOption("info").get().getOption("id").get().getValue().get().asLong();
+        long inputId = event.getOption("blacklist").get().getOption("info").get().getOption("id").get().getValue().get().asLong();
 
         ServerBlacklist blacklist = ServerBlacklist.findFirst("server_id = ? and id = ?", serverId, inputId);
 
@@ -378,7 +272,7 @@ public class BlacklistSettings {
                 .addField("Blacklisted Entry", "`" + blacklist.getTrigger() + "`", false)
                 .addField("Type", blacklist.getType().toUpperCase(), false)
                 .addField("Action", blacklist.getAction().toUpperCase(), false)
-                .footer("To remove this entry, run /blacklist remove " + blacklist.getBlacklistId(), "")
+                .footer("To remove this entry, run /settings blacklist remove " + blacklist.getBlacklistId(), "")
                 .timestamp(Instant.now())
                 .build();
 
