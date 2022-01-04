@@ -24,28 +24,6 @@ public class ModMailSettings {
     private final PermissionChecker permissionChecker = new PermissionChecker();
     private final AddServerToDB addServerToDB = new AddServerToDB();
 
-    private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
-            .name("modmailsettings")
-            .description("Control the ModMail destination channel")
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("set")
-                    .description("Sets this channel as ModMail destination channel")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .build())
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("unset")
-                    .description("Unsets ModMail destination channel")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .build())
-            .defaultPermission(true)
-            .build();
-
-    public ApplicationCommandRequest getRequest() {
-        return this.request;
-    }
-
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         Guild guild = event.getInteraction().getGuild().block();

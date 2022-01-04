@@ -80,6 +80,7 @@ public class StopJoinsCommand implements Command {
             serverProperties.save();
             serverProperties.refresh();
             cache.invalidate(guild.getId().asLong());
+            loggingListener.onStopJoinsEnable(guild);
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Success")
                     .description("Enabled the prevention of all joins.")
@@ -110,6 +111,7 @@ public class StopJoinsCommand implements Command {
             serverProperties.save();
             serverProperties.refresh();
             cache.invalidate(guild.getId().asLong());
+            loggingListener.onStopJoinsDisable(guild);
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Success")
                     .description("Disabled the prevention of all joins.")

@@ -126,6 +126,7 @@ public class PunishmentManager {
                         punishment.refresh();
                         punishment.setEnded(true);
                         punishment.save();
+                        punishment.refresh();
                     });
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
@@ -220,6 +221,7 @@ public class PunishmentManager {
         } else {
             punishment.setEnded(true);
             punishment.save();
+            punishment.refresh();
         }
 
         // Find out how many days worth of messages to delete if this is a member ban
@@ -242,11 +244,7 @@ public class PunishmentManager {
 
         if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
                 || (event.getOption("dm").isEmpty())) {
-            punishment.setDMed(true);
-            punishment.save();
-            punishment.refresh();
-
-            Notifier.notifyPunished(guild, punishment, punishmentReason);
+            notifyPunishedUser(guild, punishment, punishmentReason);
         }
 
         // Actually do the punishment, discord-side. Nothing to do for warnings or cases.
@@ -264,6 +262,14 @@ public class PunishmentManager {
         DatabaseLoader.closeConnectionIfOpen();
 
         return Mono.empty();
+    }
+
+    public void notifyPunishedUser(Guild guild, Punishment punishment, String reason) {
+        punishment.setDMed(true);
+        punishment.save();
+        punishment.refresh();
+
+        Notifier.notifyPunished(guild, punishment, reason);
     }
 
     private Punishment createDatabasePunishmentRecord(DiscordUser punisher, DiscordUser punished, int serverId, String punishmentType) {

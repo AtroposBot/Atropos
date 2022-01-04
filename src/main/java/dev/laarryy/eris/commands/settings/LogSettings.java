@@ -25,78 +25,9 @@ import reactor.core.publisher.Mono;
 import java.time.Instant;
 import java.util.List;
 
-public class LogSettings implements Command {
+public class LogSettings {
     private final Logger logger = LogManager.getLogger(this);
     private AddServerToDB addServerToDB = new AddServerToDB();
-
-    List<ApplicationCommandOptionChoiceData> optionChoiceDataList = List.of(
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("Guild")
-                    .value("guild")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("Message")
-                    .value("message")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("Member")
-                    .value("member")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("Punishment")
-                    .value("punishment")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
-                    .name("All")
-                    .value("all")
-                    .build());
-
-    private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
-            .name("logsettings")
-            .description("Modify logging settings.")
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("set")
-                    .description("Sets this channel as a logging channel.")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("type")
-                            .description("Logging type to send to this channel. Run /logsettings info to learn more.")
-                            .type(ApplicationCommandOption.Type.STRING.getValue())
-                            .choices(optionChoiceDataList)
-                            .required(true)
-                            .build())
-                    .build())
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("unset")
-                    .description("Unsets this channel as a logging channel.")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("type")
-                            .description("Logging type to stop sending to this channel. Run /logsettings info to learn more.")
-                            .type(ApplicationCommandOption.Type.STRING.getValue())
-                            .choices(optionChoiceDataList)
-                            .required(true)
-                            .build())
-                    .build())
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("info")
-                    .description("Info on logging types and what they log.")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .build())
-            .defaultPermission(true)
-            .build();
-
-    public ApplicationCommandRequest getRequest() {
-        return this.request;
-    }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
@@ -176,8 +107,8 @@ public class LogSettings implements Command {
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Unset Log Channel Successfully")
                 .color(Color.ENDEAVOUR)
-                .description("Unset this channel as a logging channel of type: `" + logType + "`. Run `/logsettings info` " +
-                        "to learn more and `/logsettings set " + logType + "` in this channel to undo.")
+                .description("Unset this channel as a logging channel of type: `" + logType + "`. Run `/settings log info` " +
+                        "to learn more and `/settings log set " + logType + "` in this channel to undo.")
                 .timestamp(Instant.now())
                 .build();
 
