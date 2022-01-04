@@ -182,7 +182,28 @@ public class AuditCommand implements Command {
 
         LazyList<CommandUse> commandUseLazyList = CommandUse.where("server_id = ? and date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
 
+        logger.info(commandUseLazyList.get(2).getCommandContents());
+
+        if (commandUseLazyList.isEmpty()) {
+            logger.info("empty list");
+            EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                    .color(Color.ENDEAVOUR)
+                    .title("Recent Commands")
+                    .description("Nothing found in the past 10 days.")
+                    .footer("Run some commands and try again!", "")
+                    .timestamp(Instant.now())
+                    .build();
+            event.reply().withEmbeds(resultEmbed).subscribe();
+            AuditLogger.addCommandToDB(event, true);
+            DatabaseLoader.closeConnectionIfOpen();
+            return;
+        }
+
+        logger.info("making results");
         String results = createFormattedAuditTable(commandUseLazyList, event);
+        logger.info("results made");
+
+        logger.info(results);
 
         EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
@@ -191,7 +212,9 @@ public class AuditCommand implements Command {
                 .footer("For detailed information, run /audit id <id>", "")
                 .timestamp(Instant.now())
                 .build();
+        logger.info("EMBED MADE");
         event.reply().withEmbeds(resultEmbed).subscribe();
+        logger.info("EMBED SENT");
         AuditLogger.addCommandToDB(event, true);
     }
 
@@ -268,40 +291,45 @@ public class AuditCommand implements Command {
         rows.add("```");
         rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", "ID", "Date", "User", "Preview"));
         rows.add("---------------------------------------------------------\n");
-
+        logger.info("beginning iteration");
         for (CommandUse c : commandUseLazyList) {
-            if (c == null) {
-                continue;
-            }
-            DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
-            String userId = discordUser.getUserIdSnowflake().toString();
-            Guild guild = event.getInteraction().getGuild().block();
-            String username;
-            if (guild.getMemberById(Snowflake.of(userId)).block() != null) {
-                username = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
-            } else username = userId;
+                if (c == null) {
+                    continue;
+                }
+                DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
+                String userId = discordUser.getUserIdSnowflake().toString();
+                Guild guild = event.getInteraction().getGuild().block();
+                String username;
+                try {
+                    username = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
+                } catch (Exception e) {
+                    username = userId;
+                }
 
-            if (username.length() > 15) {
-                username = username.substring(0,12) + "...";
-            }
-            String auditId = c.getInteger("id").toString();
-            Instant date = Instant.ofEpochMilli(c.getDate());
-            String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
-            String preview;
-            if (c.getCommandContents().length() > 7) {
-                preview = "/" + c.getCommandContents().substring(0,7) + "...";
-            } else preview = c.getCommandContents();
+                if (username.length() > 15) {
+                    username = username.substring(0, 12) + "...";
+                }
+                String auditId = c.getInteger("id").toString();
+                Instant date = Instant.ofEpochMilli(c.getDate());
+                String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
+                String preview;
+                if (c.getCommandContents().length() > 7) {
+                    preview = "/" + c.getCommandContents().substring(0, 7) + "...";
+                } else preview = "/" + c.getCommandContents();
 
-            rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
+                rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
+                logger.info("successfully iterated once");
+
         }
 
         rows.add("```");
+        logger.info("done iteration");
 
         StringBuffer stringBuffer = new StringBuffer();
         for (String row: rows) {
             stringBuffer.append(row);
         }
-
+        logger.info("appended");
         return stringBuffer.toString();
     }
 }
