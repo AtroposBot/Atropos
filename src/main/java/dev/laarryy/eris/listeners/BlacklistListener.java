@@ -37,11 +37,11 @@ public class BlacklistListener {
             return Mono.empty();
         }
 
-        if (event.getMember().isPresent() && event.getMember().get().equals(event.getGuild().block().getSelfMember().block())) {
+        if (event.getMember().isEmpty() || event.getMessage().getAuthor().isEmpty() || event.getMessage().getAuthor().get().isBot()) {
             return Mono.empty();
         }
 
-        if (event.getMessage().getAuthor().isPresent() && event.getMessage().getAuthor().get().isBot()) {
+        if (event.getMember().isPresent() && event.getMember().get().equals(event.getGuild().block().getSelfMember().block())) {
             return Mono.empty();
         }
 

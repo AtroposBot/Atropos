@@ -175,14 +175,14 @@ public final class LoggingListener {
         if (guild == null) {
             return;
         }
-
         getLogChannel(guild, "guild")
                 .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logStopJoinsEnabled(textChannel);
                     }
-                });
+                })
+                .subscribe();
     }
 
     public void onStopJoinsDisable(Guild guild) {
@@ -196,7 +196,8 @@ public final class LoggingListener {
                     if (textChannel != null) {
                         LogExecutor.logStopJoinsDisabled(textChannel);
                     }
-                });
+                })
+                .subscribe();
     }
 
     @EventListener
