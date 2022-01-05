@@ -283,38 +283,37 @@ public class AuditCommand implements Command {
         rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", "ID", "Date", "User", "Preview"));
         rows.add("---------------------------------------------------------\n");
         for (CommandUse c : commandUseLazyList) {
-                if (c == null) {
-                    continue;
-                }
-                DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
-                String userId = discordUser.getUserIdSnowflake().toString();
-                Guild guild = event.getInteraction().getGuild().block();
-                String username;
-                try {
-                    username = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
-                } catch (Exception e) {
-                    username = userId;
-                }
+            if (c == null) {
+                continue;
+            }
+            DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
+            String userId = discordUser.getUserIdSnowflake().toString();
+            Guild guild = event.getInteraction().getGuild().block();
+            String username;
+            try {
+                username = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
+            } catch (Exception e) {
+                username = userId;
+            }
+            if (username.length() > 15) {
+                username = username.substring(0, 12) + "...";
+            }
+            String auditId = c.getInteger("id").toString();
+            Instant date = Instant.ofEpochMilli(c.getDate());
+            String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
+            String preview;
+            if (c.getCommandContents().length() > 7) {
+                preview = "/" + c.getCommandContents().substring(0, 7) + "...";
+            } else preview = "/" + c.getCommandContents();
 
-                if (username.length() > 15) {
-                    username = username.substring(0, 12) + "...";
-                }
-                String auditId = c.getInteger("id").toString();
-                Instant date = Instant.ofEpochMilli(c.getDate());
-                String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
-                String preview;
-                if (c.getCommandContents().length() > 7) {
-                    preview = "/" + c.getCommandContents().substring(0, 7) + "...";
-                } else preview = "/" + c.getCommandContents();
-
-                rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
+            rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
 
         }
 
         rows.add("```");
 
         StringBuffer stringBuffer = new StringBuffer();
-        for (String row: rows) {
+        for (String row : rows) {
             stringBuffer.append(row);
         }
         return stringBuffer.toString();

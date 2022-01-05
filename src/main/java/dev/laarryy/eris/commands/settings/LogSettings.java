@@ -177,8 +177,8 @@ public class LogSettings {
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Set Log Channel Successfully")
                 .color(Color.ENDEAVOUR)
-                .description("Set this channel to be a logging channel of type: `" + logType + "`. Run `/logsettings info` " +
-                        "to learn more and `/logsettings unset " + logType + "` in this channel to undo.")
+                .description("Set this channel to be a logging channel of type: `" + logType + "`. Run `/settings log info` " +
+                        "to learn more and `/settings log unset " + logType + "` in this channel to undo.")
                 .timestamp(Instant.now())
                 .build();
 
@@ -229,8 +229,8 @@ public class LogSettings {
                                 "It will also log unmutes and unbans through the bot, in addition to cases where a " +
                                 "user attempts insubordination (punishing someone above them).",
                         false)
-                .addField("Command Use", "Run `/logsettings set <type>` in the channel you'd like to set as a logging channel. " +
-                        "Run `/logsettings unset <type>` in the channel you'd like to unset as a logging channel.",
+                .addField("Command Use", "Run `/settings log set <type>` in the channel you'd like to set as a logging channel. " +
+                        "Run `/settings log unset <type>` in the channel you'd like to unset as a logging channel.",
                         false)
                 .addField("\u200B", settings, false)
                 .build();

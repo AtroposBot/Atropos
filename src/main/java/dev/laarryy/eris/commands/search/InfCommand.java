@@ -223,8 +223,6 @@ public class InfCommand implements Command {
         DatabaseLoader.closeConnectionIfOpen();
     }
 
-
-
     private void searchForCase(ChatInputInteractionEvent event) {
 
         if (event.getOption("search").get().getOption("case").isEmpty() || event.getOption("search").get().getOption("case").get().getOption("caseid").isEmpty()) {
@@ -513,9 +511,7 @@ public class InfCommand implements Command {
         Long userId = user.getUserIdSnowflake();
         String usernameOrId;
         try {
-            if (guild.getMemberById(Snowflake.of(userId)).block() != null) {
-                usernameOrId = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
-            } else usernameOrId = String.valueOf(userId);
+            usernameOrId = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
         } catch (Exception ignored) {
             usernameOrId = userId.toString();
         }

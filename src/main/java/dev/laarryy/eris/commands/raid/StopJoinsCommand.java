@@ -27,7 +27,6 @@ public class StopJoinsCommand implements Command {
 
     LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
-    PermissionChecker permissionChecker = new PermissionChecker();
     private final Logger logger = LogManager.getLogger(this);
 
 
@@ -79,8 +78,11 @@ public class StopJoinsCommand implements Command {
             serverProperties.setStopJoins(true);
             serverProperties.save();
             serverProperties.refresh();
+
             cache.invalidate(guild.getId().asLong());
+
             loggingListener.onStopJoinsEnable(guild);
+
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Success")
                     .description("Enabled the prevention of all joins.")
