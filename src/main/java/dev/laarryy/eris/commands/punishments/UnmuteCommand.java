@@ -2,7 +2,7 @@ package dev.laarryy.eris.commands.punishments;
 
 import dev.laarryy.eris.commands.Command;
 import dev.laarryy.eris.utils.PermissionChecker;
-import dev.laarryy.eris.utils.SlashCommandChecks;
+import dev.laarryy.eris.utils.CommandChecks;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
@@ -40,7 +40,7 @@ public class UnmuteCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
+        if (!CommandChecks.commandChecks(event, request.name())) {
             return Mono.empty();
         }
 

@@ -12,6 +12,8 @@ import dev.laarryy.eris.models.users.Punishment;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.AuditLogger;
 import dev.laarryy.eris.utils.Notifier;
+import dev.laarryy.eris.utils.PermissionChecker;
+import dev.laarryy.eris.utils.CommandChecks;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.object.component.ActionRow;
@@ -19,10 +21,8 @@ import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
-import discord4j.core.spec.InteractionApplicationCommandCallbackSpec;
 import reactor.core.publisher.Mono;
 
-import java.awt.*;
 import java.time.Instant;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,6 +32,7 @@ public class ButtonUseListener {
     PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
     ManualPunishmentEnder manualPunishmentEnder = new ManualPunishmentEnder();
+    PermissionChecker permissionChecker = new PermissionChecker();
     private static final Pattern BAN = Pattern.compile("(.*)-eris-scamban-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
     private static final Pattern UNMUTE = Pattern.compile("(.*)-eris-unmute-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
 
@@ -79,6 +80,18 @@ public class ButtonUseListener {
         DatabaseLoader.openConnectionIfClosed();
         DiscordUser discordUser = getDiscordUserFromId(userId);
         DiscordUser moderator = DiscordUser.findFirst("user_id_snowflake = ?", mod.getId().asLong());
+
+        if (!CommandChecks.commandChecks(event, "ban")) {
+            return;
+        }
+
+        Member punisher = event.getInteraction().getMember().get();
+        Member punished = guild.getMemberById(Snowflake.of(discordUser.getUserIdSnowflake())).block();
+
+        if (!punishmentManager.checkIfPunisherHasHighestRole(punisher, punished, guild, event)) {
+            return;
+        }
+
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
         Punishment initialMute = getPunishmentFromId(punishmentId);
 
@@ -90,7 +103,7 @@ public class ButtonUseListener {
                 "server_id", discordServer.getServerId(),
                 "punishment_type", "mute",
                 "punishment_date", Instant.now().toEpochMilli(),
-                "punishment_message", "Banned for scam link. Original reason: " + initialMute,
+                "punishment_message", "Banned for scam link. Original reason: " + initialMute.getPunishmentMessage(),
                 "did_dm", false,
                 "end_date_passed", true,
                 "punishment_end_reason", "No reason provided.");
@@ -98,8 +111,9 @@ public class ButtonUseListener {
         punishment.refresh();
 
         loggingListener.onPunishment(event, punishment);
+        Notifier.notifyPunisherOfBan(event, punishment, punishment.getPunishmentMessage());
         DatabaseLoader.closeConnectionIfOpen();
-        event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("it-worked", "User Banned").disabled()));
+        event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("it-worked", "User Banned").disabled())).block();
 
     }
 
@@ -111,6 +125,16 @@ public class ButtonUseListener {
         String reason = "Unmuted by moderators after scam-link review of case `" + mute.getPunishmentId() + "`, with original reason " + mute.getPunishmentMessage();
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
         Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
+
+        if (!CommandChecks.commandChecks(event, "unmute")) {
+            return;
+        }
+
+        Member punisher = event.getInteraction().getMember().get();
+
+        if (!punishmentManager.checkIfPunisherHasHighestRole(punisher, mutedUser, guild, event)) {
+            return;
+        }
 
         if (mutedRoleId == null) {
             Notifier.notifyCommandUserOfError(event, "noMutedRole");
@@ -132,7 +156,7 @@ public class ButtonUseListener {
             manualPunishmentEnder.databaseEndPunishment(discordUser.getUserIdSnowflake(), guild, "unmute", reason);
             AuditLogger.addCommandToDB(event, true);
             Notifier.notifyModOfUnmute(event, mutedUser.getDisplayName(), reason);
-            event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "User Unmuted").disabled()));
+            event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "User Unmuted").disabled())).block();
             DatabaseLoader.closeConnectionIfOpen();
             return;
         } else {

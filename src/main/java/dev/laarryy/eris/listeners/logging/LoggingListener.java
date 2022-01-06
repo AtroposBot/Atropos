@@ -109,6 +109,16 @@ public final class LoggingListener {
         });
     }
 
+    public void onAttemptedInsubordination(ButtonInteractionEvent event, Member target) {
+        Guild guild = event.getInteraction().getGuild().block();
+        if (guild == null) return;
+
+        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+            if (textChannel == null) return;
+            LogExecutor.logInsubordination(event, textChannel, target);
+        });
+    }
+
     public void onBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment) {
         Guild guild = event.getGuild().block();
         if (guild == null) return;

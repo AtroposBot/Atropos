@@ -12,6 +12,7 @@ import dev.laarryy.eris.utils.DurationParser;
 import dev.laarryy.eris.utils.Notifier;
 import dev.laarryy.eris.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
+import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.ExtendedPermissionOverwrite;
 import discord4j.core.object.PermissionOverwrite;
@@ -464,7 +465,41 @@ public class PunishmentManager {
 
     }
 
-    private boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ChatInputInteractionEvent event) {
+    public boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ChatInputInteractionEvent event) {
+
+        if (punisher.equals(punished)) {
+            Notifier.notifyCommandUserOfError(event, "noPermission");
+            return false;
+        }
+
+        if (permissionChecker.checkIsAdministrator(guild, punisher) && !permissionChecker.checkIsAdministrator(guild, punished)) {
+            return true;
+        } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
+            Notifier.notifyCommandUserOfError(event, "noPermission");
+            AuditLogger.addCommandToDB(event, false);
+            loggingListener.onAttemptedInsubordination(event, punished);
+            return false;
+        }
+
+        Set<Snowflake> snowflakeSet = Set.copyOf(punished.getRoles().map(Role::getId).collectList().block());
+
+        if (!guild.getSelfMember().block().hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
+            Notifier.notifyCommandUserOfError(event, "botRoleTooLow");
+            AuditLogger.addCommandToDB(event, false);
+            return false;
+        }
+
+        if (!punisher.hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
+            Notifier.notifyCommandUserOfError(event, "noPermission");
+            AuditLogger.addCommandToDB(event, false);
+            loggingListener.onAttemptedInsubordination(event, punished);
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ButtonInteractionEvent event) {
 
         if (punisher.equals(punished)) {
             Notifier.notifyCommandUserOfError(event, "noPermission");

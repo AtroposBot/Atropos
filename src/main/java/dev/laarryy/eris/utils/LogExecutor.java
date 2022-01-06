@@ -112,6 +112,45 @@ public final class LogExecutor {
         logChannel.createMessage(embed).block();
     }
 
+    public static void logInsubordination(ButtonInteractionEvent event, TextChannel logChannel, Member target) {
+        Guild guild = event.getInteraction().getGuild().block();
+        if (guild == null) {
+            return;
+        }
+
+        long targetId = target.getId().asLong();
+        String username = target.getUsername() + "#" + target.getDiscriminator();
+        String targetInfo = "`" + username + "`:`" + targetId + "`:<@" + targetId + ">";
+
+        String mutineerInfo;
+        if (event.getInteraction().getMember().isPresent()) {
+            Member mutineer = event.getInteraction().getMember().get();
+            long mutineerId = mutineer.getId().asLong();
+            String mutineerName = mutineer.getUsername() + "#" + mutineer.getDiscriminator();
+            mutineerInfo = "`" + mutineerName + "`:`" + mutineerId + "`:<@" + mutineerId + ">";
+        } else {
+            mutineerInfo = "Unknown";
+        }
+
+        StringBuffer stringBuffer = new StringBuffer();
+        stringBuffer.append(event.getCustomId());
+
+        StringBuilder sb = new StringBuilder();
+
+        String commandContent = stringBuffer.toString();
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getUserWarn() + " Insubordination Alert")
+                .description("A mutineer has attempted to punish someone above them.")
+                .addField("User", mutineerInfo, false)
+                .addField("Target", targetInfo, false)
+                .addField("Command", "`" + commandContent + "`", false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
+    }
+
     public static void logBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment, TextChannel logChannel) {
         DatabaseLoader.openConnectionIfClosed();
 
@@ -195,10 +234,8 @@ public final class LogExecutor {
         Button banButton = Button.primary(punishment.getPunishmentId() + "-eris-scamban-" + punishedUser.getUserId(), "Ban User");
         Button unmuteButton = Button.secondary(punishment.getPunishmentId() + "-eris-unmute-" + punishedUser.getUserId(), "Unmute User");
 
-        try { logChannel.createMessage(embed).withComponents(ActionRow.of(banButton, unmuteButton)); }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
+        logChannel.createMessage(embed).withComponents(ActionRow.of(banButton, unmuteButton)).subscribe();
+
         DatabaseLoader.closeConnectionIfOpen();
     }
 

@@ -8,8 +8,7 @@ import dev.laarryy.eris.managers.PropertiesCacheManager;
 import dev.laarryy.eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.AuditLogger;
-import dev.laarryy.eris.utils.PermissionChecker;
-import dev.laarryy.eris.utils.SlashCommandChecks;
+import dev.laarryy.eris.utils.CommandChecks;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
@@ -53,7 +52,7 @@ public class StopJoinsCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
+        if (!CommandChecks.commandChecks(event, request.name())) {
             return Mono.empty();
         }
         Guild guild = event.getInteraction().getGuild().block();

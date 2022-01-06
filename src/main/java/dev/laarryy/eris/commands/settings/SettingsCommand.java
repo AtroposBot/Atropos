@@ -3,7 +3,7 @@ package dev.laarryy.eris.commands.settings;
 import dev.laarryy.eris.commands.Command;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.Notifier;
-import dev.laarryy.eris.utils.SlashCommandChecks;
+import dev.laarryy.eris.utils.CommandChecks;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
@@ -264,7 +264,7 @@ public class SettingsCommand implements Command {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         if (event.getOption("antispam").isPresent()) {
-            if (!SlashCommandChecks.slashCommandChecks(event, "antispamsettings")) {
+            if (!CommandChecks.commandChecks(event, "antispamsettings")) {
                 return Mono.empty();
             }
             antiSpamSettings.execute(event);
@@ -273,7 +273,7 @@ public class SettingsCommand implements Command {
         }
 
         if (event.getOption("blacklist").isPresent()) {
-            if (!SlashCommandChecks.slashCommandChecks(event, "blacklistsettings")) {
+            if (!CommandChecks.commandChecks(event, "blacklistsettings")) {
                 return Mono.empty();
             }
             blacklistSettings.execute(event);
@@ -282,7 +282,7 @@ public class SettingsCommand implements Command {
         }
 
         if (event.getOption("log").isPresent()) {
-            if (!SlashCommandChecks.slashCommandChecks(event, "logsettings")) {
+            if (!CommandChecks.commandChecks(event, "logsettings")) {
                 return Mono.empty();
             }
             logSettings.execute(event);
@@ -291,7 +291,7 @@ public class SettingsCommand implements Command {
         }
 
         if (event.getOption("modmail").isPresent()) {
-            if (!SlashCommandChecks.slashCommandChecks(event, "modmailsettings")) {
+            if (!CommandChecks.commandChecks(event, "modmailsettings")) {
                 return Mono.empty();
             }
             modMailSettings.execute(event);
