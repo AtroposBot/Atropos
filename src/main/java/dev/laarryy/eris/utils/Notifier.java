@@ -118,7 +118,7 @@ public final class Notifier {
             case "noResults" -> event.reply().withEmbeds(noResultsEmbed()).subscribe();
             case "inputTooLong" -> event.reply().withEmbeds(inputTooLongEmbed()).withEphemeral(true).subscribe();
             case "tooManyEntries" -> event.reply().withEmbeds(tooManyEntriesEmbed()).withEphemeral(true).subscribe();
-            case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).subscribe();
+            case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).withEphemeral(true).subscribe();
             case "invalidChannel" -> event.reply().withEmbeds(invalidChannelEmbed()).subscribe();
             case "durationTooLong" -> event.reply().withEmbeds(durationTooLongEmbed()).withEphemeral(true).subscribe();
             default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();

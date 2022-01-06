@@ -15,6 +15,7 @@ public class ConfigManager {
     String token;
     String controlGuildId;
     String controllerId;
+    String encryptionKey;
 
     private static final ConfigLoader configLoader = new ConfigLoader();
     private static ConfigSettings configSettings;
@@ -40,6 +41,7 @@ public class ConfigManager {
         this.token = configSettings.getToken();
         this.controlGuildId = configSettings.getControlGuildId();
         this.controllerId = configSettings.getControllerId();
+        this.encryptionKey = configSettings.getEncryptionKey();
     }
 
     public static String getAddress() {
@@ -65,4 +67,9 @@ public class ConfigManager {
     public static String getControllerId() {
         return configSettings.getControllerId();
     }
+
+    public static String getEncryptionKey() {
+        return  configSettings.getEncryptionKey();
+    }
+
 }

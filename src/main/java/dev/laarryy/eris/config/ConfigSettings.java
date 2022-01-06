@@ -12,6 +12,7 @@ public class ConfigSettings {
     protected @Nullable String token = "secret";
     protected @Nullable String controlGuildId = "unknown";
     protected @Nullable String controllerId = "unknown";
+    protected @Nullable String encryptionKey = "mysterious";
 
     public @Nullable String getAddress() {
         return address;
@@ -41,6 +42,8 @@ public class ConfigSettings {
         return token;
     }
 
+    public void setToken(@Nullable String token) { this.token = token; }
+
     public @Nullable String getControlGuildId() {
         return controlGuildId;
     }
@@ -56,4 +59,9 @@ public class ConfigSettings {
     public void setControllerId(@Nullable String controllerId) {
         this.controllerId = controllerId;
     }
+
+    public @Nullable String getEncryptionKey() { return encryptionKey; }
+
+    public void setEncryptionKey(@Nullable String encryptionKey) { this.encryptionKey = encryptionKey; }
+
 }

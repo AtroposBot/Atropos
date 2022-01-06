@@ -8,7 +8,7 @@ public class SlashCommandChecks {
     public static boolean slashCommandChecks(ChatInputInteractionEvent event, String requestName) {
         PermissionChecker permissionChecker = new PermissionChecker();
 
-        if (event.getInteraction().getGuild().block() == null) {
+        if (event.getInteraction().getGuild().blockOptional().isEmpty() || event.getInteraction().getGuild().block() == null) {
             Notifier.notifyCommandUserOfError(event, "nullServer");
             return false;
         }

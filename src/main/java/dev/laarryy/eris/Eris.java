@@ -13,7 +13,7 @@ import dev.laarryy.eris.managers.PunishmentManagerManager;
 import dev.laarryy.eris.models.guilds.Blacklist;
 import dev.laarryy.eris.models.guilds.DiscordServer;
 import dev.laarryy.eris.models.guilds.DiscordServerProperties;
-import dev.laarryy.eris.services.AutoPunishmentEnder;
+import dev.laarryy.eris.services.ScheduledTaskDoer;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.AddServerToDB;
 import discord4j.core.GatewayDiscordClient;
@@ -76,7 +76,7 @@ public class Eris {
 
         PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
-        AutoPunishmentEnder autoPunishmentEnder = new AutoPunishmentEnder(client);
+        ScheduledTaskDoer scheduledTaskDoer = new ScheduledTaskDoer(client);
         AddServerToDB addServerToDB = new AddServerToDB();
 
         // Register all guilds and users in them to database
