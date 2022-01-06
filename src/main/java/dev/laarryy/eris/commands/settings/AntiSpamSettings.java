@@ -1,5 +1,7 @@
 package dev.laarryy.eris.commands.settings;
 
+import com.github.benmanes.caffeine.cache.LoadingCache;
+import dev.laarryy.eris.managers.PropertiesCacheManager;
 import dev.laarryy.eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.Notifier;
@@ -16,6 +18,8 @@ import java.time.Instant;
 import java.util.Locale;
 
 public class AntiSpamSettings {
+
+    LoadingCache<Long, DiscordServerProperties> propertiesCache = PropertiesCacheManager.getManager().getPropertiesCache();
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
@@ -101,6 +105,8 @@ public class AntiSpamSettings {
 
         discordServerProperties.save();
         discordServerProperties.refresh();
+
+        propertiesCache.invalidate(guild.getId().asLong());
 
         int messagesToWarn = discordServerProperties.getMessagesToWarn();
         int pingsToWarn = discordServerProperties.getPingsToWarn();
