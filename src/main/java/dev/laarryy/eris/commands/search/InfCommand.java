@@ -8,7 +8,7 @@ import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.AuditLogger;
 import dev.laarryy.eris.utils.Notifier;
 import dev.laarryy.eris.utils.PermissionChecker;
-import dev.laarryy.eris.utils.SlashCommandChecks;
+import dev.laarryy.eris.utils.CommandChecks;
 import dev.laarryy.eris.utils.TimestampMaker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
@@ -165,7 +165,7 @@ public class InfCommand implements Command {
             return Mono.empty();
         }
 
-        if (!SlashCommandChecks.slashCommandChecks(event, "infsearch")) {
+        if (!CommandChecks.commandChecks(event, "infsearch")) {
             return Mono.empty();
         }
 

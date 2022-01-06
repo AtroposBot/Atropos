@@ -4,7 +4,7 @@ import dev.laarryy.eris.commands.Command;
 import dev.laarryy.eris.utils.AuditLogger;
 import dev.laarryy.eris.utils.Notifier;
 import dev.laarryy.eris.utils.PermissionChecker;
-import dev.laarryy.eris.utils.SlashCommandChecks;
+import dev.laarryy.eris.utils.CommandChecks;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
@@ -44,7 +44,7 @@ public class PruneCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!SlashCommandChecks.slashCommandChecks(event, request.name())) {
+        if (!CommandChecks.commandChecks(event, request.name())) {
             return Mono.empty();
         }
 

@@ -2,6 +2,7 @@ package dev.laarryy.eris.utils;
 
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.models.users.Punishment;
+import dev.laarryy.eris.storage.DatabaseLoader;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
@@ -51,6 +52,26 @@ public final class Notifier {
             case "mute" -> event.reply().withEmbeds(muteEmbed(userName, punishmentEnd, punishmentReason, caseId)).subscribe();
             case "case" -> event.reply().withEmbeds(caseEmbed(userName, punishmentReason, caseId)).withEphemeral(true).subscribe();
         }
+    }
+
+    public static void notifyPunisherOfBan(ButtonInteractionEvent event, Punishment punishment, String punishmentReason) {
+
+        String punishmentEnd;
+        DatabaseLoader.openConnectionIfClosed();
+        DiscordUser user = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+        String userName = String.valueOf(user.getUserIdSnowflake());
+        if (punishment.getEndDate() != null) {
+            Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
+            punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
+                    endDate.getEpochSecond(),
+                    TimestampMaker.TimestampType.RELATIVE);
+        } else {
+            punishmentEnd = "Never.";
+        }
+
+        String caseId = String.valueOf(punishment.getPunishmentId());
+
+        event.reply().withEmbeds(banEmbed(userName, punishmentEnd, punishmentReason, caseId)).subscribe();
     }
 
     public static void notifyPunished(Guild guild, Punishment punishment, String punishmentReason) {
