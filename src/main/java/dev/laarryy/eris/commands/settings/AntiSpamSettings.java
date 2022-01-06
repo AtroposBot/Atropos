@@ -13,6 +13,7 @@ import discord4j.rest.util.Color;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.Locale;
 
 public class AntiSpamSettings {
 
@@ -40,6 +41,8 @@ public class AntiSpamSettings {
                 && event.getOption("antispam").get().getOption("set").get().getOption("pings").isEmpty()
                 && event.getOption("antispam").get().getOption("set").get().getOption("warns").isEmpty()
                 && event.getOption("antispam").get().getOption("set").get().getOption("antiraid").isEmpty()
+                && event.getOption("antispam").get().getOption("set").get().getOption("antiscam").isEmpty()
+
         ) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             return;
@@ -90,6 +93,12 @@ public class AntiSpamSettings {
             discordServerProperties.setJoinsToAntiraid((int) joinsToAntiraid);
         }
 
+        if (event.getOption("antispam").get().getOption("set").get().getOption("antiscam").isPresent()
+                && event.getOption("antispam").get().getOption("set").get().getOption("antiscam").get().getValue().isPresent()) {
+            boolean antiScam = event.getOption("antispam").get().getOption("set").get().getOption("antiscam").get().getValue().get().asBoolean();
+            discordServerProperties.setAntiScam(antiScam);
+        }
+
         discordServerProperties.save();
         discordServerProperties.refresh();
 
@@ -97,6 +106,7 @@ public class AntiSpamSettings {
         int pingsToWarn = discordServerProperties.getPingsToWarn();
         int warnsToMute = discordServerProperties.getWarnsToMute();
         int joinsToAntiraid = discordServerProperties.getJoinsToAntiraid();
+        boolean antiScam= discordServerProperties.getAntiScam();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Success")
@@ -104,8 +114,9 @@ public class AntiSpamSettings {
                 .description("Set anti-spam values successfully. Current values are:\n" +
                         "Messages to Warn: `" + messagesToWarn + "`\n" +
                         "Pings to Warn: `" + pingsToWarn + "`\n" +
-                        "Warns to Mute: `" + warnsToMute + "`" +
-                        "Joins to Antiraid: `" + joinsToAntiraid + "`")
+                        "Warns to Mute: `" + warnsToMute + "`\n" +
+                        "Joins to Antiraid: `" + joinsToAntiraid + "`\n" +
+                        "Anti-Scam Enabled: `" + String.valueOf(antiScam).toLowerCase() + "`")
                 .footer("For more information, run /settings antispam info", "")
                 .timestamp(Instant.now())
                 .build();
@@ -121,6 +132,7 @@ public class AntiSpamSettings {
         int pingsToWarn = discordServerProperties.getPingsToWarn();
         int warnsToMute = discordServerProperties.getWarnsToMute();
         int joinsToAntiRaid = discordServerProperties.getJoinsToAntiraid();
+        String antiScam = String.valueOf(discordServerProperties.getAntiScam()).toLowerCase();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Anti-Spam Settings")
@@ -130,6 +142,7 @@ public class AntiSpamSettings {
                 .addField("Pings to Warn: " + pingsToWarn, "If a player sends `" + pingsToWarn + "` pings (mentions) within 6 seconds, they will be warned for spam.", false)
                 .addField("Warns to Mute: " + warnsToMute, "If a player is warned for spamming `" + warnsToMute + "` times within 10 minutes, they will be muted for 2 hours.", false)
                 .addField("Joins to Antiraid: " + joinsToAntiRaid, "If `" + joinsToAntiRaid + "` users join within 30 seconds, the `/stopjoins` anti-raid system will be automatically enabled.", false)
+                .addField("Anti-Scam Enabled: " + antiScam, "If enabled, users that send known or likely malicious or scam links will be muted pending manual review.", false)
                 .timestamp(Instant.now())
                 .build();
 

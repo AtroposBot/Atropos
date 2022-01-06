@@ -127,4 +127,12 @@ public class DiscordServerProperties extends Model {
     public void setJoinsToAntiraid(int warnsToMute) {
         setInteger("joins_to_antiraid", warnsToMute);
     }
+
+    public boolean getAntiScam() {
+        return getBoolean("anti_scam");
+    }
+
+    public void setAntiScam(boolean antiScam) {
+        setBoolean("anti_scam", antiScam);
+    }
 }

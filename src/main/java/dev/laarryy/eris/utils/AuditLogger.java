@@ -5,6 +5,7 @@ import dev.laarryy.eris.models.guilds.CommandUse;
 import dev.laarryy.eris.models.guilds.DiscordServer;
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.storage.DatabaseLoader;
+import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import org.apache.logging.log4j.LogManager;
@@ -53,6 +54,36 @@ public final class AuditLogger {
                     commandUse.save();
                 })
                 .subscribe();
+    }
+
+    public static void addCommandToDB(ButtonInteractionEvent event, boolean success) {
+        DatabaseLoader.openConnectionIfClosed();
+
+        if (event.getInteraction().getGuildId().isEmpty()) {
+            return;
+        }
+
+        DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+
+        if (server == null) {
+            return;
+        }
+
+        int serverId = server.getServerId();
+
+        DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());
+
+        if (user == null) {
+            return;
+        }
+        int commandUserId = user.getUserId();
+
+        StringBuffer stringBuffer = new StringBuffer();
+
+        stringBuffer.append("Button:" + event.getCustomId());
+
+        CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", stringBuffer.toString(), "date", Instant.now().toEpochMilli(), "success", success);
+        commandUse.save();
     }
 
     public static String generateOptionString(ApplicationCommandInteractionOption option, StringBuilder sb) {

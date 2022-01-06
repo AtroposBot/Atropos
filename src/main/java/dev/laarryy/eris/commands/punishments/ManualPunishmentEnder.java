@@ -51,9 +51,12 @@ public final class ManualPunishmentEnder {
                     .map(Long::valueOf)
                     .onErrorReturn(Exception.class, 0L)
                     .filter(aLong -> aLong != 0)
-                    .filter(aLong -> discordUnban(event.getInteraction().getGuild().block(), aLong, reason, event))
+                    .filter(aLong -> discordUnban(event.getInteraction().getGuild().block(), aLong, reason))
                     .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe(lo -> databaseEndPunishment(lo, event, reason));
+                    .subscribe(lo -> {
+                        databaseEndPunishment(lo, event.getInteraction().getGuild().block(), event.getCommandName(), reason);
+                        Notifier.notifyModOfUnban(event, reason, lo);
+                    });
         }
 
         if (event.getOption("user").isPresent() && event.getOption("user").get().getValue().isPresent()) {
@@ -63,22 +66,21 @@ public final class ManualPunishmentEnder {
                     .flatMap(user -> user.asMember(event.getInteraction().getGuildId().get()))
                     .filter(member -> discordUnmute(member, event, reason))
                     .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe(member -> databaseEndPunishment(member.getId().asLong(), event, reason));
+                    .subscribe(member -> databaseEndPunishment(member.getId().asLong(), event.getInteraction().getGuild().block(), event.getCommandName(), reason));
         }
         DatabaseLoader.closeConnectionIfOpen();
     }
 
-    private boolean discordUnban(Guild guild, Long aLong, String reason, ChatInputInteractionEvent event) {
+    public boolean discordUnban(Guild guild, Long unbannedUserSnowflake, String reason) {
         try {
-            guild.unban(Snowflake.of(aLong), reason).block();
-            Notifier.notifyModOfUnban(event, reason, aLong);
+            guild.unban(Snowflake.of(unbannedUserSnowflake), reason).block();
             return true;
         } catch (Exception exception) {
             return false;
         }
     }
 
-    private boolean discordUnmute(Member member, ChatInputInteractionEvent event, String reason) {
+    public boolean discordUnmute(Member member, ChatInputInteractionEvent event, String reason) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getInteraction().getGuildId().get().asLong());
         Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
@@ -109,18 +111,17 @@ public final class ManualPunishmentEnder {
             }
     }
 
-    private boolean databaseEndPunishment(Long aLong, ChatInputInteractionEvent event, String reason) {
+    public boolean databaseEndPunishment(Long userIdSnowflake, Guild guild, String commandName, String reason) {
         DatabaseLoader.openConnectionIfClosed();
 
-        String commandName = event.getCommandName();
         String punishmentType = switch (commandName) {
             case "unban" -> "ban";
             case "unmute" -> "mute";
             default -> "unknown";
         };
 
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", aLong);
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
         if (discordUser != null && discordServer != null) {
             DatabaseLoader.openConnectionIfClosed();
@@ -155,10 +156,10 @@ public final class ManualPunishmentEnder {
                         punishment.refresh();
 
                         if (punishmentType.equals("mute")) {
-                            loggingListener.onUnmute(event.getInteraction().getGuild().block(), reason, punishment);
+                            loggingListener.onUnmute(guild, reason, punishment);
                         }
                         if (punishmentType.equals("ban")) {
-                            loggingListener.onUnban(event.getInteraction().getGuild().block(), reason, punishment);
+                            loggingListener.onUnban(guild, reason, punishment);
                         }
                     });
             DatabaseLoader.closeConnectionIfOpen();
