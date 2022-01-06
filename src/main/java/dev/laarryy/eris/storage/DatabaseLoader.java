@@ -26,6 +26,7 @@ public class DatabaseLoader {
     }
 
     public static void openConnection() {
+        logger.info("Connecting to Database");
         Base.open(ds);
     }
 
@@ -37,6 +38,7 @@ public class DatabaseLoader {
 
     public static void closeConnectionIfOpen() {
         if (Base.hasConnection()) {
+            logger.info("Disconnecting from Database");
             Base.close();
         }
     }

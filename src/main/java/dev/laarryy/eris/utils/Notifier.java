@@ -3,6 +3,7 @@ package dev.laarryy.eris.utils;
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.models.users.Punishment;
 import discord4j.common.util.Snowflake;
+import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
@@ -100,7 +101,36 @@ public final class Notifier {
         event.reply().withEmbeds(unmuteEmbed(username, reason)).subscribe();
     }
 
+    public static void notifyModOfUnmute(ButtonInteractionEvent event, String username, String reason) {
+        event.reply().withEmbeds(unmuteEmbed(username, reason)).subscribe();
+    }
+
     public static void notifyCommandUserOfError(ChatInputInteractionEvent event, String errorType) {
+        switch (errorType) {
+            case "noPermission" -> event.reply().withEmbeds(noPermissionsEmbed()).withEphemeral(true).subscribe();
+            case "noBotPermission" -> event.reply().withEmbeds(noBotPermissionsEmbed()).withEphemeral(true).subscribe();
+            case "botRoleTooLow" -> event.reply().withEmbeds(botRoleTooLow()).withEphemeral(true).subscribe();
+            case "nullServer" -> event.reply().withEmbeds(nullServerEmbed()).withEphemeral(true).subscribe();
+            case "noUser" -> event.reply().withEmbeds(noUserEmbed()).withEphemeral(true).subscribe();
+            case "invalidDuration" -> event.reply().withEmbeds(invalidDurationEmbed()).withEphemeral(true).subscribe();
+            case "alreadyAssigned" -> event.reply().withEmbeds(alreadyAssignedEmbed()).withEphemeral(true).subscribe();
+            case "alreadyBlacklisted" -> event.reply().withEmbeds(alreadyBlacklistedEmbed()).withEphemeral(true).subscribe();
+            case "noMutedRole" -> event.reply().withEmbeds(noMutedRoleEmbed()).withEphemeral(true).subscribe();
+            case "userNotMuted" -> event.reply().withEmbeds(userNotMutedEmbed()).withEphemeral(true).subscribe();
+            case "alreadyApplied" -> event.reply().withEmbeds(punishmentAlreadyAppliedEmbed()).withEphemeral(true).subscribe();
+            case "404" -> event.reply().withEmbeds(fourOhFourEmbed()).withEphemeral(true).subscribe();
+            case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
+            case "noResults" -> event.reply().withEmbeds(noResultsEmbed()).subscribe();
+            case "inputTooLong" -> event.reply().withEmbeds(inputTooLongEmbed()).withEphemeral(true).subscribe();
+            case "tooManyEntries" -> event.reply().withEmbeds(tooManyEntriesEmbed()).withEphemeral(true).subscribe();
+            case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).withEphemeral(true).subscribe();
+            case "invalidChannel" -> event.reply().withEmbeds(invalidChannelEmbed()).subscribe();
+            case "durationTooLong" -> event.reply().withEmbeds(durationTooLongEmbed()).withEphemeral(true).subscribe();
+            default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
+        }
+    }
+
+    public static void notifyCommandUserOfError(ButtonInteractionEvent event, String errorType) {
         switch (errorType) {
             case "noPermission" -> event.reply().withEmbeds(noPermissionsEmbed()).withEphemeral(true).subscribe();
             case "noBotPermission" -> event.reply().withEmbeds(noBotPermissionsEmbed()).withEphemeral(true).subscribe();

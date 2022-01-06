@@ -14,6 +14,7 @@ import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.models.users.Punishment;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.LogExecutor;
+import dev.laarryy.eris.utils.Notifier;
 import dev.laarryy.eris.utils.Pair;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
@@ -28,6 +29,8 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AntiSpamListener {
 
@@ -48,6 +51,8 @@ public class AntiSpamListener {
             .expireAfterWrite(Duration.ofSeconds(30))
             .build(aLong -> 0);
 
+    private static final Pattern URL = Pattern.compile("https?://[^\\s/$.?#].[^\\s]*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE);
+    private static final Pattern SCAM_URL = Pattern.compile("(?!.*dis(?:co|boa)rd\\.(?:gg|com).*)https?://(([^\\s/$.?#])*(?:(d([1li])(?:s+c?o+|c+s+o+))|(.*.c(o)*r([lio])*([debqp]))|(.*?:([o0dc])([rjlc])d)|(.*ea(?:m|rn))|(.*n([1ijl])tr([o0])(.*))|(.*n([i1l])+(?:tr|rt)([o0]).*)|(steam)|(g([ilj1])([fv])([te])?|:g([fv])([ij1l])t))|(fre+)).*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.DOTALL);
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
@@ -88,6 +93,9 @@ public class AntiSpamListener {
         DiscordServerProperties properties = propertiesCache.get(guildId);
 
         Member member = event.getMember().get();
+
+
+
         long userId = member.getId().asLong();
         Pair<Long, Long> pair = new Pair<>(userId, guildId);
 
@@ -106,6 +114,15 @@ public class AntiSpamListener {
         if (!event.getMessage().getUserMentions().isEmpty()) {
             int userMentions = event.getMessage().getUserMentions().size();
             pingHistory.put(pair, pingInt + userMentions);
+        }
+
+        if (properties.getAntiScam()) {
+            String match = checkMessageForScam(event.getMessage().getContent());
+            if (match != null) {
+                DatabaseLoader.openConnectionIfClosed();
+                muteUserForScam(event, match);
+                DatabaseLoader.closeConnectionIfOpen();
+            }
         }
 
         if (warnsToMute > 0 && warnInt >= warnsToMute) {
@@ -129,6 +146,15 @@ public class AntiSpamListener {
         return Mono.empty();
     }
 
+    private String checkMessageForScam(String content) {
+        Matcher matcher = SCAM_URL.matcher(content);
+        String match = null;
+        if (matcher.matches()) {
+            match = matcher.group();
+        }
+        return match;
+    }
+
     private void enableAntiraid(MemberJoinEvent event) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties properties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getGuildId().asLong());
@@ -140,7 +166,45 @@ public class AntiSpamListener {
 
     }
 
+    private void muteUserForScam(MessageCreateEvent event, String match) {
+        DatabaseLoader.openConnectionIfClosed();
+
+        Guild guild = event.getGuild().block();
+        Member member = event.getMember().get();
+        String punishmentMessage = "ANTI-SCAM: Muted automatically for sending suspicious link: `" + match + "`. If you're not a bot, worry not - a moderator will review this action.";
+
+        long userIdSnowflake = event.getMember().get().getId().asLong();
+        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());
+        DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+
+        punishmentManager.discordMuteUser(guild, userIdSnowflake);
+
+        DatabaseLoader.openConnectionIfClosed();
+        Punishment punishment = Punishment.create(
+                "user_id_punished", discordUser.getUserId(),
+                "user_id_punisher", bot.getUserId(),
+                "server_id", discordServer.getServerId(),
+                "punishment_type", "mute",
+                "punishment_date", Instant.now().toEpochMilli(),
+                "punishment_message", punishmentMessage,
+                "did_dm", false,
+                "end_date_passed", true,
+                "punishment_end_reason", "No reason provided.");
+        punishment.save();
+        punishment.refresh();
+
+        event.getMessage().delete("ANTI-SCAM: Message contained suspicious link, user muted. Punishment ID: " + punishment.getPunishmentId()).block();
+
+        Notifier.notifyPunished(guild, punishment, punishmentMessage);
+        loggingListener.onPunishment(event, punishment);
+        loggingListener.onScamMute(event, punishment);
+
+        DatabaseLoader.closeConnectionIfOpen();
+    }
+
     private void muteUserForSpam(MessageCreateEvent event) {
+        DatabaseLoader.openConnectionIfClosed();
         Guild guild = event.getGuild().block();
         Member member = event.getMember().get();
         String punishmentMessage = "ANTI-SPAM: Muted for two hours for severe spam.";

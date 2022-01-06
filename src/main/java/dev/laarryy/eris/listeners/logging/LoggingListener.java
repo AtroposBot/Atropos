@@ -27,6 +27,7 @@ import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.guild.MemberLeaveEvent;
 import discord4j.core.event.domain.guild.MemberUpdateEvent;
 import discord4j.core.event.domain.guild.UnbanEvent;
+import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.event.domain.message.MessageBulkDeleteEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
@@ -52,6 +53,18 @@ public final class LoggingListener {
     public LoggingListener() {
     }
 
+    private static void wait(int ms)
+    {
+        try
+        {
+            Thread.sleep(ms);
+        }
+        catch(InterruptedException ex)
+        {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     private Mono<TextChannel> getLogChannel(Guild guild, String type) {
         Long guildIdSnowflake = guild.getId().asLong();
         DiscordServerProperties serverProperties = cache.get(guildIdSnowflake);
@@ -64,6 +77,7 @@ public final class LoggingListener {
             case "message" -> serverProperties.getMessageLogChannelSnowflake();
             case "guild" -> serverProperties.getGuildLogChannelSnowflake();
             case "punishment" -> serverProperties.getPunishmentLogChannelSnowflake();
+            case "modmail" -> serverProperties.getModMailChannelSnowflake();
             default -> null;
         };
 
@@ -123,6 +137,28 @@ public final class LoggingListener {
         getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
             if (textChannel == null) return;
             LogExecutor.logPunishment(punishment, textChannel);
+        });
+
+    }
+
+    public void onPunishment(ButtonInteractionEvent event, Punishment punishment) {
+        Guild guild = event.getInteraction().getGuild().block();
+        if (guild == null) return;
+
+        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+            if (textChannel == null) return;
+            LogExecutor.logPunishment(punishment, textChannel);
+        });
+
+    }
+
+    public void onScamMute(MessageCreateEvent event, Punishment punishment) {
+        Guild guild = event.getGuild().block();
+        if (guild == null) return;
+
+        getLogChannel(guild, "modmail").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+            if (textChannel == null) return;
+            LogExecutor.logScamMute(punishment, textChannel);
         });
 
     }
@@ -254,6 +290,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
+        wait(1000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -334,6 +371,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(NewsChannelCreateEvent event) {
+        wait(1000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -349,6 +387,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(NewsChannelDeleteEvent event) {
+        wait(1000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -364,6 +403,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(NewsChannelUpdateEvent event) {
+        wait(1000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -379,6 +419,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(StoreChannelCreateEvent event) {
+        wait(1000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -394,6 +435,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(StoreChannelDeleteEvent event) {
+        wait(1000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -409,6 +451,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(StoreChannelUpdateEvent event) {
+        wait(1000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -424,6 +467,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(VoiceChannelCreateEvent event) {
+        wait(1000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -439,6 +483,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(VoiceChannelDeleteEvent event) {
+        wait(1000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -454,6 +499,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(VoiceChannelUpdateEvent event) {
+        wait(1000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -469,6 +515,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(TextChannelCreateEvent event) {
+        wait(1000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -484,6 +531,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(TextChannelDeleteEvent event) {
+        wait(1000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -499,6 +547,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(TextChannelUpdateEvent event) {
+        wait(1000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -514,6 +563,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(BanEvent event) {
+        wait(1000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -531,6 +581,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(UnbanEvent event) {
+        wait(1000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -548,6 +599,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(RoleCreateEvent event) {
+        wait(1000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -565,6 +617,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(RoleDeleteEvent event) {
+        wait(1000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -582,6 +635,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(RoleUpdateEvent event) {
+        wait(1000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
 
