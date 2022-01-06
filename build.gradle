@@ -11,12 +11,13 @@ group 'dev.laarryy'
 version 'BETA'
 def log4j2Version = '2.17.0'
 def activejdbcVersion = '3.0-SNAPSHOT'
-def mysqlconnectorjavaVersion = '8.0.25'
+def mysqlconnectorjavaVersion = '8.0.26'
 def activeJdbcGradePluginVersion = '2.2'
 def reflectionsVersion = "0.9.12"
 def discord4jVersion = '3.3.0-SNAPSHOT'
 def configurateVersion = '4.1.1'
 def caffeineVersion = '3.0.4'
+def hikariVersion = '5.0.0'
 
 repositories {
     mavenCentral()
@@ -43,6 +44,8 @@ dependencies {
     implementation "org.javalite:activejdbc-gradle-plugin:$activeJdbcGradePluginVersion"
     implementation "org.reflections:reflections:$reflectionsVersion"
     implementation "com.github.ben-manes.caffeine:caffeine:$caffeineVersion"
+    implementation "com.zaxxer:HikariCP:$hikariVersion"
+
 }
 
 shadowJar {

@@ -20,11 +20,17 @@ public final class AuditLogger {
 
     public static void addCommandToDB(ChatInputInteractionEvent event, boolean success) {
         DatabaseLoader.openConnectionIfClosed();
+
+        if (event.getInteraction().getGuildId().isEmpty()) {
+            return;
+        }
+
         DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
         if (server == null) {
             return;
         }
+
         int serverId = server.getServerId();
 
         DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());

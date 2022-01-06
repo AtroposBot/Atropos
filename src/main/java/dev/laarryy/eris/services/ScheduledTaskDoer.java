@@ -4,6 +4,7 @@ import dev.laarryy.eris.listeners.logging.LoggingListener;
 import dev.laarryy.eris.managers.LoggingListenerManager;
 import dev.laarryy.eris.models.guilds.DiscordServer;
 import dev.laarryy.eris.models.guilds.DiscordServerProperties;
+import dev.laarryy.eris.models.guilds.ServerMessage;
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.models.users.Punishment;
 import dev.laarryy.eris.storage.DatabaseLoader;
@@ -20,13 +21,13 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 import java.time.Instant;
 
-public class AutoPunishmentEnder {
+public class ScheduledTaskDoer {
 
     private final Logger logger = LogManager.getLogger(this);
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
     GatewayDiscordClient client;
 
-    public AutoPunishmentEnder(GatewayDiscordClient client) {
+    public ScheduledTaskDoer(GatewayDiscordClient client) {
         if (client != null) {
             this.client = client;
         } else {
@@ -37,7 +38,22 @@ public class AutoPunishmentEnder {
         Flux.interval(Duration.ofMinutes(1))
                 .doOnNext(this::checkPunishmentEnding)
                 .subscribe();
-        DatabaseLoader.closeConnectionIfOpen();
+
+        Flux.interval(Duration.ofDays(1))
+                .doFirst(() -> wipeOldData(0L))
+                .doOnNext(this::wipeOldData)
+                .subscribe();
+    }
+
+    private void wipeOldData(Long l) {
+        DatabaseLoader.openConnectionIfClosed();
+        Instant thirtyDaysAgoInstant = Instant.now().minus(Duration.ofDays(30));
+        Long thirtyDaysAgo = thirtyDaysAgoInstant.toEpochMilli();
+        LazyList<ServerMessage> messageLazyList = ServerMessage.find("date < ?", thirtyDaysAgo);
+
+        Flux.fromIterable(messageLazyList)
+                .doFinally(msg -> logger.info("+++++++++++ Old Messages Wiped"))
+                .subscribe(serverMessage -> serverMessage.delete(true));
     }
 
     private void checkPunishmentEnding(Long l) {
@@ -88,7 +104,9 @@ public class AutoPunishmentEnder {
                     }
 
                     Member member;
-                    try { member = guild1.getMemberById(userId).block(); } catch (Exception exception) {
+                    try {
+                        member = guild1.getMemberById(userId).block();
+                    } catch (Exception exception) {
                         member = null;
                     }
 
