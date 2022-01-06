@@ -181,6 +181,7 @@ public final class LogExecutor {
             return;
         }
         AuditLogEntry recentDelete = guild.getAuditLog().withActionType(ActionType.MESSAGE_DELETE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -448,6 +449,7 @@ public final class LogExecutor {
         if (guild == null) return;
 
         AuditLogEntry recentDelete = guild.getAuditLog().withActionType(ActionType.MESSAGE_BULK_DELETE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -882,6 +884,7 @@ public final class LogExecutor {
 
     public static void logNewsCreate(NewsChannelCreateEvent event, TextChannel logChannel) {
         AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -911,6 +914,7 @@ public final class LogExecutor {
         }
 
         AuditLogEntry channelDelete = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_DELETE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -940,6 +944,7 @@ public final class LogExecutor {
         }
 
         AuditLogEntry newsUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_UPDATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -988,6 +993,7 @@ public final class LogExecutor {
 
     public static void logStoreCreate(StoreChannelCreateEvent event, TextChannel logChannel) {
         AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1013,6 +1019,7 @@ public final class LogExecutor {
 
     public static void logStoreDelete(StoreChannelDeleteEvent event, TextChannel logChannel) {
         AuditLogEntry channelDelete = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_DELETE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1043,6 +1050,7 @@ public final class LogExecutor {
         }
 
         AuditLogEntry newsUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_UPDATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1091,6 +1099,7 @@ public final class LogExecutor {
 
     public static void logVoiceCreate(VoiceChannelCreateEvent event, TextChannel logChannel) {
         AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1116,6 +1125,7 @@ public final class LogExecutor {
 
     public static void logVoiceDelete(VoiceChannelDeleteEvent event, TextChannel logChannel) {
         AuditLogEntry channelDelete = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_DELETE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1146,6 +1156,7 @@ public final class LogExecutor {
         }
 
         AuditLogEntry newsUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_UPDATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1194,6 +1205,7 @@ public final class LogExecutor {
 
     public static void logTextCreate(TextChannelCreateEvent event, TextChannel logChannel) {
         AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1242,6 +1254,7 @@ public final class LogExecutor {
 
     public static void logTextDelete(TextChannelDeleteEvent event, TextChannel logChannel) {
         AuditLogEntry channelDelete = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_DELETE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1271,6 +1284,7 @@ public final class LogExecutor {
         }
 
         AuditLogEntry newsUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_UPDATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1333,6 +1347,7 @@ public final class LogExecutor {
 
     public static void logBan(BanEvent event, TextChannel logChannel) {
         AuditLogEntry userBan = event.getGuild().block().getAuditLog().withActionType(ActionType.MEMBER_BAN_ADD)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1390,6 +1405,7 @@ public final class LogExecutor {
     public static void logUnban(UnbanEvent event, TextChannel logChannel) {
 
         AuditLogEntry userUnban = event.getGuild().block().getAuditLog().withActionType(ActionType.MEMBER_BAN_REMOVE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1415,6 +1431,7 @@ public final class LogExecutor {
 
     public static void logRoleCreate(RoleCreateEvent event, TextChannel logChannel) {
         AuditLogEntry roleCreate = event.getGuild().block().getAuditLog().withActionType(ActionType.ROLE_CREATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1439,6 +1456,7 @@ public final class LogExecutor {
 
     public static void logRoleDelete(RoleDeleteEvent event, TextChannel logChannel) {
         AuditLogEntry roleDelete = event.getGuild().block().getAuditLog().withActionType(ActionType.ROLE_DELETE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
@@ -1468,6 +1486,7 @@ public final class LogExecutor {
     public static void logRoleUpdate(RoleUpdateEvent event, TextChannel logChannel) {
 
         AuditLogEntry roleUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.ROLE_UPDATE)
+                .delayElements(Duration.ofSeconds(10))
                 .map(AuditLogPart::getEntries)
                 .flatMap(Flux::fromIterable)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
