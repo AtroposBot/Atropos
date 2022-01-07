@@ -140,6 +140,7 @@ public class ButtonUseListener {
         Member punisher = event.getInteraction().getMember().get();
 
         if (!punishmentManager.checkIfPunisherHasHighestRole(punisher, mutedUser, guild, event)) {
+            AuditLogger.addCommandToDB(event, auditString, false);
             return;
         }
 
