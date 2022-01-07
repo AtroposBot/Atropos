@@ -1674,7 +1674,9 @@ public final class LogExecutor {
                 .color(Color.JAZZBERRY_JAM)
                 .title("Muted Role Deleted")
                 .description("Oh no! You've deleted the role that this bot uses to mute people! Worry not - next time " +
-                        "you try to mute someone, the role will be recreated :sparkles: *automatically* :sparkles:.")
+                        "you try to mute someone, the role will be recreated :sparkles: *automatically* :sparkles:. " +
+                        "You could also manually set a role as the muted role, and it will be applied to users who " +
+                        "are muted, using `/settings mutedrole set <role>`")
                 .addField("Role", role, false)
                 .timestamp(Instant.now())
                 .build();

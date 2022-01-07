@@ -27,7 +27,7 @@ public class MutedRoleSettings {
         Guild guild = event.getInteraction().getGuild().block();
 
         DatabaseLoader.openConnectionIfClosed();
-        DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+        DiscordServerProperties discordServerProperties = propertiesCache.get(guild.getId().asLong());
 
         if (event.getOption("mutedrole").get().getOption("set").isPresent()
                 && event.getOption("mutedrole").get().getOption("set").get().getOption("role").isPresent()
@@ -52,8 +52,9 @@ public class MutedRoleSettings {
 
             Long mutedRoleId = mutedRole.getId().asLong();
 
-            discordServerProperties.setModMailChannelSnowflake(mutedRoleId);
+            discordServerProperties.setMutedRoleSnowflake(mutedRoleId);
             discordServerProperties.save();
+            discordServerProperties.refresh();
             propertiesCache.invalidate(guild.getId().asLong());
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Success")
@@ -69,6 +70,20 @@ public class MutedRoleSettings {
         if (event.getOption("mutedrole").get().getOption("info").isPresent()) {
             DatabaseLoader.openConnectionIfClosed();
             Long mutedRoleId = discordServerProperties.getMutedRoleSnowflake();
+
+            if (mutedRoleId == null) {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title("Muted Role Info")
+                        .color(Color.SEA_GREEN)
+                        .description("There is currently no muted role set in this server. Muting a player while no muted role is set will cause the automatic creation of a muted role.")
+                        .footer("Run /settings mutedrole set <role> to set a role as the muted role", "")
+                        .timestamp(Instant.now())
+                        .build();
+                event.reply().withEmbeds(embed).subscribe();
+                DatabaseLoader.closeConnectionIfOpen();
+                return Mono.empty();
+            }
+
             Role mutedRole = guild.getRoleById(Snowflake.of(mutedRoleId)).block();
 
             EmbedCreateSpec embed = EmbedCreateSpec.builder()

@@ -47,7 +47,7 @@ public class CommandManager {
             COMMANDS.add(command);
 
             // Uncomment this to re-send all commands: will force update their options in case you add any
-            if (registerableCommand.getName().equals("PresenceCommand")) {
+            /*if (registerableCommand.getName().equals("PresenceCommand")) {
                 client.getRestClient().getApplicationService()
                         .createGuildApplicationCommand(applicationId, Long.parseLong(ConfigManager.getControlGuildId()), command.getRequest())
                         .subscribe();
@@ -56,14 +56,7 @@ public class CommandManager {
                         .createGlobalApplicationCommand(applicationId, command.getRequest())
                         .subscribe();
                 logger.info("Command registration with discord sent.");
-            }
-
-            // Remove obsolete commands
-            if (discordCommands.containsKey(command.getRequest().name()) && !COMMANDS.contains(command)) {
-                client.getRestClient().getApplicationService()
-                        .deleteGlobalApplicationCommand(applicationId, Long.parseLong(discordCommands.get(command.getRequest().name()).id()))
-                        .subscribe();
-            }
+            }*/
 
             // Register the command with discord
             if (!discordCommands.containsKey(command.getRequest().name())) {
