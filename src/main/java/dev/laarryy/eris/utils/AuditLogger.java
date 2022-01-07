@@ -56,7 +56,7 @@ public final class AuditLogger {
                 .subscribe();
     }
 
-    public static void addCommandToDB(ButtonInteractionEvent event, boolean success) {
+    public static void addCommandToDB(ButtonInteractionEvent event, String entry, boolean success) {
         DatabaseLoader.openConnectionIfClosed();
 
         if (event.getInteraction().getGuildId().isEmpty()) {
@@ -78,11 +78,7 @@ public final class AuditLogger {
         }
         int commandUserId = user.getUserId();
 
-        StringBuffer stringBuffer = new StringBuffer();
-
-        stringBuffer.append("Button:" + event.getCustomId());
-
-        CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", stringBuffer.toString(), "date", Instant.now().toEpochMilli(), "success", success);
+        CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", entry, "date", Instant.now().toEpochMilli(), "success", success);
         commandUse.save();
     }
 
