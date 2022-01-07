@@ -27,6 +27,11 @@ public class DehoistListener {
         if (event.getGuild().block() == null) {
             return Mono.empty();
         }
+
+        if (event.getMember().isBot()) {
+            return Mono.empty();
+        }
+
         DiscordServerProperties properties = cache.get(event.getGuildId().asLong());
 
         if (properties.getDehoist()) {
@@ -41,6 +46,11 @@ public class DehoistListener {
         if (event.getGuild().block() == null) {
             return Mono.empty();
         }
+
+        if (event.getMember().block().isBot()) {
+            return Mono.empty();
+        }
+
         DiscordServerProperties properties = cache.get(event.getGuildId().asLong());
 
         if (properties.getDehoist()) {
@@ -54,6 +64,11 @@ public class DehoistListener {
         if (event.getGuild().block() == null) {
             return Mono.empty();
         }
+
+        if (event.getMember().block().isBot()) {
+            return Mono.empty();
+        }
+
         DiscordServerProperties properties = cache.get(event.getGuildId().asLong());
 
         if (properties.getDehoist()) {
