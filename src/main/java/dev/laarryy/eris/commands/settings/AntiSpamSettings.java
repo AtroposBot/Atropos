@@ -6,16 +6,12 @@ import dev.laarryy.eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.discordjson.json.ApplicationCommandOptionData;
-import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.Color;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
-import java.util.Locale;
 
 public class AntiSpamSettings {
 
@@ -103,6 +99,12 @@ public class AntiSpamSettings {
             discordServerProperties.setAntiScam(antiScam);
         }
 
+        if (event.getOption("antispam").get().getOption("set").get().getOption("dehoist").isPresent()
+                && event.getOption("antispam").get().getOption("set").get().getOption("dehoist").get().getValue().isPresent()) {
+            boolean dehoist = event.getOption("antispam").get().getOption("set").get().getOption("dehoist").get().getValue().get().asBoolean();
+            discordServerProperties.setDehoist(dehoist);
+        }
+
         discordServerProperties.save();
         discordServerProperties.refresh();
 
@@ -112,7 +114,8 @@ public class AntiSpamSettings {
         int pingsToWarn = discordServerProperties.getPingsToWarn();
         int warnsToMute = discordServerProperties.getWarnsToMute();
         int joinsToAntiraid = discordServerProperties.getJoinsToAntiraid();
-        boolean antiScam= discordServerProperties.getAntiScam();
+        boolean antiScam = discordServerProperties.getAntiScam();
+        boolean dehoist = discordServerProperties.getDehoist();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Success")
@@ -122,7 +125,8 @@ public class AntiSpamSettings {
                         "Pings to Warn: `" + pingsToWarn + "`\n" +
                         "Warns to Mute: `" + warnsToMute + "`\n" +
                         "Joins to Antiraid: `" + joinsToAntiraid + "`\n" +
-                        "Anti-Scam Enabled: `" + String.valueOf(antiScam).toLowerCase() + "`")
+                        "Anti-Scam Enabled: `" + String.valueOf(antiScam).toLowerCase() + "`" +
+                        "De-Hoist Enabled: `" + String.valueOf(dehoist).toLowerCase() + "`")
                 .footer("For more information, run /settings antispam info", "")
                 .timestamp(Instant.now())
                 .build();
@@ -139,6 +143,7 @@ public class AntiSpamSettings {
         int warnsToMute = discordServerProperties.getWarnsToMute();
         int joinsToAntiRaid = discordServerProperties.getJoinsToAntiraid();
         String antiScam = String.valueOf(discordServerProperties.getAntiScam()).toLowerCase();
+        String dehoist = String.valueOf(discordServerProperties.getDehoist()).toLowerCase();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Anti-Spam Settings")
@@ -149,6 +154,7 @@ public class AntiSpamSettings {
                 .addField("Warns to Mute: " + warnsToMute, "If a player is warned for spamming `" + warnsToMute + "` times within 10 minutes, they will be muted for 2 hours.", false)
                 .addField("Joins to Antiraid: " + joinsToAntiRaid, "If `" + joinsToAntiRaid + "` users join within 30 seconds, the `/stopjoins` anti-raid system will be automatically enabled.", false)
                 .addField("Anti-Scam Enabled: " + antiScam, "If enabled, users that send known or likely malicious or scam links will be muted pending manual review.", false)
+                .addField("De-Hoist Enabled: " + dehoist, "If enabled, users that join, update their nicknames, or change usernames will have any hoisting characters removed.", false)
                 .timestamp(Instant.now())
                 .build();
 
