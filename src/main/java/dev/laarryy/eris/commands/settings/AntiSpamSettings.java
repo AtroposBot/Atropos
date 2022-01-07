@@ -42,6 +42,7 @@ public class AntiSpamSettings {
                 && event.getOption("antispam").get().getOption("set").get().getOption("warns").isEmpty()
                 && event.getOption("antispam").get().getOption("set").get().getOption("antiraid").isEmpty()
                 && event.getOption("antispam").get().getOption("set").get().getOption("antiscam").isEmpty()
+                && event.getOption("antispam").get().getOption("set").get().getOption("dehoist").isEmpty()
 
         ) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
@@ -125,7 +126,7 @@ public class AntiSpamSettings {
                         "Pings to Warn: `" + pingsToWarn + "`\n" +
                         "Warns to Mute: `" + warnsToMute + "`\n" +
                         "Joins to Antiraid: `" + joinsToAntiraid + "`\n" +
-                        "Anti-Scam Enabled: `" + String.valueOf(antiScam).toLowerCase() + "`" +
+                        "Anti-Scam Enabled: `" + String.valueOf(antiScam).toLowerCase() + "`\n" +
                         "De-Hoist Enabled: `" + String.valueOf(dehoist).toLowerCase() + "`")
                 .footer("For more information, run /settings antispam info", "")
                 .timestamp(Instant.now())

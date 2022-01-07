@@ -243,7 +243,7 @@ public class PunishmentManager {
         // DMing the punished user, notifying the punishing user that it's worked out
 
         if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
-                || (event.getOption("dm").isEmpty())) {
+                || ((event.getOption("dm").isEmpty()) && !event.getCommandName().equals("case"))) {
             notifyPunishedUser(guild, punishment, punishmentReason);
         }
 
