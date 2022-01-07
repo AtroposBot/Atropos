@@ -509,7 +509,6 @@ public class PunishmentManager {
             return true;
         } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
             Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
             loggingListener.onAttemptedInsubordination(event, punished);
             return false;
         }
@@ -518,13 +517,11 @@ public class PunishmentManager {
 
         if (!guild.getSelfMember().block().hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
             Notifier.notifyCommandUserOfError(event, "botRoleTooLow");
-            AuditLogger.addCommandToDB(event, false);
             return false;
         }
 
         if (!punisher.hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
             Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
             loggingListener.onAttemptedInsubordination(event, punished);
             return false;
         } else {
