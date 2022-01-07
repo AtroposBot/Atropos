@@ -81,7 +81,10 @@ public class ButtonUseListener {
         DiscordUser discordUser = getDiscordUserFromId(userId);
         DiscordUser moderator = DiscordUser.findFirst("user_id_snowflake = ?", mod.getId().asLong());
 
+        String auditString = "Button: Ban " + discordUser.getUserIdSnowflake() + " for case " + punishmentId;
+
         if (!CommandChecks.commandChecks(event, "ban")) {
+            AuditLogger.addCommandToDB(event, auditString, false);
             return;
         }
 
@@ -89,6 +92,7 @@ public class ButtonUseListener {
         Member punished = guild.getMemberById(Snowflake.of(discordUser.getUserIdSnowflake())).block();
 
         if (!punishmentManager.checkIfPunisherHasHighestRole(punisher, punished, guild, event)) {
+            AuditLogger.addCommandToDB(event, auditString, false);
             return;
         }
 
@@ -112,6 +116,7 @@ public class ButtonUseListener {
 
         loggingListener.onPunishment(event, punishment);
         Notifier.notifyPunisherOfBan(event, punishment, punishment.getPunishmentMessage());
+        AuditLogger.addCommandToDB(event, auditString, true);
         DatabaseLoader.closeConnectionIfOpen();
         event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("it-worked", "User Banned").disabled())).block();
 
@@ -126,6 +131,8 @@ public class ButtonUseListener {
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
         Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
 
+        String auditString = "Button: Unmute " + discordUser.getUserIdSnowflake() + " for case " + mute.getPunishmentId();
+
         if (!CommandChecks.commandChecks(event, "unmute")) {
             return;
         }
@@ -138,7 +145,7 @@ public class ButtonUseListener {
 
         if (mutedRoleId == null) {
             Notifier.notifyCommandUserOfError(event, "noMutedRole");
-            AuditLogger.addCommandToDB(event, false);
+            AuditLogger.addCommandToDB(event, auditString, false);
             DatabaseLoader.closeConnectionIfOpen();
             return;
         }
@@ -147,21 +154,21 @@ public class ButtonUseListener {
             mutedRole = guild.getRoleById(Snowflake.of(mutedRoleId)).block();
         } catch (NullPointerException exception) {
             Notifier.notifyCommandUserOfError(event, "noMutedRole");
-            AuditLogger.addCommandToDB(event, false);
+            AuditLogger.addCommandToDB(event, auditString, false);
             DatabaseLoader.closeConnectionIfOpen();
             return;
         }
         if (mutedRole != null && mutedUser.getRoles().any(role -> role.equals(mutedRole)).block()) {
             mutedUser.removeRole(Snowflake.of(mutedRoleId), reason).block();
             manualPunishmentEnder.databaseEndPunishment(discordUser.getUserIdSnowflake(), guild, "unmute", reason);
-            AuditLogger.addCommandToDB(event, true);
+            AuditLogger.addCommandToDB(event, auditString, true);
             Notifier.notifyModOfUnmute(event, mutedUser.getDisplayName(), reason);
             event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "User Unmuted").disabled())).block();
             DatabaseLoader.closeConnectionIfOpen();
             return;
         } else {
             Notifier.notifyCommandUserOfError(event, "userNotMuted");
-            AuditLogger.addCommandToDB(event, false);
+            AuditLogger.addCommandToDB(event, auditString, false);
             DatabaseLoader.closeConnectionIfOpen();
             return;
         }
