@@ -303,8 +303,8 @@ public class AuditCommand implements Command {
             String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
             String preview;
             if (c.getCommandContents().length() > 7) {
-                preview = "/" + c.getCommandContents().substring(0, 7) + "...";
-            } else preview = "/" + c.getCommandContents();
+                preview = c.getCommandContents().substring(0, 7) + "...";
+            } else preview = c.getCommandContents();
 
             rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
 

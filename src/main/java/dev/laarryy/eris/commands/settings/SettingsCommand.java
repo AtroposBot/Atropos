@@ -19,6 +19,7 @@ public class SettingsCommand implements Command {
     private final BlacklistSettings blacklistSettings = new BlacklistSettings();
     private final LogSettings logSettings = new LogSettings();
     private final ModMailSettings modMailSettings = new ModMailSettings();
+    private final MutedRoleSettings mutedRoleSettings = new MutedRoleSettings();
 
     List<ApplicationCommandOptionChoiceData> blacklistTypes = List.of(
             ApplicationCommandOptionChoiceData
@@ -254,6 +255,29 @@ public class SettingsCommand implements Command {
                             .required(false)
                             .build())
                     .build())
+            .addOption(ApplicationCommandOptionData.builder()
+                    .name("mutedrole")
+                    .description("Manage the muted role settings")
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND_GROUP.getValue())
+                    .addOption(ApplicationCommandOptionData.builder()
+                            .name("set")
+                            .description("Sets a role as the 'muted' role to be applied when a user is muted")
+                            .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
+                            .required(false)
+                            .addOption(ApplicationCommandOptionData.builder()
+                                    .name("role")
+                                    .description("Set this role as the 'muted' role")
+                                    .type(ApplicationCommandOption.Type.ROLE.getValue())
+                                    .required(true)
+                                    .build())
+                            .build())
+                    .addOption(ApplicationCommandOptionData.builder()
+                            .name("info")
+                            .description("Displays current muted role")
+                            .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
+                            .required(false)
+                            .build())
+                    .build())
             .defaultPermission(true)
             .build();
 
@@ -295,6 +319,15 @@ public class SettingsCommand implements Command {
                 return Mono.empty();
             }
             modMailSettings.execute(event);
+            DatabaseLoader.closeConnectionIfOpen();
+            return Mono.empty();
+        }
+
+        if (event.getOption("mutedrole").isPresent()) {
+            if (!CommandChecks.commandChecks(event, "mutedrolesettings")) {
+                return Mono.empty();
+            }
+            mutedRoleSettings.execute(event);
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
