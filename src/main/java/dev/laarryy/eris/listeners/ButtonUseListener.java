@@ -134,6 +134,7 @@ public class ButtonUseListener {
         String auditString = "Button: Unmute " + discordUser.getUserIdSnowflake() + " for case " + mute.getPunishmentId();
 
         if (!CommandChecks.commandChecks(event, "unmute")) {
+            AuditLogger.addCommandToDB(event, auditString, false);
             return;
         }
 
