@@ -117,6 +117,11 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
+                    .name("/settings mutedrole")
+                    .value("mutedrolesettings")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
                     .name("/settings blacklist")
                     .value("blacklistsettings")
                     .build(),

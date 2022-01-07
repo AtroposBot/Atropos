@@ -214,7 +214,8 @@ public final class LoggingListener {
                     if (textChannel != null) {
                         LogExecutor.logMutedRoleDelete(roleId, textChannel);
                     }
-                });
+                })
+                .subscribe();
     }
 
     public void onStopJoinsEnable(Guild guild) {
