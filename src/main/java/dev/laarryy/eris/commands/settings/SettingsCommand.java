@@ -2,8 +2,8 @@ package dev.laarryy.eris.commands.settings;
 
 import dev.laarryy.eris.commands.Command;
 import dev.laarryy.eris.storage.DatabaseLoader;
-import dev.laarryy.eris.utils.Notifier;
 import dev.laarryy.eris.utils.CommandChecks;
+import dev.laarryy.eris.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
@@ -127,6 +127,12 @@ public class SettingsCommand implements Command {
                             .addOption(ApplicationCommandOptionData.builder()
                                     .name("antiscam")
                                     .description("Should this bot watch for and auto-mute users who send known scam links?")
+                                    .type(ApplicationCommandOption.Type.BOOLEAN.getValue())
+                                    .required(false)
+                                    .build())
+                            .addOption(ApplicationCommandOptionData.builder()
+                                    .name("dehoist")
+                                    .description("Should this bot prevent users from hoisting themselves via username and nickname?")
                                     .type(ApplicationCommandOption.Type.BOOLEAN.getValue())
                                     .required(false)
                                     .build())

@@ -135,4 +135,12 @@ public class DiscordServerProperties extends Model {
     public void setAntiScam(boolean antiScam) {
         setBoolean("anti_scam", antiScam);
     }
+
+    public boolean getDehoist() {
+        return getBoolean("dehoist");
+    }
+
+    public void setDehoist(boolean dehoist) {
+        setBoolean("dehoist", dehoist);
+    }
 }

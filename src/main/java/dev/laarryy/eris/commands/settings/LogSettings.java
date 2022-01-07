@@ -1,7 +1,6 @@
 package dev.laarryy.eris.commands.settings;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import dev.laarryy.eris.commands.Command;
 import dev.laarryy.eris.managers.PropertiesCacheManager;
 import dev.laarryy.eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.eris.storage.DatabaseLoader;
@@ -9,21 +8,16 @@ import dev.laarryy.eris.utils.AddServerToDB;
 import dev.laarryy.eris.utils.AuditLogger;
 import dev.laarryy.eris.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
-import discord4j.discordjson.json.ApplicationCommandOptionData;
-import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
-import java.util.List;
 
 public class LogSettings {
     private final Logger logger = LogManager.getLogger(this);

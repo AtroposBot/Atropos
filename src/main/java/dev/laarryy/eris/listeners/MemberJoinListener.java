@@ -5,7 +5,6 @@ import dev.laarryy.eris.commands.punishments.PunishmentManager;
 import dev.laarryy.eris.managers.PropertiesCacheManager;
 import dev.laarryy.eris.managers.PunishmentManagerManager;
 import dev.laarryy.eris.models.guilds.DiscordServerProperties;
-import dev.laarryy.eris.models.users.Punishment;
 import dev.laarryy.eris.utils.AddServerToDB;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.object.entity.Guild;
@@ -14,8 +13,6 @@ import discord4j.core.object.entity.channel.PrivateChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
-
-import java.time.Instant;
 
 public class MemberJoinListener {
     LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();

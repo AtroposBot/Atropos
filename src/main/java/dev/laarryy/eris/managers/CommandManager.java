@@ -3,7 +3,6 @@ package dev.laarryy.eris.managers;
 import dev.laarryy.eris.Eris;
 import dev.laarryy.eris.commands.Command;
 import dev.laarryy.eris.config.ConfigManager;
-import dev.laarryy.eris.config.ConfigSettings;
 import dev.laarryy.eris.utils.PermissionChecker;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;

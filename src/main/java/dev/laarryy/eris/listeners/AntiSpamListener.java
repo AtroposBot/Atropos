@@ -13,7 +13,6 @@ import dev.laarryy.eris.models.guilds.DiscordServerProperties;
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.models.users.Punishment;
 import dev.laarryy.eris.storage.DatabaseLoader;
-import dev.laarryy.eris.utils.LogExecutor;
 import dev.laarryy.eris.utils.Notifier;
 import dev.laarryy.eris.utils.Pair;
 import discord4j.core.event.domain.guild.MemberJoinEvent;

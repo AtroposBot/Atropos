@@ -9,7 +9,6 @@ import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.models.users.Punishment;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import discord4j.common.util.Snowflake;
-import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.InviteCreateEvent;
 import discord4j.core.event.domain.PresenceUpdateEvent;
 import discord4j.core.event.domain.channel.NewsChannelCreateEvent;
@@ -39,7 +38,6 @@ import discord4j.core.event.domain.role.RoleCreateEvent;
 import discord4j.core.event.domain.role.RoleDeleteEvent;
 import discord4j.core.event.domain.role.RoleUpdateEvent;
 import discord4j.core.object.Embed;
-import discord4j.core.object.ExtendedInvite;
 import discord4j.core.object.audit.ActionType;
 import discord4j.core.object.audit.AuditLogEntry;
 import discord4j.core.object.audit.AuditLogPart;
@@ -586,22 +584,7 @@ public final class LogExecutor {
 
         String badges = getBadges(event.getMember());
 
-        List<ExtendedInvite> invites = guild.getInvites().filter(extendedInvite ->
-                extendedInvite.getTargetUser().isPresent()
-                        && extendedInvite.getTargetUserId().isPresent()
-                        && extendedInvite.getTargetUserId().get().equals(event.getMember().getId()))
-                .take(1)
-                .collectList()
-                .block();
 
-        String inviter = "none";
-        if (!invites.isEmpty()) {
-           if (invites.get(0).getInviter().isPresent()) {
-               String iUsername = invites.get(0).getInviter().get().getUsername() + "#" + invites.get(0).getInviter().get().getDiscriminator();
-               String iId = invites.get(0).getInviter().get().getId().asString();
-               inviter = "`" + iUsername + "`:`" + iId + "`:<@" + iId + ">";
-           }
-        }
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserJoin() + " User Joined")
@@ -615,12 +598,6 @@ public final class LogExecutor {
         if (!badges.equals("none")) {
             embed = EmbedCreateSpec.builder().from(embed)
                     .addField("Badges", badges, false)
-                    .build();
-        }
-
-        if (!inviter.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Invited By:", inviter, false)
                     .build();
         }
 
