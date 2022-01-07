@@ -43,7 +43,6 @@ public class CommandChecks {
                 return true;
             }
             Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
             return false;
         }
 
