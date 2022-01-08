@@ -51,7 +51,7 @@ public class AntiSpamListener {
             .build(aLong -> 0);
 
     private static final Pattern URL = Pattern.compile("https?://[^\\s/$.?#].[^\\s]*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE);
-    private static final Pattern SCAM_URL = Pattern.compile("(?!.*dis((?:co|boa)rd(app)?\\.(?:gg|com))|(\\.gd).*)https?://(([^\\s/$.?#])*(?:(d([1li])(?:s+c?o+|c+s+o+))|(.*.c(o)*r([lio])*([debqp]))|(.*?:([o0dc])([rjlc])d)|(.*ea(?:m|rn))|(.*n([1ijl])tr([o0])(.*))|(.*n([i1l])+(?:tr|rt)([o0]).*)|(steam)|(g([ilj1])([fv])([te])?|:g([fv])([ij1l])t))|(fre+)).*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.DOTALL);
+    private static final Pattern SCAM_URL = Pattern.compile("(?!.*dis((?:co|boa)rd(app)?\\.(?:gg|com|net|new|gift|media|co|app))|(\\.gd).*)https?://(([^\\s/$.?#])*(?:(d([1li])(?:s+c?o+|c+s+o+))|(.*.c(o)*r([lio])*([debqp]))|(.*?:([o0dc])([rjlc])d)|(.*ea(?:m|rn))|(.*n([1ijl])tr([o0])(.*))|(.*n([i1l])+(?:tr|rt)([o0]).*)|(steam)|(g([ilj1])([fv])([te])?|:g([fv])([ij1l])t))|(fre+)).*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.DOTALL);
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
