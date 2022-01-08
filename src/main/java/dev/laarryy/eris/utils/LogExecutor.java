@@ -1392,7 +1392,7 @@ public final class LogExecutor {
         }
 
         String caseId;
-        if (!userBan.getResponsibleUser().equals(ClientManager.getManager().getClient().getSelf().block())) {
+        if (!userBan.getResponsibleUser().equals(ClientManager.getManager().getClient().getSelf().block()) && !reason.equalsIgnoreCase("Mass API banned by staff.")) {
             DatabaseLoader.openConnectionIfClosed();
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getGuild().block().getId().asLong());
             DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", userBan.getResponsibleUser().get().getId().asLong());
@@ -1416,6 +1416,7 @@ public final class LogExecutor {
                 .color(Color.JAZZBERRY_JAM)
                 .addField("Punished User", String.valueOf(targetUserId), false)
                 .addField("Punishing User", responsibleUserId, false)
+                .addField("Reason", reason, false)
                 .timestamp(Instant.now())
                 .build();
 
