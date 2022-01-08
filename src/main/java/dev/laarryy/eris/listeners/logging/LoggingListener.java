@@ -300,7 +300,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -381,7 +381,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(NewsChannelCreateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -397,7 +397,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(NewsChannelDeleteEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -413,7 +413,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(NewsChannelUpdateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -429,7 +429,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(StoreChannelCreateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -445,7 +445,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(StoreChannelDeleteEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -461,7 +461,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(StoreChannelUpdateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -477,7 +477,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(VoiceChannelCreateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -493,7 +493,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(VoiceChannelDeleteEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -509,7 +509,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(VoiceChannelUpdateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -525,7 +525,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(TextChannelCreateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -541,7 +541,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(TextChannelDeleteEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -557,7 +557,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(TextChannelUpdateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
@@ -573,7 +573,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(BanEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -591,7 +591,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(UnbanEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -609,7 +609,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(RoleCreateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -627,7 +627,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(RoleDeleteEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -645,7 +645,7 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(RoleUpdateEvent event) {
-        wait(1000);
+        wait(2000);
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
 

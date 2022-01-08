@@ -95,7 +95,6 @@ public class PunishmentManager {
                     .map(Long::valueOf)
                     .onErrorReturn(NumberFormatException.class, 0L)
                     .filter(aLong -> aLong != 0)
-                    .filter(aLong -> apiBanId(guild, aLong))
                     .doFirst(() -> event.deferReply().block())
                     .doOnComplete(() -> {
                         Notifier.notifyPunisherForcebanComplete(event, idInput);
@@ -114,6 +113,7 @@ public class PunishmentManager {
                                 if (guild.getMemberById(Snowflake.of(aLong)).block().isBot()) {
                                     return;
                                 }
+                                apiBanId(guild, aLong);
                             }
                         } catch (Exception ignored) {
                         }
