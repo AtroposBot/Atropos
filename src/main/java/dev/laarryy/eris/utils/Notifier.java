@@ -22,11 +22,11 @@ public final class Notifier {
     private Notifier() {}
     private final Logger logger = LogManager.getLogger(this);
 
-    public static void notifyPunisherForcebanComplete(ChatInputInteractionEvent event) {
+    public static void notifyPunisherForcebanComplete(ChatInputInteractionEvent event, String idInput) {
         event.getInteractionResponse().editInitialResponse(
                         WebhookMessageEditRequest
                                 .builder()
-                                .addEmbed(forceBanCompleteEmbed().asRequest())
+                                .addEmbed(forceBanCompleteEmbed(idInput).asRequest())
                                 .build()).block();
     }
 
@@ -221,9 +221,10 @@ public final class Notifier {
                 .build();
     }
 
-    private static EmbedCreateSpec forceBanCompleteEmbed() {
+    private static EmbedCreateSpec forceBanCompleteEmbed(String idInput) {
         return EmbedCreateSpec.builder()
                 .title("Forceban Complete")
+                .description("Banned the following IDs:\n```\n" + idInput.replaceAll(" ", "\n") + "\n```")
                 .color(Color.SEA_GREEN)
                 .timestamp(Instant.now())
                 .build();

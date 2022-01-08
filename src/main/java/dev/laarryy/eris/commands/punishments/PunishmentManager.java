@@ -96,9 +96,9 @@ public class PunishmentManager {
                     .onErrorReturn(NumberFormatException.class, 0L)
                     .filter(aLong -> aLong != 0)
                     .filter(aLong -> apiBanId(guild, aLong))
-                    .doFirst(() -> event.acknowledge().block())
+                    .doFirst(() -> event.deferReply().block())
                     .doOnComplete(() -> {
-                        Notifier.notifyPunisherForcebanComplete(event);
+                        Notifier.notifyPunisherForcebanComplete(event, idInput);
                         AuditLogger.addCommandToDB(event, true);
                     })
                     .subscribeOn(Schedulers.boundedElastic())
