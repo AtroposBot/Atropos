@@ -72,6 +72,7 @@ public final class Notifier {
         String caseId = String.valueOf(punishment.getPunishmentId());
 
         event.reply().withEmbeds(banEmbed(userName, punishmentEnd, punishmentReason, caseId)).subscribe();
+
     }
 
     public static void notifyPunished(Guild guild, Punishment punishment, String punishmentReason) {

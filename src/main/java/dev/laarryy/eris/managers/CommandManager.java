@@ -88,8 +88,7 @@ public class CommandManager {
                                             logger.error("Error in Command: ", e);
                                             return Mono.empty();
                                         })
-                                )
-                                 .onErrorResume(e -> {
+                                ).onErrorResume(e -> {
                                      logger.error(e.getMessage());
                                      logger.error("Error in Command: ", e);
                                      return Mono.empty();
