@@ -36,27 +36,27 @@ public class SettingsCommand implements Command {
     List<ApplicationCommandOptionChoiceData> blacklistActions = List.of(
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("Delete Message, ban user, log to punishments channel")
+                    .name("Delete Message, ban user, and log to punishments channel")
                     .value("ban")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("Delete Message, mute for 2 hours, log to punishments channel")
+                    .name("Delete Message, mute user, notify staff for review, and log to punishments channel")
                     .value("mute")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("Delete Message, warn user, log to punishments channel")
+                    .name("Delete Message, warn user, and log to punishments channel")
                     .value("warn")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("Delete Message, create a case, log to punishments channel")
+                    .name("Delete Message, create a case, and log to punishments channel")
                     .value("delete")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("Create a case, log to punishments channel")
+                    .name("Create a case, and log to punishments channel")
                     .value("notify")
                     .build());
 

@@ -14,6 +14,7 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.User;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
@@ -254,6 +255,12 @@ public class InfCommand implements Command {
         DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
         DiscordUser punisher = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
 
+        DiscordUser punishmentEnderUser;
+        if (punishment.getPunishmentEnder() != null) {
+            punishmentEnderUser = DiscordUser.findFirst("id = ?", punishment.getPunishmentEnder());
+        } else {
+            punishmentEnderUser = null;
+        }
         if (discordUser == null || punisher == null) {
             Notifier.notifyCommandUserOfError(event, "noUser");
             AuditLogger.addCommandToDB(event, false);
@@ -267,6 +274,40 @@ public class InfCommand implements Command {
         String endReason;
         String reason;
         String didDMMessage;
+        String automatic;
+        String automaticallyEnded;
+        String permanent;
+        String punishmentEnder;
+
+        if (punishment.getAutomatic()) {
+            automatic = "Yes";
+        } else {
+            automatic = "No";
+        }
+
+        if (punishment.getAutomaticEnd()) {
+            automaticallyEnded = "Yes";
+        } else {
+            automaticallyEnded = "No";
+        }
+
+        if (punishment.getPermanent()) {
+            permanent = "Yes";
+        } else {
+            permanent = "No";
+        }
+
+        if (punishmentEnderUser == null) {
+            punishmentEnder = "No punishment ender found.";
+        } else {
+            long enderId = punishmentEnderUser.getUserIdSnowflake();
+            punishmentEnder = "`" + enderId + "`:<@" + enderId + ">:`";
+            if (punishment.getPunishmentEnderName() != null && punishment.getPunishmentEnderDiscrim() != null) {
+                punishmentEnder = "`" + enderId + "`:<@" + enderId + ">:`"
+                        + punishment.getPunishmentEnderName() + "#" + punishment.getPunishmentEnderDiscrim() + "`";
+            }
+
+        }
 
         if (punishment.getEndReason() != null) {
             endReason = punishment.getEndReason();
@@ -294,23 +335,56 @@ public class InfCommand implements Command {
             endDate = "Not set.";
         }
 
+        String batchId;
+
+        if (punishment.getBatchId() != null) {
+            batchId = punishment.getBatchId().toString();
+        } else {
+            batchId = null;
+        }
+
         String date = TimestampMaker.getTimestampFromEpochSecond(
                 Instant.ofEpochMilli(punishment.getDateEntry()).getEpochSecond(),
                 TimestampMaker.TimestampType.RELATIVE);
 
+        String user;
+        String moderator;
+        if (punishment.getPunishedUserName() == null || punishment.getPunishedUserDiscrim() == null) {
+            user = "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">";
+        } else {
+            user = "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">:`"
+                    + punishment.getPunishedUserName() + "#" + punishment.getPunishedUserDiscrim() + "`";
+        }
+
+        if (punishment.getPunishingUserName() == null || punishment.getPunishingUserDiscrim() == null) {
+            moderator = "`" + punisherSnowflake + "`:" +"<@" + punisherSnowflake + ">";
+        } else {
+            moderator = "`" + punisherSnowflake + "`:" +"<@" + punisherSnowflake + ">:`"
+                    + punishment.getPunishingUserName() + "#" + punishment.getPunishingUserDiscrim() + "`";
+        }
+
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .color(Color.ENDEAVOUR)
                 .title("Case " + punishment.getPunishmentId())
-                .addField("User", "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">", false)
-                .addField("Moderator", "`" + punisherSnowflake + "`:" +"<@" + punisherSnowflake + ">", false)
-                .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), false)
-                .addField("Date", date, false)
+                .addField("User", user, false)
+                .addField("Moderator", moderator, false)
+                .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), true)
+                .addField("Date", date, true)
                 .addField("Reason", reason, false)
                 .addField("End Date", endDate, false)
+                .addField("Ended By", punishmentEnder, false)
                 .addField("End Reason", endReason, false)
+                .addField("Automatically Issued?", automatic, true)
+                .addField("Automatically Ended?", automaticallyEnded, true)
+                .addField("Permanent When Issued?", permanent, false)
                 .addField("Attempted to DM User?", didDMMessage, false)
                 .timestamp(Instant.now())
                 .build();
+
+        if (batchId != null) {
+            embed = EmbedCreateSpec.builder().from(embed)
+                    .footer("Batch ID: " + batchId, "").build();
+        }
 
         event.reply().withEmbeds(embed).subscribe();
         AuditLogger.addCommandToDB(event, true);

@@ -82,7 +82,13 @@ public class CommandManager {
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
                                 .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
-                                .flatMap(entry -> entry.execute(event))
+                                .flatMap(entry -> entry.execute(event)
+                                        .onErrorResume(e -> {
+                                            logger.error(e.getMessage());
+                                            logger.error("Error in Command: ", e);
+                                            return Mono.empty();
+                                        })
+                                )
                                  .onErrorResume(e -> {
                                      logger.error(e.getMessage());
                                      logger.error("Error in Command: ", e);

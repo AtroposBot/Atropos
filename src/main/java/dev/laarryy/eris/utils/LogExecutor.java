@@ -229,7 +229,28 @@ public final class LogExecutor {
                 .timestamp(Instant.now())
                 .build();
 
-        Button banButton = Button.primary(punishment.getPunishmentId() + "-eris-scamban-" + punishedUser.getUserId(), "Ban User");
+        Button banButton = Button.primary(punishment.getPunishmentId() + "-eris-ban-" + punishedUser.getUserId(), "Ban User");
+        Button unmuteButton = Button.secondary(punishment.getPunishmentId() + "-eris-unmute-" + punishedUser.getUserId(), "Unmute User");
+
+        logChannel.createMessage(embed).withComponents(ActionRow.of(banButton, unmuteButton)).subscribe();
+
+        DatabaseLoader.closeConnectionIfOpen();
+    }
+
+    public static void logBlacklistMute(Punishment punishment, TextChannel logChannel) {
+        DatabaseLoader.openConnectionIfClosed();
+        DiscordUser punishedUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title("Automatic Blacklist Mute: ID #" + punishment.getPunishmentId())
+                .color(Color.ENDEAVOUR)
+                .addField("Punished User", "`" + punishedUser.getUserIdSnowflake() + "`:<@" + punishedUser.getUserIdSnowflake() + ">", false)
+                .addField("Reason", punishment.getPunishmentMessage(), false)
+                .footer("Use the buttons to take appropriate action. ID: " + punishment.getPunishmentId(), "")
+                .timestamp(Instant.now())
+                .build();
+
+        Button banButton = Button.primary(punishment.getPunishmentId() + "-eris-ban-" + punishedUser.getUserId(), "Ban User");
         Button unmuteButton = Button.secondary(punishment.getPunishmentId() + "-eris-unmute-" + punishedUser.getUserId(), "Unmute User");
 
         logChannel.createMessage(embed).withComponents(ActionRow.of(banButton, unmuteButton)).subscribe();

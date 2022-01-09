@@ -43,7 +43,7 @@ public class MessageCreateListener {
         }
 
         int userId = user.getUserId();
-        user.saveIt();
+        user.save();
 
         // Create message row in the table
         ServerMessage message = ServerMessage.findOrCreateIt("message_id_snowflake", messageIdSnowflake, "server_id", serverId, "user_id", userId);
@@ -60,7 +60,8 @@ public class MessageCreateListener {
         message.setContent(content);
         message.setDeleted(false);
 
-        message.saveIt();
+        message.save();
+
         DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }

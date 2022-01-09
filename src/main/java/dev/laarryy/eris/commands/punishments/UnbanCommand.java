@@ -14,7 +14,6 @@ import reactor.core.scheduler.Schedulers;
 
 public class UnbanCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
-    private final PermissionChecker permissionChecker = new PermissionChecker();
     private final ManualPunishmentEnder manualPunishmentEnder = new ManualPunishmentEnder();
 
 

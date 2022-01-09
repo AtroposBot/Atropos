@@ -64,7 +64,7 @@ public class PunishmentManager {
 
         Member member = event.getInteraction().getMember().get();
         User user = event.getInteraction().getUser();
-        Long userIdSnowflake = member.getId().asLong();
+        Long punishingUserIdSnowflake = member.getId().asLong();
 
         DatabaseLoader.openConnectionIfClosed();
 
@@ -91,19 +91,32 @@ public class PunishmentManager {
 
         if (event.getOption("id").isPresent() && event.getOption("id").get().getValue().isPresent()) {
             String idInput = event.getOption("id").get().getValue().get().asString();
+
+            String reason;
+            if (event.getOption("reason").isPresent() && event.getOption("reason").get().getValue().isPresent()) {
+                reason = event.getOption("reason").get().getValue().get().asString();
+            } else {
+                reason = "Mass API banned by staff.";
+            }
+
+            Punishment latestBatch = Punishment.findFirst("batch_id is not NULL order by batch_id desc");
+            int batchId = latestBatch != null ? latestBatch.getBatchId() + 1 : 1;
+
+            StringBuilder bannedIds = new StringBuilder().append("```\n");
+
             Flux.fromArray(idInput.split(" "))
                     .map(Long::valueOf)
                     .onErrorReturn(NumberFormatException.class, 0L)
                     .filter(aLong -> aLong != 0)
                     .doFirst(() -> event.deferReply().block())
                     .doOnComplete(() -> {
-                        Notifier.notifyPunisherForcebanComplete(event, idInput);
+                        Notifier.notifyPunisherForcebanComplete(event, bannedIds.append("\n```").toString());
                         AuditLogger.addCommandToDB(event, true);
                     })
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(aLong -> {
 
-                        // Ensure nobody is trying to forceban their boss or a bot
+                        // Ensure nobody is trying to forceban their boss or a bot or someone that doesn't exist
                         try {
                             guild.getMemberById(Snowflake.of(aLong));
                             if (guild.getMemberById(Snowflake.of(aLong)).block() != null) {
@@ -113,18 +126,40 @@ public class PunishmentManager {
                                 if (guild.getMemberById(Snowflake.of(aLong)).block().isBot()) {
                                     return;
                                 }
-                                apiBanId(guild, aLong);
+                                try {
+                                    event.getClient().getUserById(Snowflake.of(aLong)).block();
+                                } catch (Exception e) {
+                                    return;
+                                }
+                                discordBanUser(guild, aLong, 1, reason);
+                                bannedIds.append(aLong).append("\n");
                             }
                         } catch (Exception ignored) {
                         }
 
                         DatabaseLoader.openConnectionIfClosed();
+                        User punishedUser = event.getClient().getUserById(Snowflake.of(aLong)).block();
+                        User punisherUser = event.getInteraction().getUser();
+
                         DiscordUser punished = DiscordUser.findOrCreateIt("user_id_snowflake", aLong);
-                        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
-                        Punishment punishment = createDatabasePunishmentRecord(punisher, punished, serverId, request.name());
+                        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", punishingUserIdSnowflake);
+
+                        Punishment punishment = createDatabasePunishmentRecord(punisher,
+                                punisherUser.getUsername(),
+                                Integer.parseInt(punisherUser.getDiscriminator()),
+                                punished,
+                                punishedUser.getUsername(),
+                                Integer.parseInt(punisherUser.getDiscriminator()),
+                                serverId,
+                                request.name());
+
                         punishment.save();
                         punishment.refresh();
-                        punishment.setEnded(true);
+                        punishment.setPermanent(true);
+                        punishment.setPunishmentMessage(reason);
+                        punishment.setBatchId(batchId);
+                        punishment.setEnded(false);
+
                         punishment.save();
                         punishment.refresh();
                     });
@@ -151,6 +186,7 @@ public class PunishmentManager {
             return Mono.empty();
         }
         User punishedUser = event.getOption("user").get().getValue().get().asUser().block();
+        User punishingUser = event.getInteraction().getUser();
 
         // Make sure the punisher is higher up the food chain than the person they're trying to punish in the guild they're both in.
 
@@ -165,7 +201,12 @@ public class PunishmentManager {
 
         // Get the DB objects for both the punishing user and the punished.
 
-        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", punishingUserIdSnowflake);
+        if (punisher == null) {
+            punisher = DiscordUser.create("user_id_snowflake", punishingUserIdSnowflake, "date", Instant.now().toEpochMilli());
+            punisher.save();
+            punisher.refresh();
+        }
         DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", punishedUser.getId().asLong());
         if (punished == null) {
             punished = DiscordUser.create("user_id_snowflake", punishedUser.getId().asLong(), "date", Instant.now().toEpochMilli());
@@ -173,10 +214,11 @@ public class PunishmentManager {
             punished.refresh();
         }
 
-        if (Punishment.findFirst("user_id_punished = ? and server_id = ? and punishment_type = ? and end_date_passed = ?",
+        if (Punishment.findFirst("user_id_punished = ? and server_id = ? and punishment_type = ? and end_date_passed = ? and permanent = ?",
                 punished.getUserId(),
                 serverId,
                 request.name(),
+                false,
                 false) != null) {
             Notifier.notifyCommandUserOfError(event, "alreadyApplied");
             AuditLogger.addCommandToDB(event, false);
@@ -185,7 +227,15 @@ public class PunishmentManager {
         }
 
 
-        Punishment punishment = createDatabasePunishmentRecord(punisher, punished, serverId, request.name());
+        Punishment punishment = createDatabasePunishmentRecord(punisher,
+                punishingUser.getUsername(),
+                Integer.parseInt(punishingUser.getDiscriminator()),
+                punished,
+                punishedUser.getUsername(),
+                Integer.parseInt(punishedUser.getDiscriminator()),
+                serverId,
+                request.name());
+
         punishment.save();
         punishment.refresh();
 
@@ -210,6 +260,7 @@ public class PunishmentManager {
                 Duration punishmentDuration = DurationParser.parseDuration(event.getOption("duration").get().getValue().get().asString());
                 Instant punishmentEndDate = Instant.now().plus(punishmentDuration);
                 punishment.setEndDate(punishmentEndDate.toEpochMilli());
+                punishment.setPermanent(false);
                 punishment.save();
             } catch (Exception exception) {
                 Notifier.notifyCommandUserOfError(event, "invalidDuration");
@@ -219,7 +270,8 @@ public class PunishmentManager {
                 return Mono.empty();
             }
         } else {
-            punishment.setEnded(true);
+            punishment.setEnded(false);
+            punishment.setPermanent(true);
             punishment.save();
             punishment.refresh();
         }
@@ -272,13 +324,20 @@ public class PunishmentManager {
         Notifier.notifyPunished(guild, punishment, reason);
     }
 
-    private Punishment createDatabasePunishmentRecord(DiscordUser punisher, DiscordUser punished, int serverId, String punishmentType) {
+    private Punishment createDatabasePunishmentRecord(DiscordUser punisher, String punisherName, int punisherDiscrim,
+                                                      DiscordUser punished, String punishedName, int punishedDiscrim,
+                                                      int serverId, String punishmentType) {
         return Punishment.createIt(
                 "user_id_punished", punished.getUserId(),
+                "name_punished,", punishedName,
+                "discrim_punished", punishedDiscrim,
                 "user_id_punisher", punisher.getUserId(),
+                "name_punisher", punisherName,
+                "discrim_punisher", punisherDiscrim,
                 "server_id", serverId,
                 "punishment_type", punishmentType,
-                "punishment_date", Instant.now().toEpochMilli()
+                "punishment_date", Instant.now().toEpochMilli(),
+                "automatic", false
         );
     }
 
@@ -295,18 +354,6 @@ public class PunishmentManager {
         guild.kick(Snowflake.of(userIdSnowflake), punishmentReason).subscribe();
     }
 
-    private boolean apiBanId(Guild guild, Long id) {
-        try {
-            guild.ban(Snowflake.of(id), BanQuerySpec.builder()
-                    .reason("Mass API banned by staff.")
-                    .deleteMessageDays(0)
-                    .build()).block();
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
     public void discordMuteUser(Guild guild, Long userIdSnowflake) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
@@ -320,6 +367,8 @@ public class PunishmentManager {
                     .hoist(false)
                     .build()).block();
             updateMutedRoleInAllChannels(guild, mutedRole);
+            discordServerProperties.save();
+            discordServerProperties.refresh();
         } else {
             mutedRole = guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake())).block();
             if (mutedRole == null) {
@@ -410,7 +459,7 @@ public class PunishmentManager {
                             .block();
                     return Mono.empty();
                 })
-                .subscribe();
+                .blockLast();
 
         guild.getChannels().ofType(TextChannel.class)
                 .subscribeOn(Schedulers.boundedElastic())
@@ -435,7 +484,7 @@ public class PunishmentManager {
                             .block();
                     return Mono.empty();
                 })
-                .subscribe();
+                .blockLast();
 
         guild.getChannels().ofType(VoiceChannel.class)
                 .subscribeOn(Schedulers.boundedElastic())
@@ -460,7 +509,7 @@ public class PunishmentManager {
                             .block();
                     return Mono.empty();
                 })
-                .subscribe();
+                .blockLast();
 
     }
 

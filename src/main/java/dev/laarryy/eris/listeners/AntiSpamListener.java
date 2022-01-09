@@ -19,6 +19,7 @@ import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.User;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
@@ -169,11 +170,12 @@ public class AntiSpamListener {
         DatabaseLoader.openConnectionIfClosed();
 
         Guild guild = event.getGuild().block();
-        Member member = event.getMember().get();
+        Member punishedMember = event.getMember().get();
+        User self = event.getClient().getSelf().block();
         String punishmentMessage = "ANTI-SCAM: Muted automatically for sending suspicious link: `" + match + "`. If you're not a bot, worry not - a moderator will review this action.";
 
         long userIdSnowflake = event.getMember().get().getId().asLong();
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());
+        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());
         DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
@@ -182,14 +184,20 @@ public class AntiSpamListener {
         DatabaseLoader.openConnectionIfClosed();
         Punishment punishment = Punishment.create(
                 "user_id_punished", discordUser.getUserId(),
+                "name_punished", punishedMember.getUsername(),
+                "discrim_punished", Integer.parseInt(punishedMember.getDiscriminator()),
                 "user_id_punisher", bot.getUserId(),
+                "name_punisher", self.getUsername(),
+                "discrim_punisher", Integer.parseInt(self.getDiscriminator()),
                 "server_id", discordServer.getServerId(),
                 "punishment_type", "mute",
                 "punishment_date", Instant.now().toEpochMilli(),
                 "punishment_message", punishmentMessage,
                 "did_dm", false,
-                "end_date_passed", true,
-                "punishment_end_reason", "No reason provided.");
+                "end_date_passed", false,
+                "automatic", true,
+                "permanent", true,
+                "punishment_end_reason", "Punishment not ended.");
         punishment.save();
         punishment.refresh();
 
@@ -203,28 +211,38 @@ public class AntiSpamListener {
     }
 
     private void muteUserForSpam(MessageCreateEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
+
         Guild guild = event.getGuild().block();
-        Member member = event.getMember().get();
+        Member punishedMember = event.getMember().get();
+        User self = event.getClient().getSelf().block();
+
         String punishmentMessage = "ANTI-SPAM: Muted for two hours for severe spam.";
+
         long userIdSnowflake = event.getMember().get().getId().asLong();
+
         DatabaseLoader.openConnectionIfClosed();
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());
+        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());
         DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
         punishmentManager.discordMuteUser(guild, userIdSnowflake);
 
         Punishment punishment = Punishment.create("user_id_punished", discordUser.getUserId(),
+                "user_id_punished", discordUser.getUserId(),
+                "name_punished", punishedMember.getUsername(),
+                "discrim_punished", Integer.parseInt(punishedMember.getDiscriminator()),
                 "user_id_punisher", bot.getUserId(),
+                "name_punisher", self.getUsername(),
+                "discrim_punisher", Integer.parseInt(self.getDiscriminator()),
                 "server_id", discordServer.getServerId(),
-                "punishment_type", "mute",
                 "punishment_date", Instant.now().toEpochMilli(),
                 "punishment_end_date", Instant.now().plus(2, ChronoUnit.HOURS).toEpochMilli(),
                 "punishment_message", punishmentMessage,
                 "did_dm", false,
                 "end_date_passed", false,
-                "punishment_end_reason", "No reason provided.");
+                "permanent", false,
+                "automatic", true,
+                "punishment_end_reason", "Punishment not ended.");
         punishment.save();
         punishment.refresh();
 
@@ -245,21 +263,28 @@ public class AntiSpamListener {
 
     private void warnUserForSpam(MessageCreateEvent event) {
         Guild guild = event.getGuild().block();
-        Member member = event.getMember().get();
+        Member punishedMember = event.getMember().get();
+        User self = event.getClient().getSelf().block();
 
         DatabaseLoader.openConnectionIfClosed();
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());
+        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());
         DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
         Punishment punishment = Punishment.create("user_id_punished", discordUser.getUserId(),
+                "user_id_punished", discordUser.getUserId(),
+                "name_punished", punishedMember.getUsername(),
+                "discrim_punished", Integer.parseInt(punishedMember.getDiscriminator()),
                 "user_id_punisher", bot.getUserId(),
+                "name_punisher", self.getUsername(),
+                "discrim_punisher", Integer.parseInt(self.getDiscriminator()),
                 "server_id", discordServer.getServerId(),
                 "punishment_type", "warn",
                 "punishment_date", Instant.now().toEpochMilli(),
                 "punishment_message", "ANTI-SPAM: Do not send messages so quickly.",
                 "did_dm", false,
-                "end_date_passed", true,
+                "end_date_passed", false,
+                "permanent", true,
                 "punishment_end_reason", "No reason provided.");
         punishment.save();
         punishment.refresh();
