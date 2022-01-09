@@ -11,7 +11,7 @@ Configuration:
       name: Console
       target: SYSTEM_OUT
       PatternLayout:
-        Pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %C %M - %msg%n"
+        Pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] - %msg%n"
     File:
       name: File
       fileName: ${log-path}/logfile.log
