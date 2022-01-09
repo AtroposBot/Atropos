@@ -278,6 +278,12 @@ public final class LoggingListener {
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
+        try {
+            event.getMessage().block();
+        } catch (Exception e) {
+            return Mono.empty();
+        }
+
         if (event.getMessage().block().getAuthor().isPresent() && event.getMessage().block().getAuthor().get().isBot()) {
             return Mono.empty();
         }
