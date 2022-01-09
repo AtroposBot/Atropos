@@ -87,6 +87,10 @@ public final class PermissionChecker {
         }
         Member self = guild.getSelfMember().block();
 
+        if (self.getBasePermissions().block().contains(Permission.ADMINISTRATOR)) {
+            return true;
+        }
+
         PermissionSet requiredPermissions = PermissionSet.of(
                 Permission.VIEW_CHANNEL,
                 Permission.MANAGE_CHANNELS,
