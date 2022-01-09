@@ -90,6 +90,7 @@ public class PunishmentManager {
         // Handle forceban via API before dealing with literally every other punishment (that can actually provide a user)
 
         if (event.getOption("id").isPresent() && event.getOption("id").get().getValue().isPresent()) {
+
             String idInput = event.getOption("id").get().getValue().get().asString();
 
             String reason;
@@ -102,15 +103,13 @@ public class PunishmentManager {
             Punishment latestBatch = Punishment.findFirst("batch_id is not NULL order by batch_id desc");
             int batchId = latestBatch != null ? latestBatch.getBatchId() + 1 : 1;
 
-            StringBuilder bannedIds = new StringBuilder().append("```\n");
-
             Flux.fromArray(idInput.split(" "))
                     .map(Long::valueOf)
                     .onErrorReturn(NumberFormatException.class, 0L)
                     .filter(aLong -> aLong != 0)
                     .doFirst(() -> event.deferReply().block())
                     .doOnComplete(() -> {
-                        Notifier.notifyPunisherForcebanComplete(event, bannedIds.append("\n```").toString());
+                        Notifier.notifyPunisherForcebanComplete(event, "```\n" + idInput.replaceAll(" ", "\n") + "\n ```");
                         AuditLogger.addCommandToDB(event, true);
                     })
                     .subscribeOn(Schedulers.boundedElastic())
@@ -132,7 +131,6 @@ public class PunishmentManager {
                                     return;
                                 }
                                 discordBanUser(guild, aLong, 1, reason);
-                                bannedIds.append(aLong).append("\n");
                             }
                         } catch (Exception ignored) {
                         }
@@ -329,7 +327,7 @@ public class PunishmentManager {
                                                       int serverId, String punishmentType) {
         return Punishment.createIt(
                 "user_id_punished", punished.getUserId(),
-                "name_punished,", punishedName,
+                "name_punished", punishedName,
                 "discrim_punished", punishedDiscrim,
                 "user_id_punisher", punisher.getUserId(),
                 "name_punisher", punisherName,

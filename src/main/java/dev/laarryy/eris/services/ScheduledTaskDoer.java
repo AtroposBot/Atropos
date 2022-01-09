@@ -64,7 +64,6 @@ public class ScheduledTaskDoer {
         Flux.fromIterable(punishmentsLazyList)
                 .filter(this::checkIfOverDue)
                 .doOnNext(pun -> logger.info("handling overdue punishment"))
-                .doFinally(signalType -> logger.info("============= Flux Done"))
                 .subscribe(this::endPunishment);
         DatabaseLoader.closeConnectionIfOpen();
     }

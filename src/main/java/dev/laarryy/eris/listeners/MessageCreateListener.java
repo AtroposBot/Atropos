@@ -5,6 +5,8 @@ import dev.laarryy.eris.models.guilds.ServerMessage;
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import discord4j.core.event.domain.message.MessageCreateEvent;
+import discord4j.core.object.Embed;
+import discord4j.core.object.entity.Attachment;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
@@ -51,6 +53,32 @@ public class MessageCreateListener {
         // Populate it
 
         String content = event.getMessage().getContent();
+
+        if (!event.getMessage().getAttachments().isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (Attachment attachment : event.getMessage().getAttachments()) {
+                sb.append("\n > File: `").append(attachment.getFilename()).append("`:").append(attachment.getProxyUrl());
+            }
+            content = content + sb;
+        }
+
+        if (!event.getMessage().getEmbeds().isEmpty()) {
+            StringBuilder sb = new StringBuilder();
+            for (Embed embed : event.getMessage().getEmbeds()) {
+                if (embed.getTitle().isPresent()) {
+                    sb.append("\n > Embed Title: ").append(embed.getTitle()).append("\n");
+                }
+                if (embed.getDescription().isPresent()) {
+                    sb.append("\n > Embed Description: ").append(embed.getDescription()).append("\n");
+                }
+                if (!embed.getFields().isEmpty()) {
+                    for (Embed.Field field : embed.getFields()) {
+                        sb.append("\n > Field Title: ").append(field.getName()).append("\n > Field Content: ").append(field.getValue()).append("\n");
+                    }
+                }
+            }
+            content = content + sb;
+        }
 
         message.setServerId(serverId);
         message.setServerSnowflake(serverIdSnowflake);

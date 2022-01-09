@@ -19,6 +19,8 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
+import discord4j.discordjson.json.WebhookExecuteRequest;
+import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -191,8 +193,9 @@ public class InfCommand implements Command {
     private void recentCases(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+        event.deferReply().block();
 
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
         Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
         long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
 
@@ -219,7 +222,10 @@ public class InfCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(resultEmbed).subscribe();
+        event.getInteractionResponse().editInitialResponse(
+                WebhookMessageEditRequest.builder()
+                        .addEmbed(resultEmbed.asRequest())
+                        .build()).subscribe();
         AuditLogger.addCommandToDB(event, true);
         DatabaseLoader.closeConnectionIfOpen();
     }
@@ -279,6 +285,14 @@ public class InfCommand implements Command {
         String permanent;
         String punishmentEnder;
 
+        if (punishment.getEndDate() != null) {
+            endDate = TimestampMaker.getTimestampFromEpochSecond(
+                    Instant.ofEpochMilli(punishment.getEndDate()).getEpochSecond(),
+                    TimestampMaker.TimestampType.RELATIVE);
+        } else {
+            endDate = "Not ended.";
+        }
+
         if (punishment.getAutomatic()) {
             automatic = "Yes";
         } else {
@@ -327,14 +341,6 @@ public class InfCommand implements Command {
             didDMMessage = "No";
         }
 
-        if (punishment.getEndDate() != null) {
-            endDate = TimestampMaker.getTimestampFromEpochSecond(
-                            Instant.ofEpochMilli(punishment.getEndDate()).getEpochSecond(),
-                            TimestampMaker.TimestampType.RELATIVE);
-        } else {
-            endDate = "Not set.";
-        }
-
         String batchId;
 
         if (punishment.getBatchId() != null) {
@@ -371,19 +377,25 @@ public class InfCommand implements Command {
                 .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), true)
                 .addField("Date", date, true)
                 .addField("Reason", reason, false)
-                .addField("End Date", endDate, false)
-                .addField("Ended By", punishmentEnder, false)
-                .addField("End Reason", endReason, false)
+                .addField("End Date", endDate, true)
                 .addField("Automatically Issued?", automatic, true)
-                .addField("Automatically Ended?", automaticallyEnded, true)
-                .addField("Permanent When Issued?", permanent, false)
-                .addField("Attempted to DM User?", didDMMessage, false)
+                .addField("Permanent When Issued?", permanent, true)
+                .addField("Attempted to DM User?", didDMMessage, true)
                 .timestamp(Instant.now())
                 .build();
 
         if (batchId != null) {
             embed = EmbedCreateSpec.builder().from(embed)
-                    .footer("Batch ID: " + batchId, "").build();
+                    .footer("Batch ID: " + batchId, "")
+                    .build();
+        }
+
+        if (!endDate.equals("Not ended.")) {
+            embed = EmbedCreateSpec.builder().from(embed)
+                    .addField("Ended By", punishmentEnder, false)
+                    .addField("End Reason", endReason, false)
+                    .addField("Automatically Ended?", automaticallyEnded, true)
+                    .build();
         }
 
         event.reply().withEmbeds(embed).subscribe();
@@ -392,6 +404,8 @@ public class InfCommand implements Command {
     }
 
     private void searchPunishments(ChatInputInteractionEvent event) {
+
+        event.deferReply().block();
 
         long userIdSnowflake;
         if (event.getOption("search").get().getOption("user").isPresent()
@@ -458,7 +472,10 @@ public class InfCommand implements Command {
                 .build();
 
         AuditLogger.addCommandToDB(event, true);
-        event.reply().withEmbeds(resultEmbed).subscribe();
+        event.getInteractionResponse().editInitialResponse(
+                WebhookMessageEditRequest.builder()
+                        .addEmbed(resultEmbed.asRequest())
+                        .build()).subscribe();
         DatabaseLoader.closeConnectionIfOpen();
     }
 
