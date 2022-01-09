@@ -18,12 +18,44 @@ public class Punishment extends Model {
         set("user_id_punished", punishedUserId);
     }
 
-    public int getPunishingUserId() {
+    public String getPunishedUserName() {
+        return getString("name_punished");
+    }
+
+    public void setPunishedUserName(String punishedUserName) {
+        setString("name_punished", punishedUserName);
+    }
+
+    public Integer getPunishedUserDiscrim() {
+        return getInteger("discrim_punished");
+    }
+
+    public void setPunishedUserDiscrim(Integer discrim) {
+        setInteger("discrim_punished", discrim);
+    }
+
+    public Integer getPunishingUserId() {
         return getInteger("user_id_punisher");
     }
 
-    public void setPunishingUserId(int punishingUserId) {
+    public void setPunishingUserId(Integer punishingUserId) {
         set("user_id_punisher", punishingUserId);
+    }
+
+    public String getPunishingUserName() {
+        return getString("name_punisher");
+    }
+
+    public void setPunishingUserName(String punishingUserName) {
+        setString("name_punisher", punishingUserName);
+    }
+
+    public Integer getPunishingUserDiscrim() {
+        return getInteger("discrim_punisher");
+    }
+
+    public void setPunishingUserDiscrim(Integer punishingUserDiscrim) {
+        setInteger("discrim_punisher", punishingUserDiscrim);
     }
 
     public int getServerId() {
@@ -66,6 +98,22 @@ public class Punishment extends Model {
         set("punishment_message", message);
     }
 
+    public boolean getPermanent() {
+        return getBoolean("permanent");
+    }
+
+    public void setPermanent(boolean permanent) {
+        setBoolean("permanent", permanent);
+    }
+
+    public boolean getAutomatic() {
+        return getBoolean("automatic");
+    }
+
+    public void setAutomatic(boolean automatic) {
+        setBoolean("automatic", automatic);
+    }
+
     public boolean getIfDMed() {
         return getBoolean("did_dm");
     }
@@ -88,5 +136,45 @@ public class Punishment extends Model {
 
     public void setEndReason(String endReason) {
         setString("punishment_end_reason", endReason);
+    }
+
+    public Integer getPunishmentEnder() {
+        return getInteger("punishment_ender");
+    }
+
+    public void setPunishmentEnder(Integer enderId) {
+        setInteger("punishment_ender", enderId);
+    }
+
+    public String getPunishmentEnderName() {
+        return getString("name_punishment_ender");
+    }
+
+    public void setPunishmentEnderName(String punishmentEnderName) {
+        setString("name_punishment_ender", punishmentEnderName);
+    }
+
+    public Integer getPunishmentEnderDiscrim() {
+        return getInteger("discrim_punishment_ender");
+    }
+
+    public void setPunishmentEnderDiscrim(Integer punishmentEnderDiscrim) {
+        setInteger("discrim_punishment_ender", punishmentEnderDiscrim);
+    }
+
+    public boolean getAutomaticEnd() {
+        return getBoolean("automatic_end");
+    }
+
+    public void setAutomaticEnd(boolean automaticEnd) {
+        setBoolean("automatic_end", automaticEnd);
+    }
+
+    public Integer getBatchId() {
+        return getInteger("batch_id");
+    }
+
+    public void setBatchId(Integer batchId) {
+        setInteger("batch_id", batchId);
     }
 }

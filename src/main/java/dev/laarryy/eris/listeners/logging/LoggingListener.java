@@ -172,6 +172,17 @@ public final class LoggingListener {
 
     }
 
+    public void onBlacklistMute(MessageCreateEvent event, Punishment punishment) {
+        Guild guild = event.getGuild().block();
+        if (guild == null) return;
+
+        getLogChannel(guild, "modmail").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+            if (textChannel == null) return;
+            LogExecutor.logBlacklistMute(punishment, textChannel);
+        });
+
+    }
+
     public void onUnban(Guild guild, String reason, Punishment punishment) {
         if (guild == null)  {
             return;

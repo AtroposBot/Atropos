@@ -36,6 +36,7 @@ dependencies {
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: "$log4j2Version"
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: "$log4j2Version"
+    implementation "org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version"
     implementation "org.javalite:activejdbc:$activejdbcVersion"
     implementation "mysql:mysql-connector-java:$mysqlconnectorjavaVersion"
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.10.3'
@@ -50,7 +51,7 @@ dependencies {
 
 shadowJar {
     exclude "**/Log4j2Plugins.dat"
-    exclude "org.apache.logging.log4j:log4j-slf4j-impl:2.13.2"
+    exclude "org.apache.logging.log4j:log4j-slf4j-impl:2.17.1"
 }
 
 compileJava.options.encoding = 'UTF-8'

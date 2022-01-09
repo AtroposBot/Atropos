@@ -75,6 +75,7 @@ public final class Notifier {
     }
 
     public static void notifyPunished(Guild guild, Punishment punishment, String punishmentReason) {
+        DatabaseLoader.openConnectionIfClosed();
 
         if (punishment.getPunishmentType().equals("case")) {
             // Never notify of cases
@@ -112,6 +113,10 @@ public final class Notifier {
             PrivateChannel privateChannel = punishedUser.getPrivateChannel().block();
             privateChannel.createMessage(embed).block();
         } catch (Exception ignored) {}
+
+        punishment.setDMed(true);
+        punishment.save();
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     public static void notifyModOfUnban(ChatInputInteractionEvent event, String reason, long userId) {
@@ -224,7 +229,7 @@ public final class Notifier {
     private static EmbedCreateSpec forceBanCompleteEmbed(String idInput) {
         return EmbedCreateSpec.builder()
                 .title("Forceban Complete")
-                .description("Banned the following IDs:\n```\n" + idInput.replaceAll(" ", "\n") + "\n```")
+                .description("Banned the following IDs:\n" + idInput)
                 .color(Color.SEA_GREEN)
                 .timestamp(Instant.now())
                 .build();

@@ -1,6 +1,7 @@
 Configuration:
   status: warn
   name: ErisLogger
+  packages: "org.javalite.logging"
   properties:
     property:
       name: log-path
@@ -10,7 +11,7 @@ Configuration:
       name: Console
       target: SYSTEM_OUT
       PatternLayout:
-        Pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] - %msg%n"
+        Pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %C %M - %msg%n"
     File:
       name: File
       fileName: ${log-path}/logfile.log
@@ -40,3 +41,13 @@ Configuration:
           - ref: File
           - ref: RollingFile
             level: info
+      - name: org.javalite
+        level: warn
+        AppenderRef:
+          - ref: Console
+            level: warn
+      #- name: discor4j.rest
+       # level: info
+        #AppenderRef:
+         # - ref: Console
+          #  level: info

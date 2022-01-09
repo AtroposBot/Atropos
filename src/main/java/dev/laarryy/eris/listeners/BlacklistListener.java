@@ -15,6 +15,8 @@ import dev.laarryy.eris.utils.Notifier;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Attachment;
 import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
@@ -109,13 +111,14 @@ public class BlacklistListener {
 
         if (action.equals("warn")) {
             event.getMessage().delete().block();
-            Notifier.notifyPunished(guild, p, "Muted for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`");
+            Notifier.notifyPunished(guild, p, "Warned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`");
         }
 
         if (action.equals("mute")) {
             event.getMessage().delete();
             Notifier.notifyPunished(guild, p, "Muted for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`");
             punishmentManager.discordMuteUser(guild, userIdSnowflake);
+            loggingListener.onBlacklistMute(event, p);
         }
 
         if (action.equals("ban")) {
@@ -129,6 +132,9 @@ public class BlacklistListener {
 
     private Punishment createPunishment(MessageCreateEvent event, Blacklist blacklist, String type) {
         DatabaseLoader.openConnectionIfClosed();
+        Member punishedMember = event.getMember().get();
+        User self = event.getGuild().block().getSelfMember().block();
+
         long punishedSnowflake = event.getMember().get().getId().asLong();
         long punisherSnowflake = event.getGuild().block().getSelfMember().block().getId().asLong();
         DiscordUser punishedUser = DiscordUser.findOrCreateIt("user_id_snowflake", punishedSnowflake);
@@ -136,17 +142,22 @@ public class BlacklistListener {
         DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getGuild().block().getId().asLong());
         long date = Instant.now().toEpochMilli();
 
-        String reason = "Triggered the blacklist, which matched to the guild-level filter `" + blacklist.getServerBlacklist().getTrigger() + "`";
+        String reason = "Triggered the blacklist, which matched to the guild-level filter `" + blacklist.getServerBlacklist().getTrigger() + "`. This action will be reviewed by moderators.";
 
         Punishment punishment = Punishment.create(
                 "user_id_punished", punishedUser.getUserId(),
+                "name_punished", punishedMember.getUsername(),
+                "discrim_punished", Integer.parseInt(punishedMember.getDiscriminator()),
                 "user_id_punisher", punisherUser.getUserId(),
+                "name_punisher", self.getUsername(),
+                "discrim_punisher", Integer.parseInt(self.getDiscriminator()),
                 "server_id", server.getServerId(),
                 "punishment_type", type,
                 "punishment_date", date,
                 "punishment_message", reason,
-                "did_dm", false,
-                "end_date_passed", true
+                "automatic", true,
+                "end_date_passed", false,
+                "permanent", true
         );
 
         punishment.save();

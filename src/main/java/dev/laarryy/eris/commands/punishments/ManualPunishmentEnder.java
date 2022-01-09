@@ -10,11 +10,13 @@ import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.AuditLogger;
 import dev.laarryy.eris.utils.Notifier;
 import discord4j.common.util.Snowflake;
+import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOptionValue;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.Role;
+import discord4j.core.object.entity.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
@@ -33,7 +35,6 @@ public final class ManualPunishmentEnder {
     public void endPunishment(ChatInputInteractionEvent event) {
 
         DatabaseLoader.openConnectionIfClosed();
-
 
         if (event.getInteraction().getGuild().block() == null || event.getInteraction().getGuildId().isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "nullServer");
@@ -54,7 +55,7 @@ public final class ManualPunishmentEnder {
                     .filter(aLong -> discordUnban(event.getInteraction().getGuild().block(), aLong, reason))
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(lo -> {
-                        databaseEndPunishment(lo, event.getInteraction().getGuild().block(), event.getCommandName(), reason);
+                        databaseEndPunishment(lo, event.getInteraction().getGuild().block(), event.getCommandName(), reason, event.getInteraction().getUser(), event.getClient().getUserById(Snowflake.of(lo)).block());
                         Notifier.notifyModOfUnban(event, reason, lo);
                     });
         }
@@ -66,13 +67,14 @@ public final class ManualPunishmentEnder {
                     .flatMap(user -> user.asMember(event.getInteraction().getGuildId().get()))
                     .filter(member -> discordUnmute(member, event, reason))
                     .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe(member -> databaseEndPunishment(member.getId().asLong(), event.getInteraction().getGuild().block(), event.getCommandName(), reason));
+                    .subscribe(member -> databaseEndPunishment(member.getId().asLong(), event.getInteraction().getGuild().block(), event.getCommandName(), reason, event.getInteraction().getUser(), member));
         }
         DatabaseLoader.closeConnectionIfOpen();
     }
 
     public boolean discordUnban(Guild guild, Long unbannedUserSnowflake, String reason) {
         try {
+            guild.getClient().getUserById(Snowflake.of(unbannedUserSnowflake));
             guild.unban(Snowflake.of(unbannedUserSnowflake), reason).block();
             return true;
         } catch (Exception exception) {
@@ -111,7 +113,38 @@ public final class ManualPunishmentEnder {
             }
     }
 
-    public boolean databaseEndPunishment(Long userIdSnowflake, Guild guild, String commandName, String reason) {
+    public boolean discordUnmute(Member member, ButtonInteractionEvent event, String reason, String entry) {
+        DatabaseLoader.openConnectionIfClosed();
+        DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getInteraction().getGuildId().get().asLong());
+        Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
+        if (mutedRoleId == null) {
+            Notifier.notifyCommandUserOfError(event, "noMutedRole");
+            AuditLogger.addCommandToDB(event, entry, false);
+            return false;
+        }
+        Role mutedRole;
+        try {
+            mutedRole = event.getInteraction().getGuild().block().getRoleById(Snowflake.of(mutedRoleId)).block();
+        } catch (NullPointerException exception) {
+            Notifier.notifyCommandUserOfError(event, "noMutedRole");
+            AuditLogger.addCommandToDB(event, entry, false);
+            return false;
+        }
+        if (mutedRole != null && member.getRoles().any(role -> role.equals(mutedRole)).block()) {
+            member.removeRole(Snowflake.of(mutedRoleId), reason).block();
+            AuditLogger.addCommandToDB(event, entry, true);
+            Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
+            DatabaseLoader.closeConnectionIfOpen();
+            return true;
+        } else {
+            Notifier.notifyCommandUserOfError(event, "userNotMuted");
+            AuditLogger.addCommandToDB(event, entry,false);
+            DatabaseLoader.closeConnectionIfOpen();
+            return false;
+        }
+    }
+
+    public boolean databaseEndPunishment(Long userIdSnowflake, Guild guild, String commandName, String reason, User punishmentEnder, User punishedUser) {
         DatabaseLoader.openConnectionIfClosed();
 
         String punishmentType = switch (commandName) {
@@ -122,6 +155,7 @@ public final class ManualPunishmentEnder {
 
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+        DiscordUser punishmentEnderUser = DiscordUser.findFirst("user_id_snowflake = ?", punishmentEnder.getId().asLong());
 
         if (discordUser != null && discordServer != null) {
             DatabaseLoader.openConnectionIfClosed();
@@ -152,6 +186,10 @@ public final class ManualPunishmentEnder {
                         punishment.setEnded(true);
                         punishment.setEndDate(Instant.now().toEpochMilli());
                         punishment.setEndReason(reason);
+                        punishment.setPunishmentEnder(punishmentEnderUser.getUserId());
+                        punishment.setPunishmentEnderName(punishmentEnder.getUsername());
+                        punishment.setPunishmentEnderDiscrim(Integer.parseInt(punishmentEnder.getDiscriminator()));
+                        punishment.setAutomaticEnd(false);
                         punishment.save();
                         punishment.refresh();
 

@@ -36,7 +36,6 @@ public class ListenerManager {
 
             if (params.length == 0) {
                 logger.error("You have a listener with no parameters!");
-                // do something?
                 continue;
             }
 
@@ -45,17 +44,18 @@ public class ListenerManager {
             client.getEventDispatcher().on(type)
                     .flatMap(event -> {
                         try {
-                            return (Mono<Void>) registerableListener.invoke(listener, event);
-                        } catch (IllegalAccessException | InvocationTargetException e) {
+                            Mono<Void> voidMono = Mono.from((Mono<Void>) registerableListener.invoke(listener, event)).onErrorResume(e -> {
+                                logger.error(e.getMessage());
+                                logger.error("Error in Listener: ", e);
+                                return Mono.empty();
+                            });
+                            return voidMono;
+                        } catch (Exception e) {
                             e.printStackTrace();
                         }
                         return Mono.empty();
                     })
-                    .onErrorResume(e -> {
-                        logger.error(e.getMessage());
-                        logger.error("Error in Listener: ", e);
-                        return Mono.empty();
-                    })
+
                     .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(logger::error);
         }
