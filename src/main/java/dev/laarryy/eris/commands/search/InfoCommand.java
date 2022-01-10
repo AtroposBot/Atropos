@@ -150,8 +150,7 @@ public class InfoCommand implements Command {
                         TimestampMaker.TimestampType.LONG_DATETIME) + "\n" +
                 "Infractions Handled: `" + punishmentsSize + "`\n\n" +
                 // TODO: Name, URL, and Guide
-                "**[Usage Guide](https://google.com)**\n" +
-                "**[Support Discord](https://discord.gg/JH4ssYAQFU)**\n";
+                "**[Usage Guide](https://google.com)**\n";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(selfMember.getUsername())
@@ -240,7 +239,7 @@ public class InfoCommand implements Command {
         String joinTimestamp;
 
         if (Duration.between(discordBotJoin, discordJoin).toMinutes() < 30) {
-            joinTimestamp = "Before I did!";
+            joinTimestamp = "Unknown";
         } else {
             joinTimestamp = TimestampMaker.getTimestampFromEpochSecond(Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(), TimestampMaker.TimestampType.RELATIVE);
         }

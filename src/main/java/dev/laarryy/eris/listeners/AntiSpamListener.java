@@ -15,6 +15,7 @@ import dev.laarryy.eris.models.users.Punishment;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.Notifier;
 import dev.laarryy.eris.utils.Pair;
+import dev.laarryy.eris.utils.PermissionChecker;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Guild;
@@ -39,6 +40,7 @@ public class AntiSpamListener {
     // TODO: Don't mute/punish people above the bot
 
     private final Logger logger = LogManager.getLogger(this);
+    private final PermissionChecker permissionChecker = new PermissionChecker();
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
     LoadingCache<Long, DiscordServerProperties> propertiesCache = PropertiesCacheManager.getManager().getPropertiesCache();
     PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
@@ -86,7 +88,7 @@ public class AntiSpamListener {
     }
 
     @EventListener
-    public Mono<Void> on(MessageCreateEvent event) throws MalformedURLException {
+    public Mono<Void> on(MessageCreateEvent event) {
 
         if (event.getGuildId().isEmpty() || event.getMember().isEmpty() || event.getMember().get().isBot()) {
             return Mono.empty();
@@ -121,12 +123,14 @@ public class AntiSpamListener {
         }
 
         if (properties.getAntiScam()) {
-            String match = checkMessageForScam(event.getMessage().getContent());
-            if (match != null) {
-                DatabaseLoader.openConnectionIfClosed();
-                muteUserForScam(event, match);
-                DatabaseLoader.closeConnectionIfOpen();
-            }
+            try {
+                String match = checkMessageForScam(event.getMessage().getContent());
+                if (match != null) {
+                    DatabaseLoader.openConnectionIfClosed();
+                    muteUserForScam(event, match);
+                    DatabaseLoader.closeConnectionIfOpen();
+                }
+            } catch (MalformedURLException ignored) {}
         }
 
         if (warnsToMute > 0 && warnInt >= warnsToMute) {
@@ -156,10 +160,8 @@ public class AntiSpamListener {
         if (urlMatcher.matches()) {
             URL url = new URL(urlMatcher.group());
             String domain =  url.getProtocol() + "://" + url.getHost() + "/";
-            logger.info(domain);
             Matcher matcher = SCAM_URL.matcher(domain);
             if (matcher.matches()) {
-                logger.info(matcher.group());
                 match = matcher.group();
             }
             return match;
@@ -183,7 +185,13 @@ public class AntiSpamListener {
 
         Guild guild = event.getGuild().block();
         Member punishedMember = event.getMember().get();
-        User self = event.getClient().getSelf().block();
+        Member self = guild.getSelfMember().block();
+
+        if (permissionChecker.checkIsAdministrator(guild, punishedMember)
+                || !punishmentManager.onlyCheckIfPunisherHasHighestRole(self, punishedMember, guild)) {
+            return;
+        }
+
         String punishmentMessage = "ANTI-SCAM: Muted automatically for sending suspicious link: `" + match + "`. If you're not a bot, worry not - a moderator will review this action.";
 
         long userIdSnowflake = event.getMember().get().getId().asLong();
@@ -226,7 +234,12 @@ public class AntiSpamListener {
 
         Guild guild = event.getGuild().block();
         Member punishedMember = event.getMember().get();
-        User self = event.getClient().getSelf().block();
+        Member self = guild.getSelfMember().block();
+
+        if (permissionChecker.checkIsAdministrator(guild, punishedMember)
+                || !punishmentManager.onlyCheckIfPunisherHasHighestRole(self, punishedMember, guild)) {
+            return;
+        }
 
         String punishmentMessage = "ANTI-SPAM: Muted for two hours for severe spam.";
 
@@ -276,7 +289,12 @@ public class AntiSpamListener {
     private void warnUserForSpam(MessageCreateEvent event) {
         Guild guild = event.getGuild().block();
         Member punishedMember = event.getMember().get();
-        User self = event.getClient().getSelf().block();
+        Member self = guild.getSelfMember().block();
+
+        if (permissionChecker.checkIsAdministrator(guild, punishedMember)
+                || !punishmentManager.onlyCheckIfPunisherHasHighestRole(self, punishedMember, guild)) {
+            return;
+        }
 
         DatabaseLoader.openConnectionIfClosed();
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());

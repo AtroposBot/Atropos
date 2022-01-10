@@ -545,9 +545,34 @@ public class PunishmentManager {
         }
     }
 
-    public boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ButtonInteractionEvent event) {
+    public boolean onlyCheckIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild) {
 
         if (punisher.equals(punished)) {
+            return false;
+        }
+
+        if (permissionChecker.checkIsAdministrator(guild, punisher) && !permissionChecker.checkIsAdministrator(guild, punished)) {
+            return true;
+        } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
+            return false;
+        }
+
+        Set<Snowflake> snowflakeSet = Set.copyOf(punished.getRoles().map(Role::getId).collectList().block());
+
+        if (!guild.getSelfMember().block().hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
+            return false;
+        }
+
+        if (!punisher.hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ButtonInteractionEvent event) {
+
+        if (punisher.equals(punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
             Notifier.notifyCommandUserOfError(event, "noPermission");
             return false;
         }

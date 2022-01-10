@@ -6,8 +6,10 @@ import discord4j.core.object.entity.Guild;
 
 public class CommandChecks {
 
+    static final PermissionChecker permissionChecker = new PermissionChecker();
+
+
     public static boolean commandChecks(ChatInputInteractionEvent event, String requestName) {
-        PermissionChecker permissionChecker = new PermissionChecker();
 
         if (event.getInteraction().getGuild().blockOptional().isEmpty() || event.getInteraction().getGuild().block() == null) {
             Notifier.notifyCommandUserOfError(event, "nullServer");
@@ -29,7 +31,6 @@ public class CommandChecks {
     }
 
     public static boolean commandChecks(ButtonInteractionEvent event, String requestName) {
-        PermissionChecker permissionChecker = new PermissionChecker();
 
         if (event.getInteraction().getGuild().blockOptional().isEmpty() || event.getInteraction().getGuild().block() == null) {
             Notifier.notifyCommandUserOfError(event, "nullServer");

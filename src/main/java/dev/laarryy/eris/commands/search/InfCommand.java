@@ -76,7 +76,6 @@ public class InfCommand implements Command {
             .description("Search and manage infractions.")
             .addOption(ApplicationCommandOptionData.builder()
                     .name("search")
-                    // TODO: Add 'type' (warn, ban, forceban, etc) as a non-req'd option for inf search recent
                     .description("Search infractions")
                     .type(ApplicationCommandOption.Type.SUB_COMMAND_GROUP.getValue())
                     .required(false)
