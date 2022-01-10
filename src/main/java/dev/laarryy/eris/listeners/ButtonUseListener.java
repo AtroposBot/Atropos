@@ -13,6 +13,7 @@ import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.AuditLogger;
 import dev.laarryy.eris.utils.CommandChecks;
 import dev.laarryy.eris.utils.Notifier;
+import dev.laarryy.eris.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.object.component.ActionRow;
@@ -33,6 +34,7 @@ public class ButtonUseListener {
     PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
     ManualPunishmentEnder manualPunishmentEnder = new ManualPunishmentEnder();
+    PermissionChecker permissionChecker = new PermissionChecker();
     private final Logger logger = LogManager.getLogger(this);
     private static final Pattern BAN = Pattern.compile("(.*)-eris-ban-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
     private static final Pattern UNMUTE = Pattern.compile("(.*)-eris-unmute-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
