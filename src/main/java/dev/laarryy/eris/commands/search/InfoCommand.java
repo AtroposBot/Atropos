@@ -176,9 +176,6 @@ public class InfoCommand implements Command {
         Snowflake userIdSnowflake;
         if (event.getOption("user").get().getOption("mention").isPresent()) {
             user = event.getOption("user").get().getOption("mention").get().getValue().get().asUser().block();
-            if (user == event.getClient().getSelf().block()) {
-                Notifier.notifyCommandUserOfError(event, "noUser");
-            }
             userIdSnowflake = user.getId();
         } else {
             String snowflakeString = event.getOption("user").get().getOption("snowflake").get().getValue().get().asString();
@@ -207,6 +204,18 @@ public class InfoCommand implements Command {
         }
 
         if (member == null) {
+            if (user != null) {
+                StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
+                        .append("Profile: ").append(user.getMention()).append("\n")
+                        .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
+                field1Content.append("Created: ")
+                        .append(TimestampMaker.getTimestampFromEpochSecond(
+                                userIdSnowflake.getTimestamp().getEpochSecond(),
+                                TimestampMaker.TimestampType.RELATIVE)).append("\n");
+
+                sendUserInfoEmbed(event, user, field1Content);
+                return;
+            }
             Notifier.notifyCommandUserOfError(event, "noUser");
             return;
         }
@@ -223,11 +232,9 @@ public class InfoCommand implements Command {
         ServerUser serverUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId());
 
         if (serverUser == null) {
-            ServerUser sU2 = ServerUser.create("server_id", discordServer.getServerId(), "user_id", discordUser.getUserId(), "date", Instant.now().toEpochMilli());
-            sU2.save();
-            sU2.refresh();
-            serverUser = sU2;
-            return;
+            serverUser = ServerUser.create("server_id", discordServer.getServerId(), "user_id", discordUser.getUserId(), "date", Instant.now().toEpochMilli());
+            serverUser.save();
+            serverUser.refresh();
         }
 
         Member selfMember = guild.getSelfMember().block();
@@ -256,6 +263,11 @@ public class InfoCommand implements Command {
                                 TimestampMaker.TimestampType.RELATIVE)).append("\n")
                         .append("First Joined: ").append(joinTimestamp);
 
+        sendUserInfoEmbed(event, user, field1Content);
+        DatabaseLoader.closeConnectionIfOpen();
+    }
+
+    private void sendUserInfoEmbed(ChatInputInteractionEvent event, User user, StringBuilder field1Content) {
         String username = user.getUsername() + "#" + user.getDiscriminator();
         String eventUser = event.getInteraction().getUser().getUsername() + "#" + event.getInteraction().getUser().getDiscriminator();
 
@@ -267,10 +279,10 @@ public class InfoCommand implements Command {
                 .description(field1Content.toString())
                 .thumbnail(avatarUrl)
                 .footer("Requested by "+ eventUser, event.getInteraction().getUser().getAvatarUrl())
+                .timestamp(Instant.now())
                 .build();
 
         event.reply().withEmbeds(embed).block();
-        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void sendServerInfo(ChatInputInteractionEvent event) {
