@@ -31,7 +31,7 @@ public class StopJoinsCommand implements Command {
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
             .name("stopjoins")
-            .description("Anti-Raid: Prevents any user from joining this guild.")
+            .description("Anti-Raid: Prevents any user from joining this guild")
             .addOption(ApplicationCommandOptionData.builder()
                     .name("enable")
                     .description("Enables this function")

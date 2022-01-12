@@ -167,7 +167,7 @@ public final class LoggingListener {
 
         getLogChannel(guild, "modmail").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
             if (textChannel == null) return;
-            LogExecutor.logScamMute(punishment, textChannel);
+            LogExecutor.logAutoMute(punishment, textChannel);
         });
 
     }
@@ -178,7 +178,7 @@ public final class LoggingListener {
 
         getLogChannel(guild, "modmail").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
             if (textChannel == null) return;
-            LogExecutor.logBlacklistMute(punishment, textChannel);
+            LogExecutor.logAutoMute(punishment, textChannel);
         });
 
     }

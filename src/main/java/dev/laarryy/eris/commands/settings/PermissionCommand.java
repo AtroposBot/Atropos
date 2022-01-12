@@ -82,8 +82,8 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("/case")
-                    .value("case")
+                    .name("/note")
+                    .value("note")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
@@ -97,13 +97,18 @@ public class PermissionCommand implements Command {
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("/inf update")
-                    .value("infupdate")
+                    .name("/case update")
+                    .value("caseupdate")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("/inf search")
-                    .value("infsearch")
+                    .name("/case search")
+                    .value("casesearch")
+                    .build(),
+            ApplicationCommandOptionChoiceData
+                    .builder()
+                    .name("/case delete")
+                    .value("casedelete")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()

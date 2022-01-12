@@ -115,14 +115,14 @@ public class BlacklistListener {
         }
 
         if (action.equals("mute")) {
-            event.getMessage().delete();
+            event.getMessage().delete().block();
             Notifier.notifyPunished(guild, p, "Muted for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`");
             punishmentManager.discordMuteUser(guild, userIdSnowflake);
             loggingListener.onBlacklistMute(event, p);
         }
 
         if (action.equals("ban")) {
-            event.getMessage().delete();
+            event.getMessage().delete().block();
             Notifier.notifyPunished(guild, p, "Banned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`");
             punishmentManager.discordBanUser(guild, userIdSnowflake, 0, "Triggered the blacklist: `" + b.getServerBlacklist().getTrigger() + "`");
         }

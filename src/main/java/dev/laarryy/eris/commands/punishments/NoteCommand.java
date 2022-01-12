@@ -11,13 +11,13 @@ import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-public class CaseCommand implements Command {
+public class NoteCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
     private final PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
-            .name("case")
-            .description("Add a case to a user. Like adding a record to their file, but not an infraction like a warning is.")
+            .name("note")
+            .description("Add a note to a user. Like adding a record to their file, but not an infraction like a warning is.")
             .addOption(ApplicationCommandOptionData.builder()
                     .name("user")
                     .description("User to add case to.")
