@@ -450,18 +450,14 @@ public class PunishmentManager {
                                     Permission.USE_PRIVATE_THREADS,
                                     Permission.USE_SLASH_COMMANDS
                             )));
-                    category.edit(CategoryEditSpec.builder()
-                                    .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                    .build())
-                            .onErrorResume(e -> {
-                                logger.error(e.getMessage());
-                                logger.error(e.getMessage(), e);
-                                return Mono.empty();
-                            })
-                            .block();
+                    try {
+                        category.edit(CategoryEditSpec.builder()
+                                        .addAllPermissionOverwrites(newOverwrites.stream().toList())
+                                        .build()).block();
+                    } catch (Exception ignored) {}
                     return Mono.empty();
                 })
-                .blockLast();
+                .subscribe();
 
         guild.getChannels().ofType(TextChannel.class)
                 .subscribeOn(Schedulers.boundedElastic())
@@ -478,18 +474,14 @@ public class PunishmentManager {
                                     Permission.USE_PRIVATE_THREADS,
                                     Permission.USE_SLASH_COMMANDS
                             )));
-                    textChannel.edit(TextChannelEditSpec.builder()
-                            .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                            .build())
-                            .onErrorResume(e -> {
-                                logger.error(e.getMessage());
-                                logger.error(e.getMessage(), e);
-                                return Mono.empty();
-                            })
-                            .block();
+                    try {
+                        textChannel.edit(TextChannelEditSpec.builder()
+                                        .addAllPermissionOverwrites(newOverwrites.stream().toList())
+                                        .build()).block();
+                    } catch (Exception ignored) {}
                     return Mono.empty();
                 })
-                .blockLast();
+                .subscribe();
 
         guild.getChannels().ofType(VoiceChannel.class)
                 .subscribeOn(Schedulers.boundedElastic())
@@ -503,18 +495,14 @@ public class PunishmentManager {
                                     discord4j.rest.util.Permission.PRIORITY_SPEAKER,
                                     discord4j.rest.util.Permission.STREAM
                             )));
-                    voiceChannel.edit(VoiceChannelEditSpec.builder()
-                            .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                            .build())
-                            .onErrorResume(e -> {
-                                logger.error(e.getMessage());
-                                logger.error(e.getMessage(), e);
-                                return Mono.empty();
-                            })
-                            .block();
+                    try {
+                        voiceChannel.edit(VoiceChannelEditSpec.builder()
+                                .addAllPermissionOverwrites(newOverwrites.stream().toList())
+                                .build()).block();
+                    } catch (Exception ignored) {}
                     return Mono.empty();
                 })
-                .blockLast();
+                .subscribe();
 
     }
 
