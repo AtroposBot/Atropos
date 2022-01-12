@@ -8,6 +8,7 @@ import discord4j.core.object.ExtendedPermissionOverwrite;
 import discord4j.core.object.PermissionOverwrite;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.channel.VoiceChannel;
+import discord4j.core.spec.TextChannelEditSpec;
 import discord4j.core.spec.VoiceChannelEditSpec;
 import discord4j.rest.util.PermissionSet;
 import reactor.core.publisher.Mono;
@@ -37,9 +38,15 @@ public class VoiceChannelCreateListener {
                                         discord4j.rest.util.Permission.PRIORITY_SPEAKER,
                                         discord4j.rest.util.Permission.STREAM
                                 )));
-                        return voiceChannel.edit(VoiceChannelEditSpec.builder()
-                                .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                .build());
+                        try {
+                            voiceChannel.edit(VoiceChannelEditSpec.builder()
+                                            .addAllPermissionOverwrites(newOverwrites.stream().toList())
+                                            .build())
+                                    .subscribeOn(Schedulers.boundedElastic())
+                                    .subscribe();
+                        } catch (Exception ignored) {}
+
+                        return Mono.empty();
                     })
                     .subscribe();
 

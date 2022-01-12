@@ -61,13 +61,7 @@ public class InfoCommand implements Command {
                             .name("mention")
                             .description("Search for user info by mention")
                             .type(ApplicationCommandOption.Type.USER.getValue())
-                            .required(false)
-                            .build())
-                    .addOption(ApplicationCommandOptionData.builder()
-                            .name("snowflake")
-                            .description("Search for user info by snowflake")
-                            .type(ApplicationCommandOption.Type.STRING.getValue())
-                            .required(false)
+                            .required(true)
                             .build())
                     .build())
             .addOption(ApplicationCommandOptionData.builder()
@@ -178,20 +172,8 @@ public class InfoCommand implements Command {
             user = event.getOption("user").get().getOption("mention").get().getValue().get().asUser().block();
             userIdSnowflake = user.getId();
         } else {
-            String snowflakeString = event.getOption("user").get().getOption("snowflake").get().getValue().get().asString();
-            if (!snowflakePattern.matcher(snowflakeString).matches()) {
-                Notifier.notifyCommandUserOfError(event, "malformedInput");
-                return;
-            }
-
-            try {
-                user = event.getClient().getUserById(Snowflake.of(snowflakeString)).block();
-            } catch (Exception e) {
-                Notifier.notifyCommandUserOfError(event, "404");
-                return;
-            }
-
-            userIdSnowflake = Snowflake.of(snowflakeString);
+            Notifier.notifyCommandUserOfError(event, "404");
+            return;
         }
 
         Guild guild = event.getInteraction().getGuild().block();
@@ -204,19 +186,15 @@ public class InfoCommand implements Command {
         }
 
         if (member == null) {
-            if (user != null) {
-                StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
-                        .append("Profile: ").append(user.getMention()).append("\n")
-                        .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
-                field1Content.append("Created: ")
-                        .append(TimestampMaker.getTimestampFromEpochSecond(
-                                userIdSnowflake.getTimestamp().getEpochSecond(),
-                                TimestampMaker.TimestampType.RELATIVE)).append("\n");
+            StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
+                    .append("Profile: ").append(user.getMention()).append("\n")
+                    .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
+            field1Content.append("Created: ")
+                    .append(TimestampMaker.getTimestampFromEpochSecond(
+                            userIdSnowflake.getTimestamp().getEpochSecond(),
+                            TimestampMaker.TimestampType.RELATIVE)).append("\n");
 
-                sendUserInfoEmbed(event, user, field1Content);
-                return;
-            }
-            Notifier.notifyCommandUserOfError(event, "noUser");
+            sendUserInfoEmbed(event, user, field1Content);
             return;
         }
 

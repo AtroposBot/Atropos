@@ -14,12 +14,10 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
-import discord4j.core.object.entity.User;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.discordjson.json.WebhookExecuteRequest;
 import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
@@ -34,7 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public class InfCommand implements Command {
+public class CaseCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
     private final PermissionChecker permissionChecker = new PermissionChecker();
     private final Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
@@ -42,8 +40,8 @@ public class InfCommand implements Command {
     List<ApplicationCommandOptionChoiceData> optionChoiceDataList = List.of(
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("Case")
-                    .value("case")
+                    .name("Note")
+                    .value("note")
                     .build(),
             ApplicationCommandOptionChoiceData
                     .builder()
@@ -72,7 +70,7 @@ public class InfCommand implements Command {
                     .build());
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
-            .name("inf")
+            .name("case")
             .description("Search and manage infractions.")
             .addOption(ApplicationCommandOptionData.builder()
                     .name("search")
@@ -98,7 +96,7 @@ public class InfCommand implements Command {
                                     .build())
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
-                            .name("case")
+                            .name("id")
                             .description("Search by case ID")
                             .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
                             .required(false)
@@ -130,13 +128,13 @@ public class InfCommand implements Command {
                     .required(false)
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("id")
-                            .description("ID of the infraction you want to modify")
+                            .description("ID of the case you want to modify")
                             .type(ApplicationCommandOption.Type.INTEGER.getValue())
                             .required(true)
                             .build())
                     .addOption(ApplicationCommandOptionData.builder()
                             .name("reason")
-                            .description("New reason for infraction")
+                            .description("New reason for case")
                             .type(ApplicationCommandOption.Type.STRING.getValue())
                             .required(true)
                             .build())
@@ -150,6 +148,18 @@ public class InfCommand implements Command {
                                     ApplicationCommandOptionChoiceData.builder().name("endpunishment").value("endpunishment").build()))
                             .build())
                     .build())
+            .addOption(ApplicationCommandOptionData.builder()
+                    .name("delete")
+                    .description("Delete case")
+                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
+                    .required(false)
+                    .addOption(ApplicationCommandOptionData.builder()
+                            .name("id")
+                            .description("Delete case")
+                            .type(ApplicationCommandOption.Type.INTEGER.getValue())
+                            .required(true)
+                            .build())
+                    .build())
             .defaultPermission(true)
             .build();
 
@@ -159,15 +169,23 @@ public class InfCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
+        if (event.getOption("delete").isPresent()) {
+            if (!CommandChecks.commandChecks(event, "casedelete")) {
+                return Mono.empty();
+            }
+            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::deletePunishment);
+            return Mono.empty();
+        }
+
         if (event.getOption("update").isPresent()) {
-            if (!permissionChecker.checkPermission(event.getInteraction().getGuild().block(), event.getInteraction().getUser(), "infupdate")) {
+            if (!CommandChecks.commandChecks(event, "caseupdate")) {
                 return Mono.empty();
             }
             Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::updatePunishment);
             return Mono.empty();
         }
 
-        if (!CommandChecks.commandChecks(event, "infsearch")) {
+        if (!CommandChecks.commandChecks(event, "casesearch")) {
             return Mono.empty();
         }
 
@@ -187,6 +205,45 @@ public class InfCommand implements Command {
         }
 
         return Mono.empty();
+    }
+
+    private void deletePunishment(ChatInputInteractionEvent event) {
+        Guild guild = event.getInteraction().getGuild().block();
+
+        if (guild == null) {
+            Notifier.notifyCommandUserOfError(event, "nullServer");
+            return;
+        }
+
+        if (event.getOption("delete").get().getOption("id").isEmpty()) {
+            Notifier.notifyCommandUserOfError(event, "malformedInput");
+            return;
+        }
+
+        Long id = event.getOption("delete").get().getOption("id").get().getValue().get().asLong();
+
+        DatabaseLoader.openConnectionIfClosed();
+
+        DiscordServer discordServer = DiscordServer.findFirst("server_id");
+
+        if (discordServer == null) {
+            Notifier.notifyCommandUserOfError(event, "nullServer");
+            DatabaseLoader.closeConnectionIfOpen();
+            return;
+        }
+
+        Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", id, discordServer.getServerId());
+
+        if (punishment == null) {
+            Notifier.notifyCommandUserOfError(event, "404");
+            DatabaseLoader.closeConnectionIfOpen();
+            return;
+        }
+
+        punishment.delete();
+        punishment.save();
+
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void recentCases(ChatInputInteractionEvent event) {
@@ -217,7 +274,7 @@ public class InfCommand implements Command {
                 .color(Color.ENDEAVOUR)
                 .title("Recent Cases")
                 .description(results)
-                .footer("For detailed information, run /inf search case <id>", "")
+                .footer("For detailed information, run /case search id <id>", "")
                 .timestamp(Instant.now())
                 .build();
 
@@ -466,7 +523,7 @@ public class InfCommand implements Command {
                 .color(Color.ENDEAVOUR)
                 .title("Results for User: " + userIdSnowflake)
                 .description(results)
-                .footer("For detailed information, run /inf search case <id>", "")
+                .footer("For detailed information, run /case search id <id>", "")
                 .timestamp(Instant.now())
                 .build();
 

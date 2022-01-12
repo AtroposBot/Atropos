@@ -62,7 +62,7 @@ public class RemoveSinceCommand implements Command {
                     .name("duration")
                     .description("Remove newly joined users since how long ago? Format: 1mo2w3d13h45m")
                     .type(ApplicationCommandOption.Type.STRING.getValue())
-                    .required(false)
+                    .required(true)
                     .build())
             .defaultPermission(true)
             .build();

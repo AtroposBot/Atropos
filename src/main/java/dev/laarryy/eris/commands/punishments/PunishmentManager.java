@@ -284,7 +284,7 @@ public class PunishmentManager {
             } else messageDeleteDays = (int) preliminaryResult;
         } else messageDeleteDays = 0;
 
-        if (event.getCommandName().equals("case")) {
+        if (event.getCommandName().equals("note")) {
             punishment.setDMed(false);
             punishment.save();
             punishment.refresh();
@@ -293,11 +293,11 @@ public class PunishmentManager {
         // DMing the punished user, notifying the punishing user that it's worked out
 
         if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
-                || ((event.getOption("dm").isEmpty()) && !event.getCommandName().equals("case"))) {
+                || ((event.getOption("dm").isEmpty()) && !event.getCommandName().equals("note"))) {
             notifyPunishedUser(guild, punishment, punishmentReason);
         }
 
-        // Actually do the punishment, discord-side. Nothing to do for warnings or cases.
+        // Actually do the punishment, discord-side. Nothing to do for warnings or notes.
 
         DatabaseLoader.openConnectionIfClosed();
         switch (punishment.getPunishmentType()) {

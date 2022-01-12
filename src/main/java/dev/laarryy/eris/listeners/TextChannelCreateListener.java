@@ -38,9 +38,15 @@ public class TextChannelCreateListener {
                                             discord4j.rest.util.Permission.ADD_REACTIONS,
                                             discord4j.rest.util.Permission.CHANGE_NICKNAME
                                     )));
-                            return textChannel.edit(TextChannelEditSpec.builder()
-                                    .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                    .build());
+                            try {
+                                textChannel.edit(TextChannelEditSpec.builder()
+                                        .addAllPermissionOverwrites(newOverwrites.stream().toList())
+                                        .build())
+                                        .subscribeOn(Schedulers.boundedElastic())
+                                        .subscribe();
+                            } catch (Exception ignored) {}
+
+                            return Mono.empty();
                             }
                     )
                     .subscribe();

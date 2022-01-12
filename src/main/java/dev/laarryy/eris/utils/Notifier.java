@@ -50,7 +50,7 @@ public final class Notifier {
             case "kick" -> event.reply().withEmbeds(kickEmbed(userName, punishmentReason, caseId)).subscribe();
             case "ban" -> event.reply().withEmbeds(banEmbed(userName, punishmentEnd, punishmentReason, caseId)).subscribe();
             case "mute" -> event.reply().withEmbeds(muteEmbed(userName, punishmentEnd, punishmentReason, caseId)).subscribe();
-            case "case" -> event.reply().withEmbeds(caseEmbed(userName, punishmentReason, caseId)).withEphemeral(true).subscribe();
+            case "note" -> event.reply().withEmbeds(caseEmbed(userName, punishmentReason, caseId)).withEphemeral(true).subscribe();
         }
     }
 
@@ -78,7 +78,7 @@ public final class Notifier {
     public static void notifyPunished(Guild guild, Punishment punishment, String punishmentReason) {
         DatabaseLoader.openConnectionIfClosed();
 
-        if (punishment.getPunishmentType().equals("case")) {
+        if (punishment.getPunishmentType().equals("note")) {
             // Never notify of cases
             return;
         }
@@ -195,8 +195,8 @@ public final class Notifier {
 
     private static EmbedCreateSpec caseEmbed(String userName, String reason, String caseId) {
         return EmbedCreateSpec.builder()
-                .title("Logged Case for User: " + userName)
-                .description("Successfully stored a record of this case.")
+                .title("Logged Note for User: " + userName)
+                .description("Successfully stored a record of this note.")
                 .addField("Reason", reason, false)
                 .color(Color.ENDEAVOUR)
                 .footer("Case ID: " + caseId, "")

@@ -101,7 +101,7 @@ public class ButtonUseListener {
         Punishment initialMute = getPunishmentFromId(punishmentId);
 
         String reason = "Banned after moderator review. " +
-                "Original case number `" + initialMute.getPunishmentId() + "` with reason:\n >" + initialMute.getPunishmentMessage();
+                "Original case number `" + initialMute.getPunishmentId() + "` with reason:\n > " + initialMute.getPunishmentMessage();
 
         Punishment punishment = Punishment.create(
                 "user_id_punished", discordUser.getUserId(),
