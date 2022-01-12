@@ -9,6 +9,7 @@ import discord4j.core.object.PermissionOverwrite;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.spec.TextChannelEditSpec;
+import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -34,9 +35,12 @@ public class TextChannelCreateListener {
                             newOverwrites.add(PermissionOverwrite.forRole(role.getId(),
                                     PermissionSet.none(),
                                     PermissionSet.of(
-                                            discord4j.rest.util.Permission.SEND_MESSAGES,
-                                            discord4j.rest.util.Permission.ADD_REACTIONS,
-                                            discord4j.rest.util.Permission.CHANGE_NICKNAME
+                                            Permission.SEND_MESSAGES,
+                                            Permission.ADD_REACTIONS,
+                                            Permission.CHANGE_NICKNAME,
+                                            Permission.USE_PUBLIC_THREADS,
+                                            Permission.USE_PRIVATE_THREADS,
+                                            Permission.USE_SLASH_COMMANDS
                                     )));
                             try {
                                 textChannel.edit(TextChannelEditSpec.builder()
