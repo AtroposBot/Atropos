@@ -16,6 +16,7 @@ import discord4j.core.object.entity.Member;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Mono;
 
 public class MemberJoinListener {
@@ -55,10 +56,23 @@ public class MemberJoinListener {
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
         if (user != null) {
-            Punishment activePunishment = Punishment.findFirst("user_id_punished = ? and end_date_passed = ? and server_id = ?",
+            LazyList<Punishment> activePunishments = Punishment.find("user_id_punished = ? and end_date_passed = ? and server_id = ?",
                     user.getUserId(), false, discordServer.getServerId());
-            if (activePunishment != null && activePunishment.getPunishmentType().equals("mute")) {
-                punishmentManager.discordMuteUser(event.getGuild().block(), event.getMember().getId().asLong());
+            if (!activePunishments.isEmpty()) {
+                for (Punishment activePunishment : activePunishments) {
+                    if (activePunishment != null) {
+                        logger.info("Punishment Evader!");
+                        logger.info(activePunishment.getPunishmentType());
+                        if (activePunishment.getPunishmentType().equals("mute")) {
+                            logger.info("Mute Evader!");
+                            punishmentManager.discordMuteUser(event.getGuild().block(), event.getMember().getId().asLong());
+                        } else {
+                            DatabaseLoader.openConnectionIfClosed();
+                            activePunishment.setEnded(true);
+                            activePunishment.save();
+                        }
+                    }
+                }
             }
         }
 

@@ -31,6 +31,7 @@ import discord4j.core.spec.VoiceChannelEditSpec;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.discordjson.json.RoleData;
 import discord4j.rest.util.OrderUtil;
+import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -442,9 +443,12 @@ public class PunishmentManager {
                     newOverwrites.add(PermissionOverwrite.forRole(mutedRole.getId(),
                             PermissionSet.none(),
                             PermissionSet.of(
-                                    discord4j.rest.util.Permission.SEND_MESSAGES,
-                                    discord4j.rest.util.Permission.ADD_REACTIONS,
-                                    discord4j.rest.util.Permission.CHANGE_NICKNAME
+                                    Permission.SEND_MESSAGES,
+                                    Permission.ADD_REACTIONS,
+                                    Permission.CHANGE_NICKNAME,
+                                    Permission.USE_PUBLIC_THREADS,
+                                    Permission.USE_PRIVATE_THREADS,
+                                    Permission.USE_SLASH_COMMANDS
                             )));
                     category.edit(CategoryEditSpec.builder()
                                     .addAllPermissionOverwrites(newOverwrites.stream().toList())
@@ -467,9 +471,12 @@ public class PunishmentManager {
                     newOverwrites.add(PermissionOverwrite.forRole(mutedRole.getId(),
                             PermissionSet.none(),
                             PermissionSet.of(
-                                    discord4j.rest.util.Permission.SEND_MESSAGES,
-                                    discord4j.rest.util.Permission.ADD_REACTIONS,
-                                    discord4j.rest.util.Permission.CHANGE_NICKNAME
+                                    Permission.SEND_MESSAGES,
+                                    Permission.ADD_REACTIONS,
+                                    Permission.CHANGE_NICKNAME,
+                                    Permission.USE_PUBLIC_THREADS,
+                                    Permission.USE_PRIVATE_THREADS,
+                                    Permission.USE_SLASH_COMMANDS
                             )));
                     textChannel.edit(TextChannelEditSpec.builder()
                             .addAllPermissionOverwrites(newOverwrites.stream().toList())
