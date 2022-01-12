@@ -38,6 +38,8 @@ public class ButtonUseListener {
     private final Logger logger = LogManager.getLogger(this);
     private static final Pattern BAN = Pattern.compile("(.*)-eris-ban-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
     private static final Pattern UNMUTE = Pattern.compile("(.*)-eris-unmute-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
+    private static final Pattern KICK = Pattern.compile("(.*)-eris-kick-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
+
 
     @EventListener
     public Mono<Void> on(ButtonInteractionEvent event) {
@@ -56,6 +58,7 @@ public class ButtonUseListener {
         Member mod = event.getInteraction().getMember().get();
         String id = event.getCustomId();
         Matcher ban = BAN.matcher(id);
+        Matcher kick = KICK.matcher(id);
         Matcher unmute = UNMUTE.matcher(id);
 
 
@@ -64,6 +67,13 @@ public class ButtonUseListener {
             String punishmentId = ban.group(1);
             String userId = ban.group(2);
             banUser(punishmentId, userId, guild, mod, event);
+        }
+
+        if (kick.matches()) {
+            DatabaseLoader.openConnectionIfClosed();
+            String punishmentId = kick.group(1);
+            String userId = kick.group(2);
+            kickUser(punishmentId, userId, guild, mod, event);
         }
 
         if (unmute.matches()) {
@@ -127,9 +137,64 @@ public class ButtonUseListener {
         Notifier.notifyPunished(guild, punishment, reason);
         AuditLogger.addCommandToDB(event, auditString, true);
 
-        punishmentManager.discordBanUser(guild, discordUser.getUserIdSnowflake(), 0, reason);
+        punishmentManager.discordBanUser(guild, discordUser.getUserIdSnowflake(), 1, reason);
         DatabaseLoader.closeConnectionIfOpen();
         event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("it-worked", "User Banned").disabled())).block();
+    }
+
+    private void kickUser(String punishmentId, String userId, Guild guild, Member mod, ButtonInteractionEvent event) {
+        DatabaseLoader.openConnectionIfClosed();
+        DiscordUser discordUser = getDiscordUserFromId(userId);
+        DiscordUser moderator = DiscordUser.findFirst("user_id_snowflake = ?", mod.getId().asLong());
+
+        String auditString = "Button: Kick " + discordUser.getUserIdSnowflake() + " for case " + punishmentId;
+
+        if (!CommandChecks.commandChecks(event, "kick")) {
+            AuditLogger.addCommandToDB(event, auditString, false);
+            return;
+        }
+
+        Member punisher = event.getInteraction().getMember().get();
+        Member punished = guild.getMemberById(Snowflake.of(discordUser.getUserIdSnowflake())).block();
+
+        if (!punishmentManager.checkIfPunisherHasHighestRole(punisher, punished, guild, event)) {
+            AuditLogger.addCommandToDB(event, auditString, false);
+            return;
+        }
+
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+        Punishment initialMute = getPunishmentFromId(punishmentId);
+
+        String reason = "Kicked after moderator review. " +
+                "Original case number `" + initialMute.getPunishmentId() + "` with reason:\n > " + initialMute.getPunishmentMessage();
+
+        Punishment punishment = Punishment.create(
+                "user_id_punished", discordUser.getUserId(),
+                "name_punished", punished.getUsername(),
+                "discrim_punished", Integer.parseInt(punished.getDiscriminator()),
+                "user_id_punisher", moderator.getUserId(),
+                "name_punisher", punisher.getUsername(),
+                "discrim_punisher", Integer.parseInt(punisher.getDiscriminator()),
+                "server_id", discordServer.getServerId(),
+                "punishment_type", "kick",
+                "punishment_date", Instant.now().toEpochMilli(),
+                "punishment_message", reason,
+                "did_dm", true,
+                "end_date_passed", true,
+                "permanent", true,
+                "automatic", false,
+                "punishment_end_reason", "No reason provided.");
+        punishment.save();
+        punishment.refresh();
+
+        loggingListener.onPunishment(event, punishment);
+        Notifier.notifyPunisherOfKick(event, punishment, punishment.getPunishmentMessage());
+        Notifier.notifyPunished(guild, punishment, reason);
+        AuditLogger.addCommandToDB(event, auditString, true);
+
+        punishmentManager.discordKickUser(guild, discordUser.getUserIdSnowflake(), reason);
+        DatabaseLoader.closeConnectionIfOpen();
+        event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("it-worked", "User Kicked").disabled())).block();
     }
 
     private void unmuteUser(String punishmentId, String userId, Guild guild, Member moderator, ButtonInteractionEvent event) {
