@@ -61,6 +61,12 @@ public final class AddServerToDB {
 
         this.addUserToDatabase(guild.getSelfMember().block(), guild);
 
+        DatabaseLoader.openConnectionIfClosed();
+        properties.refresh();
+        server.refresh();
+
+        DatabaseLoader.closeConnectionIfOpen();
+
         return true;
     }
 
@@ -87,12 +93,15 @@ public final class AddServerToDB {
 
         ServerUser serverUser = ServerUser.findOrCreateIt("user_id", userId, "server_id", serverId);
         serverUser.save();
-        serverUser.refresh();
 
         if (serverUser.getDate() == 0 || serverUser.getDate() == null) {
             serverUser.setDate(Instant.now().toEpochMilli());
             serverUser.save();
         }
+
+        serverUser.refresh();
+
+        DatabaseLoader.closeConnectionIfOpen();
 
         return true;
     }

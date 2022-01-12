@@ -194,7 +194,7 @@ public class CaseCommand implements Command {
             return Mono.empty();
         }
 
-        if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("case").isPresent()) {
+        if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("id").isPresent()) {
             Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::searchForCase);
             return Mono.empty();
         }
@@ -288,15 +288,17 @@ public class CaseCommand implements Command {
 
     private void searchForCase(ChatInputInteractionEvent event) {
 
-        if (event.getOption("search").get().getOption("case").isEmpty() || event.getOption("search").get().getOption("case").get().getOption("caseid").isEmpty()) {
+        if (event.getOption("search").get().getOption("id").isEmpty() || event.getOption("search").get().getOption("id").get().getOption("caseid").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
             return;
         }
 
+        event.deferReply().block();
+
         DatabaseLoader.openConnectionIfClosed();
 
-        int caseInt = (int) event.getOption("search").get().getOption("case").get().getOption("caseid").get().getValue().get().asLong();
+        int caseInt = (int) event.getOption("search").get().getOption("id").get().getOption("caseid").get().getValue().get().asLong();
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
         if (discordServer == null) {
@@ -454,7 +456,11 @@ public class CaseCommand implements Command {
                     .build();
         }
 
-        event.reply().withEmbeds(embed).subscribe();
+        event.getInteractionResponse().editInitialResponse(
+                WebhookMessageEditRequest.builder()
+                        .addEmbed(embed.asRequest())
+                        .build()).subscribe();
+
         AuditLogger.addCommandToDB(event, true);
         DatabaseLoader.closeConnectionIfOpen();
     }

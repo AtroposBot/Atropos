@@ -30,8 +30,7 @@ public class ClientManager {
                     .setEnabledIntents(IntentSet.all())
                     .setSharding(ShardingStrategy.recommended())
                     .setInitialPresence(shardInfo -> ClientPresence.of(Status.DO_NOT_DISTURB,
-                            ClientActivity.watching("Shard " + (shardInfo.getIndex() + 1)
-                                    + " | /modmail")))
+                            ClientActivity.watching("/modmail")))
                     .login()
                     .block(Duration.ofSeconds(30))
             );
