@@ -41,11 +41,12 @@ public class MessageCreateListener {
         DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
 
         if (user == null) {
-            return Mono.empty();
+            user = DiscordUser.createIt("user_id_snowflake", userIdSnowflake, "date", Instant.now().toEpochMilli());
         }
 
         int userId = user.getUserId();
         user.save();
+        user.refresh();
 
         // Create message row in the table
         ServerMessage message = ServerMessage.findOrCreateIt("message_id_snowflake", messageIdSnowflake, "server_id", serverId, "user_id", userId);
