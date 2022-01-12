@@ -94,7 +94,7 @@ public final class AddServerToDB {
         ServerUser serverUser = ServerUser.findOrCreateIt("user_id", userId, "server_id", serverId);
         serverUser.save();
 
-        if (serverUser.getDate() == 0 || serverUser.getDate() == null) {
+        if (serverUser.getDate() == null || serverUser.getDate() == 0) {
             serverUser.setDate(Instant.now().toEpochMilli());
             serverUser.save();
         }
