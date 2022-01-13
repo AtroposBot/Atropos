@@ -49,7 +49,12 @@ public final class AddServerToDB {
         List<Member> unregisteredMembers = guild.getMembers()
                 .filter(member -> {
                     DatabaseLoader.openConnectionIfClosed();
-                    return DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong()) == null;
+                    DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());
+                    ServerUser unregisteredUser = ServerUser.findFirst("user_id = ? and server_id = ?", discordUser.getUserId(), server.getServerId());
+                    if (unregisteredUser == null) {
+                        return true;
+                    }
+                    return false;
                 })
                 .collectList().block();
 
