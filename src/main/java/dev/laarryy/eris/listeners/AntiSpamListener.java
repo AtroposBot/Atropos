@@ -60,29 +60,30 @@ public class AntiSpamListener {
 
     private static final Pattern URL = Pattern.compile("https?://[^\\s/$.?#].[^\\s]*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE);
     private static final Pattern SCAM_URL = Pattern.compile("https?://(([^\\s/$.?#])*(?:(d([1li])(?:s+c?o+|c+s+o+))|(.*.c(o)*r([lio])*([debqp]))|(.*?:([o0dc])([rjlc])d)|(.*ea(?:m|rn))|(.*n([1ijl])tr([o0])(.*))|(.*n([i1l])+(?:tr|rt)([o0]).*)|(steam)|(g([ilj1])([fv])([te])?|:g([fv])([ij1l])t))|(fre+)).*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.DOTALL);
-    private List<String> officialLinks = List.of(
-            "dis\\.gd",
-            "discord\\.co",
-            "discord\\.com",
-            "discord\\.design",
-            "discord\\.dev",
-            "discord\\.gg",
-            "discord\\.gift",
-            "discord\\.gifts",
-            "discord\\.media",
-            "discord\\.new",
-            "discord\\.store",
-            "discord\\.tools",
-            "discordapp\\.com",
-            "discordapp\\.net",
-            "discordmerch\\.com",
-            "discordpartygames\\.com",
-            "discord\\-activities\\.com",
-            "discordactivities\\.com",
-            "discordsays\\.com",
-            "discordstatus\\.com",
-            "discordapp\\.io",
-            "discordcdn\\.com "
+    private final List<Pattern> officialLinks = List.of(
+            Pattern.compile("(.*\\.)?dis\\.gd"),
+            Pattern.compile("(.*\\.)?discord\\.co"),
+            Pattern.compile("(.*\\.)?discord\\.com"),
+            Pattern.compile("(.*\\.)?discord\\.design"),
+            Pattern.compile("(.*\\.)?discord\\.dev"),
+            Pattern.compile("(.*\\.)?discord\\.gg"),
+            Pattern.compile("(.*\\.)?discord\\.gift"),
+            Pattern.compile("(.*\\.)?discord\\.gifts"),
+            Pattern.compile("(.*\\.)?discord\\.media"),
+            Pattern.compile("(.*\\.)?discord\\.new"),
+            Pattern.compile("(.*\\.)?discord\\.store"),
+            Pattern.compile("(.*\\.)?discord\\.tools"),
+            Pattern.compile("(.*\\.)?discordapp\\.com"),
+            Pattern.compile("(.*\\.)?discordapp\\.net"),
+            Pattern.compile("(.*\\.)?discordmerch\\.com"),
+            Pattern.compile("(.*\\.)?discordpartygames\\.com"),
+            Pattern.compile("(.*\\.)?discord\\-activities\\.com"),
+            Pattern.compile("(.*\\.)?discordactivities\\.com"),
+            Pattern.compile("(.*\\.)?discordsays\\.com"),
+            Pattern.compile("(.*\\.)?discordstatus\\.com"),
+            Pattern.compile("(.*\\.)?discordapp\\.io"),
+            Pattern.compile("(.*\\.)?discord4j\\.com"),
+            Pattern.compile("(.*\\.)?discordcdn\\.com ")
     );
 
 
@@ -190,7 +191,15 @@ public class AntiSpamListener {
             Matcher matcher = SCAM_URL.matcher(domain);
 
             Boolean legitLink = Flux.just(officialLinks)
-                    .any(link -> rootHost.matches("(.*)(" + link + ")(.*)"))
+                    .any(link -> {
+                        logger.info(link);
+                        for (Pattern oneLink : link) {
+                            if (oneLink.matcher(rootHost).matches()) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    })
                     .block();
 
             if (legitLink != null && legitLink) {
