@@ -20,7 +20,6 @@ import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.User;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
@@ -33,7 +32,6 @@ import java.net.URL;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -190,7 +188,6 @@ public class AntiSpamListener {
             String rootHost = url.getHost();
             String domain = url.getProtocol() + "://" + rootHost + "/";
             Matcher matcher = SCAM_URL.matcher(domain);
-            logger.info(domain);
 
             Boolean legitLink = Flux.just(officialLinks)
                     .any(link -> rootHost.matches("(.*)(" + link + ")(.*)"))
