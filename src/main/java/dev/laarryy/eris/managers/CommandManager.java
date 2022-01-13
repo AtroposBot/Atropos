@@ -101,7 +101,7 @@ public class CommandManager {
                     logger.error("Error in Command: ", e);
                     return Mono.empty();
                 })
-                .subscribe();
+                .subscribe(logger::error);
 
         logger.info("Registered Slash Commands!");
     }
