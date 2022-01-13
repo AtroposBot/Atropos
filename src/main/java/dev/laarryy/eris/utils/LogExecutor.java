@@ -231,9 +231,9 @@ public final class LogExecutor {
                 .timestamp(Instant.now())
                 .build();
 
-        Button banButton = Button.primary(punishment.getPunishmentId() + "-eris-ban-" + punishedUser.getUserId(), "Ban User");
-        Button unmuteButton = Button.secondary(punishment.getPunishmentId() + "-eris-unmute-" + punishedUser.getUserId(), "Unmute User");
-        Button kickButton = Button.secondary(punishment.getPunishmentId() + "-eris-kick-" + punishedUser.getUserId(), "Kick User");
+        Button banButton = Button.danger(punishment.getPunishmentId() + "-eris-ban-" + punishedUser.getUserId(), "Ban User");
+        Button unmuteButton = Button.success(punishment.getPunishmentId() + "-eris-unmute-" + punishedUser.getUserId(), "Unmute User");
+        Button kickButton = Button.primary(punishment.getPunishmentId() + "-eris-kick-" + punishedUser.getUserId(), "Kick User");
 
         logChannel.createMessage(embed).withComponents(ActionRow.of(banButton, kickButton, unmuteButton)).subscribe();
 
