@@ -25,36 +25,33 @@ public class TextChannelCreateListener {
         Guild guild = event.getChannel().getGuild().block();
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
         if (discordServerProperties != null && discordServerProperties.getMutedRoleSnowflake() != null && discordServerProperties.getMutedRoleSnowflake() != 0) {
-            guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake()))
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .flatMap(role -> {
-                        //TODO: Fix to be cleaner as D4J #1009 is resolved
-                        TextChannel textChannel = event.getChannel();
-                            Set<ExtendedPermissionOverwrite> overwrites = textChannel.getPermissionOverwrites();
-                            Set<PermissionOverwrite> newOverwrites = new HashSet<>(overwrites);
-                            newOverwrites.add(PermissionOverwrite.forRole(role.getId(),
-                                    PermissionSet.none(),
-                                    PermissionSet.of(
-                                            Permission.SEND_MESSAGES,
-                                            Permission.ADD_REACTIONS,
-                                            Permission.CHANGE_NICKNAME,
-                                            Permission.USE_PUBLIC_THREADS,
-                                            Permission.USE_PRIVATE_THREADS,
-                                            Permission.USE_SLASH_COMMANDS
-                                    )));
-                            try {
-                                textChannel.edit(TextChannelEditSpec.builder()
-                                        .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                        .build())
-                                        .subscribeOn(Schedulers.boundedElastic())
-                                        .subscribe();
-                            } catch (Exception ignored) {}
+            try {
+                guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake()))
+                        .subscribeOn(Schedulers.boundedElastic())
+                        .flatMap(role -> {
+                                    //TODO: Fix to be cleaner as D4J #1009 is resolved
+                                    TextChannel textChannel = event.getChannel();
+                                    Set<ExtendedPermissionOverwrite> overwrites = textChannel.getPermissionOverwrites();
+                                    Set<PermissionOverwrite> newOverwrites = new HashSet<>(overwrites);
+                                    newOverwrites.add(PermissionOverwrite.forRole(role.getId(),
+                                            PermissionSet.none(),
+                                            PermissionSet.of(
+                                                    Permission.SEND_MESSAGES,
+                                                    Permission.ADD_REACTIONS,
+                                                    Permission.CHANGE_NICKNAME,
+                                                    Permission.USE_PUBLIC_THREADS,
+                                                    Permission.USE_PRIVATE_THREADS,
+                                                    Permission.USE_SLASH_COMMANDS
+                                            )));
+                                    return textChannel.edit(TextChannelEditSpec.builder()
+                                                    .addAllPermissionOverwrites(newOverwrites.stream().toList())
+                                                    .build())
+                                            .onErrorResume(e -> Mono.empty());
+                                }
+                        )
+                        .subscribe();
 
-                            return Mono.empty();
-                            }
-                    )
-                    .subscribe();
-
+            } catch (Exception ignored) {}
         }
         DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();

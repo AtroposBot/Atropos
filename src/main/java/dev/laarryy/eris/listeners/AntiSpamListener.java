@@ -32,6 +32,8 @@ import java.net.URL;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -58,7 +60,32 @@ public class AntiSpamListener {
             .build(aLong -> 0);
 
     private static final Pattern URL = Pattern.compile("https?://[^\\s/$.?#].[^\\s]*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE);
-    private static final Pattern SCAM_URL = Pattern.compile("(?!https?://(.*\\.)?dis((?:co|boa)rd(app)?\\.(?:gg|com|net|new|gift|media|co|app))|(\\.gd).*)https?://(([^\\s/$.?#])*(?:(d([1li])(?:s+c?o+|c+s+o+))|(.*.c(o)*r([lio])*([debqp]))|(.*?:([o0dc])([rjlc])d)|(.*ea(?:m|rn))|(.*n([1ijl])tr([o0])(.*))|(.*n([i1l])+(?:tr|rt)([o0]).*)|(steam)|(g([ilj1])([fv])([te])?|:g([fv])([ij1l])t))|(fre+)).*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.DOTALL);
+    private static final Pattern SCAM_URL = Pattern.compile("https?://(([^\\s/$.?#])*(?:(d([1li])(?:s+c?o+|c+s+o+))|(.*.c(o)*r([lio])*([debqp]))|(.*?:([o0dc])([rjlc])d)|(.*ea(?:m|rn))|(.*n([1ijl])tr([o0])(.*))|(.*n([i1l])+(?:tr|rt)([o0]).*)|(steam)|(g([ilj1])([fv])([te])?|:g([fv])([ij1l])t))|(fre+)).*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.DOTALL);
+    private List<String> officialLinks = List.of(
+    "https://dis.gd/",
+    "https://discord.co/",
+    "https://discord.com/",
+    "https://discord.design/",
+    "https://discord.dev/",
+    "https://discord.gg/",
+    "https://discord.gift/",
+    "https://discord.gifts/",
+    "https://discord.media/",
+    "https://discord.new/",
+    "https://discord.store/",
+    "https://discord.tools/",
+    "https://discordapp.com/",
+    "https://discordapp.net/",
+    "https://discordmerch.com/",
+    "https://discordpartygames.com/",
+    "https://discord-activities.com/",
+    "https://discordactivities.com/",
+    "https://discordsays.com/",
+    "https://discordstatus.com/",
+    "https://discordapp.io/",
+    "https://discordcdn.com/ "
+    );
+
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
@@ -157,11 +184,13 @@ public class AntiSpamListener {
     private String checkMessageForScam(String content) throws MalformedURLException {
         Matcher urlMatcher = URL.matcher(content);
         String match = null;
-        if (urlMatcher.matches()) {
+        while (urlMatcher.find()) {
             URL url = new URL(urlMatcher.group());
             String domain =  url.getProtocol() + "://" + url.getHost() + "/";
             Matcher matcher = SCAM_URL.matcher(domain);
-            if (matcher.matches()) {
+            if (officialLinks.contains(domain)) {
+                continue;
+            } else if (matcher.matches()) {
                 match = matcher.group();
             }
             return match;

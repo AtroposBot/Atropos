@@ -453,7 +453,13 @@ public class PunishmentManager {
                     try {
                         category.edit(CategoryEditSpec.builder()
                                         .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                        .build()).block();
+                                        .build())
+                                .onErrorResume(e -> {
+                                    logger.error(e.getMessage());
+                                    logger.error(e.getMessage(), e);
+                                    return Mono.empty();
+                                })
+                                .block();
                     } catch (Exception ignored) {}
                     return Mono.empty();
                 })
@@ -477,7 +483,13 @@ public class PunishmentManager {
                     try {
                         textChannel.edit(TextChannelEditSpec.builder()
                                         .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                        .build()).block();
+                                        .build())
+                                .onErrorResume(e -> {
+                                    logger.error(e.getMessage());
+                                    logger.error(e.getMessage(), e);
+                                    return Mono.empty();
+                                })
+                                .block();
                     } catch (Exception ignored) {}
                     return Mono.empty();
                 })
@@ -495,14 +507,18 @@ public class PunishmentManager {
                                     discord4j.rest.util.Permission.PRIORITY_SPEAKER,
                                     discord4j.rest.util.Permission.STREAM
                             )));
-                    try {
-                        voiceChannel.edit(VoiceChannelEditSpec.builder()
-                                .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                .build()).block();
-                    } catch (Exception ignored) {}
+                    voiceChannel.edit(VoiceChannelEditSpec.builder()
+                            .addAllPermissionOverwrites(newOverwrites.stream().toList())
+                            .build())
+                            .onErrorResume(e -> {
+                                logger.error(e.getMessage());
+                                logger.error(e.getMessage(), e);
+                                return Mono.empty();
+                            })
+                            .block();
                     return Mono.empty();
                 })
-                .subscribe();
+                .blockLast();
 
     }
 
