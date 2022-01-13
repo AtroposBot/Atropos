@@ -25,6 +25,7 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.MalformedURLException;
@@ -62,28 +63,28 @@ public class AntiSpamListener {
     private static final Pattern URL = Pattern.compile("https?://[^\\s/$.?#].[^\\s]*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE);
     private static final Pattern SCAM_URL = Pattern.compile("https?://(([^\\s/$.?#])*(?:(d([1li])(?:s+c?o+|c+s+o+))|(.*.c(o)*r([lio])*([debqp]))|(.*?:([o0dc])([rjlc])d)|(.*ea(?:m|rn))|(.*n([1ijl])tr([o0])(.*))|(.*n([i1l])+(?:tr|rt)([o0]).*)|(steam)|(g([ilj1])([fv])([te])?|:g([fv])([ij1l])t))|(fre+)).*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.DOTALL);
     private List<String> officialLinks = List.of(
-    "https://dis.gd/",
-    "https://discord.co/",
-    "https://discord.com/",
-    "https://discord.design/",
-    "https://discord.dev/",
-    "https://discord.gg/",
-    "https://discord.gift/",
-    "https://discord.gifts/",
-    "https://discord.media/",
-    "https://discord.new/",
-    "https://discord.store/",
-    "https://discord.tools/",
-    "https://discordapp.com/",
-    "https://discordapp.net/",
-    "https://discordmerch.com/",
-    "https://discordpartygames.com/",
-    "https://discord-activities.com/",
-    "https://discordactivities.com/",
-    "https://discordsays.com/",
-    "https://discordstatus.com/",
-    "https://discordapp.io/",
-    "https://discordcdn.com/ "
+            "dis\\.gd",
+            "discord\\.co",
+            "discord\\.com",
+            "discord\\.design",
+            "discord\\.dev",
+            "discord\\.gg",
+            "discord\\.gift",
+            "discord\\.gifts",
+            "discord\\.media",
+            "discord\\.new",
+            "discord\\.store",
+            "discord\\.tools",
+            "discordapp\\.com",
+            "discordapp\\.net",
+            "discordmerch\\.com",
+            "discordpartygames\\.com",
+            "discord\\-activities\\.com",
+            "discordactivities\\.com",
+            "discordsays\\.com",
+            "discordstatus\\.com",
+            "discordapp\\.io",
+            "discordcdn\\.com "
     );
 
 
@@ -128,7 +129,6 @@ public class AntiSpamListener {
         Member member = event.getMember().get();
 
 
-
         long userId = member.getId().asLong();
         Pair<Long, Long> pair = new Pair<>(userId, guildId);
 
@@ -157,7 +157,8 @@ public class AntiSpamListener {
                     muteUserForScam(event, match);
                     DatabaseLoader.closeConnectionIfOpen();
                 }
-            } catch (MalformedURLException ignored) {}
+            } catch (MalformedURLException ignored) {
+            }
         }
 
         if (warnsToMute > 0 && warnInt >= warnsToMute) {
@@ -186,15 +187,25 @@ public class AntiSpamListener {
         String match = null;
         while (urlMatcher.find()) {
             URL url = new URL(urlMatcher.group());
-            String domain =  url.getProtocol() + "://" + url.getHost() + "/";
+            String rootHost = url.getHost();
+            String domain = url.getProtocol() + "://" + rootHost + "/";
             Matcher matcher = SCAM_URL.matcher(domain);
-            if (officialLinks.contains(domain)) {
+            logger.info(domain);
+
+            Boolean legitLink = Flux.just(officialLinks)
+                    .any(link -> rootHost.matches("(.*)(" + link + ")(.*)"))
+                    .block();
+
+            if (legitLink != null && legitLink) {
                 continue;
-            } else if (matcher.matches()) {
+            }
+
+            if (matcher.matches()) {
                 match = matcher.group();
             }
             return match;
         }
+
         return null;
     }
 
