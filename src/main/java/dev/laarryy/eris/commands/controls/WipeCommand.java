@@ -2,7 +2,6 @@ package dev.laarryy.eris.commands.controls;
 
 import dev.laarryy.eris.commands.Command;
 import dev.laarryy.eris.models.guilds.DiscordServer;
-import dev.laarryy.eris.models.joins.ServerUser;
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.storage.DatabaseLoader;
 import dev.laarryy.eris.utils.Notifier;
@@ -15,7 +14,6 @@ import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
