@@ -82,9 +82,10 @@ public class AntiSpamListener {
             "discordsays\\.com",
             "discordstatus\\.com",
             "discordapp\\.io",
-            "discord4j.com",
+            "discord4j\\.com",
             "discordcdn\\.com"
     );
+
     private final List<Pattern> officialLinks = Flux.fromIterable(officialLinkStrings)
             .map(officialLinkString -> Pattern.compile("(.*\\.)?" + officialLinkString))
             .collectList()
