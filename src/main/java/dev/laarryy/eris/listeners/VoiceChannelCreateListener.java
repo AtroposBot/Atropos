@@ -8,7 +8,6 @@ import discord4j.core.object.ExtendedPermissionOverwrite;
 import discord4j.core.object.PermissionOverwrite;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.channel.VoiceChannel;
-import discord4j.core.spec.TextChannelEditSpec;
 import discord4j.core.spec.VoiceChannelEditSpec;
 import discord4j.rest.util.PermissionSet;
 import reactor.core.publisher.Mono;
