@@ -144,7 +144,7 @@ public class InfoCommand implements Command {
                         TimestampMaker.TimestampType.LONG_DATETIME) + "\n" +
                 "Infractions Handled: `" + punishmentsSize + "`\n\n" +
                 // TODO: Name, URL, and Guide
-                "**[Usage Guide](https://google.com)**\n";
+                "**[Usage Guide](https://eris.laarryy.dev)**\n";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(selfMember.getUsername())

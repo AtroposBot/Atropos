@@ -9,7 +9,7 @@ import reactor.core.publisher.Mono;
 
 public class GuildJoinListener {
     private final Logger logger = LogManager.getLogger(this);
-    private AddServerToDB addServerToDB = new AddServerToDB();
+    private final AddServerToDB addServerToDB = new AddServerToDB();
 
     @EventListener
     public Mono<Void> on(GuildCreateEvent event) {
