@@ -29,6 +29,11 @@ public final class PermissionChecker {
         int permissionId = permission.getInteger("id");
 
         logger.info("Permission check in progress - permission ID = " + permissionId);
+
+        if (checkIsAdministrator(guild, member)) {
+            return true;
+        }
+
         int guildId = DiscordServer.findFirst("server_id = ?", guildIdSnowflake.asLong()).getInteger("id");
 
         Boolean hasRoleWithPermission =
