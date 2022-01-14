@@ -1,6 +1,7 @@
 package dev.laarryy.eris.commands.controls;
 
 import dev.laarryy.eris.commands.Command;
+import dev.laarryy.eris.config.EmojiManager;
 import dev.laarryy.eris.models.guilds.DiscordServer;
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.storage.DatabaseLoader;
@@ -10,12 +11,15 @@ import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
+import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
+
+import java.time.Instant;
 
 public class WipeCommand implements Command {
 
@@ -79,10 +83,9 @@ public class WipeCommand implements Command {
             return;
         }
 
-        event.getInteraction().getChannel().block().createMessage("Administrator Server Wipe Activated. Farewell!");
+        event.getInteraction().getChannel().block().createMessage("Administrator Server Wipe Activated. Farewell!").block();
 
         discordServer.delete();
-        discordServer.save();
         DatabaseLoader.closeConnectionIfOpen();
 
         event.getInteraction().getGuild().block().leave().retry(10).block();
@@ -98,8 +101,17 @@ public class WipeCommand implements Command {
 
         logger.info("User with ID " + user.getId().asLong() + " has requested the deletion of their data. Complying.");
 
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getMessageDelete() + " User Information Cleared")
+                .description("Leave this guild immediately if you do not want further information recorded in any manner. " +
+                        "For information about how Eris stores and uses data, please refer to [the Privacy Policy](https://eris.laarryy.dev/privacy-policy/)" +
+                        "and [the Terms of Use](https://eris.laarryy.dev/terms-of-use/)")
+                .timestamp(Instant.now())
+                .build();
+
+        event.reply().withEmbeds(embed).withEphemeral(true).block();
+
         discordUser.delete();
-        discordUser.save();
         DatabaseLoader.closeConnectionIfOpen();
     }
 }

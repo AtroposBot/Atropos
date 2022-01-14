@@ -351,6 +351,17 @@ public class AntiSpamListener {
         DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
+        String reason = "ANTI-SPAM: Do not send messages so quickly. Your most recent message `"
+                + event.getMessage().getContent().replaceAll("`", "") +
+                "` in the channel <#" + event.getMessage().getChannel().block().getId().asLong()
+                + "> was sent too quickly after the messages preceding it.";
+
+        if (reason.length() > 300) {
+            reason = "ANTI-SPAM: Do not send messages so quickly. Your most recent message `[Too large to log]` " +
+                    "in the channel <#" + event.getMessage().getChannel().block().getId().asLong()
+                    + "> was sent too quickly after the messages preceding it.";
+        }
+
         Punishment punishment = Punishment.create("user_id_punished", discordUser.getUserId(),
                 "user_id_punished", discordUser.getUserId(),
                 "name_punished", punishedMember.getUsername(),
@@ -361,7 +372,7 @@ public class AntiSpamListener {
                 "server_id", discordServer.getServerId(),
                 "punishment_type", "warn",
                 "punishment_date", Instant.now().toEpochMilli(),
-                "punishment_message", "ANTI-SPAM: Do not send messages so quickly.",
+                "punishment_message", reason,
                 "did_dm", false,
                 "end_date_passed", false,
                 "permanent", true,
