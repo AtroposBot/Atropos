@@ -38,8 +38,6 @@ import java.util.regex.Pattern;
 
 public class AntiSpamListener {
 
-    // TODO: Don't mute/punish people above the bot
-
     private final Logger logger = LogManager.getLogger(this);
     private final PermissionChecker permissionChecker = new PermissionChecker();
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
@@ -59,7 +57,7 @@ public class AntiSpamListener {
             .build(aLong -> 0);
 
     private static final Pattern URL = Pattern.compile("https?://[^\\s/$.?#].[^\\s]*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE);
-    private static final Pattern SCAM_URL = Pattern.compile("https?://(([^\\s/$.?#])*(?:(d([1li])(?:s+c?o+|c+s+o+))|(.*.c(o)*r([lio])*([debqp]))|(.*?:([o0dc])([rjlc])d)|(.*ea(?:m|rn))|(.*n([1ijl])tr([o0])(.*))|(.*n([i1l])+(?:tr|rt)([o0]).*)|(steam)|(g([ilj1])([fv])([te])?|:g([fv])([ij1l])t))|(fre+)).*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.DOTALL);
+    private static final Pattern SCAM_URL = Pattern.compile("https?://(([^\\s/$.?#])*(?:(d([1li])(?:s+c?o+|c+s+o+))|(.*.c(o)*r([lio])*([debqp]))|(.*?:([o0dc])([rjlc])d)|((?:s|5)(?:t|l)(e|3)(a|4)(?:m|rn))|(.*n([1ijl])tr([o0])(.*))|(.*n([i1l])+(?:tr|rt)([o0]).*)|(g([ilj1])([fv])([te])?|:g([fv])([ij1l])t))|(fre+)).*", Pattern.CASE_INSENSITIVE | Pattern.MULTILINE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.DOTALL);
     private final List<String> officialLinkStrings = List.of(
             "dis.gd",
             "discord\\.co",
@@ -83,6 +81,9 @@ public class AntiSpamListener {
             "discordstatus\\.com",
             "discordapp\\.io",
             "discord4j\\.com",
+            "steamcommunity\\.com",
+            "steamgames\\.com",
+            "steampowered\\.com",
             "discordcdn\\.com"
     );
 

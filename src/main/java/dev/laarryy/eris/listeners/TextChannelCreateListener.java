@@ -11,6 +11,8 @@ import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.spec.TextChannelEditSpec;
 import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -18,6 +20,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class TextChannelCreateListener {
+
+    private final Logger logger = LogManager.getLogger(this);
 
     @EventListener
     public Mono<Void> on(TextChannelCreateEvent event) {
@@ -46,7 +50,11 @@ public class TextChannelCreateListener {
                                     return textChannel.edit(TextChannelEditSpec.builder()
                                                     .addAllPermissionOverwrites(newOverwrites.stream().toList())
                                                     .build())
-                                            .onErrorResume(e -> Mono.empty());
+                                            .onErrorResume(e -> {
+                                                logger.info("Error in TextChannelCreate Listener: " + e.getMessage());
+                                                logger.info(e.getStackTrace());
+                                                return Mono.empty();
+                                            });
                                 }
                         )
                         .subscribe();
