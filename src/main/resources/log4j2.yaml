@@ -31,12 +31,12 @@ Configuration:
 
   Loggers:
     Root:
-      level: info
+      level: debug
       AppenderRef:
         ref: Console
     Logger:
       - name: dev.laarryy.eris
-        level: info
+        level: debug
         AppenderRef:
           - ref: File
           - ref: RollingFile
@@ -46,8 +46,18 @@ Configuration:
         AppenderRef:
           - ref: Console
             level: warn
-      - name: discord4j.rest
-        level: debug
+      - name: com.zaxxer
+        level: warn
         AppenderRef:
           - ref: Console
-            level: debug
+            level: warn
+      - name: reactor.util
+        level: warn
+        AppenderRef:
+          - ref: Console
+            level: warn
+      - name: discord4j.rest
+        level: error
+        AppenderRef:
+          - ref: Console
+            level: error

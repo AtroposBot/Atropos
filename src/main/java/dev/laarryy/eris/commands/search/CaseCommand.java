@@ -1,6 +1,7 @@
 package dev.laarryy.eris.commands.search;
 
 import dev.laarryy.eris.commands.Command;
+import dev.laarryy.eris.config.EmojiManager;
 import dev.laarryy.eris.models.guilds.DiscordServer;
 import dev.laarryy.eris.models.users.DiscordUser;
 import dev.laarryy.eris.models.users.Punishment;
@@ -224,7 +225,7 @@ public class CaseCommand implements Command {
 
         DatabaseLoader.openConnectionIfClosed();
 
-        DiscordServer discordServer = DiscordServer.findFirst("server_id");
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
         if (discordServer == null) {
             Notifier.notifyCommandUserOfError(event, "nullServer");
@@ -240,8 +241,14 @@ public class CaseCommand implements Command {
             return;
         }
 
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title(EmojiManager.getMessageDelete() + " Case #" + punishment.getPunishmentId() + " Deleted")
+                .timestamp(Instant.now())
+                .build();
+
+        event.reply().withEmbeds(embed).block();
+
         punishment.delete();
-        punishment.save();
 
         DatabaseLoader.closeConnectionIfOpen();
     }
@@ -281,7 +288,8 @@ public class CaseCommand implements Command {
         event.getInteractionResponse().editInitialResponse(
                 WebhookMessageEditRequest.builder()
                         .addEmbed(resultEmbed.asRequest())
-                        .build()).subscribe();
+                        .build()).block();
+
         AuditLogger.addCommandToDB(event, true);
         DatabaseLoader.closeConnectionIfOpen();
     }
@@ -293,8 +301,6 @@ public class CaseCommand implements Command {
             AuditLogger.addCommandToDB(event, false);
             return;
         }
-
-        event.deferReply().block();
 
         DatabaseLoader.openConnectionIfClosed();
 
@@ -315,6 +321,8 @@ public class CaseCommand implements Command {
             AuditLogger.addCommandToDB(event, false);
             return;
         }
+
+        event.deferReply().block();
 
         DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
         DiscordUser punisher = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
