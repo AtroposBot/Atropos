@@ -24,6 +24,7 @@ import discord4j.core.object.entity.channel.Channel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
+import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import org.apache.logging.log4j.LogManager;
@@ -121,6 +122,8 @@ public class InfoCommand implements Command {
             Notifier.notifyCommandUserOfError(event, "nullServer");
         }
 
+        event.deferReply().block();
+
         ServerUser serverUser = ServerUser.findFirst("user_id = ? and server_id = ?", discordUser.getUserId(), discordServer.getServerId());
 
         if (serverUser == null) {
@@ -142,9 +145,9 @@ public class InfoCommand implements Command {
                 "First Joined: " + TimestampMaker.getTimestampFromEpochSecond(
                         Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(),
                         TimestampMaker.TimestampType.LONG_DATETIME) + "\n" +
-                "Infractions Handled: `" + punishmentsSize + "`\n\n" +
-                // TODO: Name, URL, and Guide
-                "**[Usage Guide](https://eris.laarryy.dev)**\n";
+                "Infractions Handled Here: `" + punishmentsSize + "`\n\n" +
+                "**[Usage Guide](https://eris.laarryy.dev)**\n" +
+                "**[Discord Server](https://discord.gg/zaUMT7rBsR)**";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(selfMember.getUsername())
@@ -155,7 +158,11 @@ public class InfoCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).block();
+        event.getInteractionResponse().editInitialResponse(
+                WebhookMessageEditRequest.builder()
+                        .addEmbed(embed.asRequest())
+                        .build()).block();
+
         DatabaseLoader.closeConnectionIfOpen();
     }
 
@@ -175,6 +182,8 @@ public class InfoCommand implements Command {
             Notifier.notifyCommandUserOfError(event, "404");
             return;
         }
+
+        event.deferReply().block();
 
         Guild guild = event.getInteraction().getGuild().block();
 
@@ -246,6 +255,7 @@ public class InfoCommand implements Command {
     }
 
     private void sendUserInfoEmbed(ChatInputInteractionEvent event, User user, StringBuilder field1Content) {
+
         String username = user.getUsername() + "#" + user.getDiscriminator();
         String eventUser = event.getInteraction().getUser().getUsername() + "#" + event.getInteraction().getUser().getDiscriminator();
 
@@ -260,11 +270,17 @@ public class InfoCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).block();
+        event.getInteractionResponse().editInitialResponse(
+                WebhookMessageEditRequest.builder()
+                        .addEmbed(embed.asRequest())
+                        .build()).block();
     }
 
     private void sendServerInfo(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
+
+        event.deferReply().block();
+
         Long guildId = event.getInteraction().getGuildId().get().asLong();
         Guild guild = event.getInteraction().getGuild().block();
 
@@ -399,7 +415,11 @@ public class InfoCommand implements Command {
                 .footer("Requested by " + username, requester.getAvatarUrl())
                 .build();
 
-        event.reply().withEmbeds(embedCreateSpec).block();
+        event.getInteractionResponse().editInitialResponse(
+                WebhookMessageEditRequest.builder()
+                        .addEmbed(embedCreateSpec.asRequest())
+                        .build()).block();
+
         DatabaseLoader.closeConnectionIfOpen();
     }
 }
