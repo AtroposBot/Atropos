@@ -4,36 +4,38 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '6.1.0'
     id "org.checkerframework" version "0.5.17"
     id "de.schablinski.activejdbc-gradle-plugin" version "2.0"
+    id 'org.springframework.boot' version '2.7.0-SNAPSHOT'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
 }
 
 mainClassName = 'dev.laarryy.eris.Eris'
 group 'dev.laarryy'
 version '1.0'
+sourceCompatibility = '17'
+
 def log4j2Version = '2.17.1'
 def activejdbcVersion = '3.0-SNAPSHOT'
 def mysqlconnectorjavaVersion = '8.0.26'
 def activeJdbcGradePluginVersion = '2.2'
-def reflectionsVersion = "0.9.12"
+def reflectionsVersion = '0.10.2'
 def discord4jVersion = '3.3.0-SNAPSHOT'
-def configurateVersion = '4.1.1'
-def caffeineVersion = '3.0.4'
-def hikariVersion = '5.0.0'
+def configurateVersion = '4.1.2'
+def caffeineVersion = '3.0.5'
+def hikariVersion = '5.0.1'
 
 repositories {
     mavenCentral()
-    maven {
-        url 'https://jitpack.io'
-    }
-    maven {
-        url 'https://oss.sonatype.org/content/repositories/snapshots/'
-    }
+    maven { url 'https://jitpack.io' }
+    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
+    maven { url 'https://repo.spring.io/milestone' }
+    maven { url 'https://repo.spring.io/snapshot' }
 }
 
 dependencies {
     implementation "com.discord4j:discord4j-core:$discord4jVersion"
     implementation "org.spongepowered:configurate-yaml:$configurateVersion"
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.0'
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: "$log4j2Version"
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: "$log4j2Version"
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version"
@@ -46,6 +48,8 @@ dependencies {
     implementation "org.reflections:reflections:$reflectionsVersion"
     implementation "com.github.ben-manes.caffeine:caffeine:$caffeineVersion"
     implementation "com.zaxxer:HikariCP:$hikariVersion"
+    implementation 'org.springframework.boot:spring-boot-starter'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 }
 
