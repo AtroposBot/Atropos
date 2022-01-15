@@ -43,7 +43,7 @@ public class DehoistListener {
 
     @EventListener
     public Mono<Void> on(MemberUpdateEvent event) {
-        if (event.getGuild().block() == null) {
+        if (event.getGuild().onErrorReturn(null).block() == null) {
             return Mono.empty();
         }
 

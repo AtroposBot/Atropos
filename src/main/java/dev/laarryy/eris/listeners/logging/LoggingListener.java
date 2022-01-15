@@ -228,6 +228,21 @@ public final class LoggingListener {
                 .subscribe();
     }
 
+    public void onMuteNotApplicable(Guild guild, Member memberToMute) {
+        if (guild == null) {
+            return;
+        }
+
+        getLogChannel(guild, "punishment")
+                .subscribeOn(Schedulers.boundedElastic())
+                .doOnSuccess(textChannel -> {
+                    if (textChannel != null) {
+                        LogExecutor.logMuteNotApplicable(memberToMute, textChannel);
+                    }
+                })
+                .subscribe();
+    }
+
     public void onStopJoinsEnable(Guild guild) {
         if (guild == null) {
             return;
