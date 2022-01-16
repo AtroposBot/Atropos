@@ -101,9 +101,14 @@ public class BlacklistListener {
             case "ban" -> "ban";
             case "mute" -> "mute";
             case "warn" -> "warn";
-            default -> "case";
+            default -> "note";
         };
         Punishment p = createPunishment(event, b, type);
+
+        if (!punishmentManager.onlyCheckIfPunisherHasHighestRole(guild.getSelfMember().block(), event.getMember().get(), guild)) {
+            loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);
+            return Mono.empty();
+        }
 
         if (action.equals("delete")){
             event.getMessage().delete().block();
@@ -126,7 +131,9 @@ public class BlacklistListener {
             Notifier.notifyPunished(guild, p, "Banned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`");
             punishmentManager.discordBanUser(guild, userIdSnowflake, 0, "Triggered the blacklist: `" + b.getServerBlacklist().getTrigger() + "`");
         }
+
         loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);
+
         return Mono.empty();
     }
 
