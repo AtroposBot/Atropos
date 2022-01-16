@@ -178,7 +178,7 @@ public final class LogExecutor {
                 .description("Blacklist ID #`" + blacklistId + "` was triggered and the message detected has been deleted. " +
                         "A case has been opened for the user who triggered it with ID #`" + punishment.getPunishmentId() + "`")
                 .addField("Content", getStringWithLegalLength(content, 1024), false)
-                .footer("To see information about this blacklist entry, run /blacklist info " + blacklistId, "")
+                .footer("To see information about this blacklist entry, run /settings blacklist info " + blacklistId, "")
                 .timestamp(Instant.now())
                 .build();
 
@@ -1667,6 +1667,22 @@ public final class LogExecutor {
                         "You could also manually set a role as the muted role, and it will be applied to users who " +
                         "are muted, using `/settings mutedrole set <role>`")
                 .addField("Role", role, false)
+                .timestamp(Instant.now())
+                .build();
+
+        logChannel.createMessage(embed).block();
+    }
+
+    public static void logMuteNotApplicable(Member memberToMute, TextChannel logChannel) {
+
+        String memberName = "`" + memberToMute.getUsername() + "`:" + "`" + memberToMute.getId().asLong() + "`:<@" + memberToMute.getId().asLong() + ">";
+
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .color(Color.JAZZBERRY_JAM)
+                .title("Muted Role Inapplicable")
+                .description("Muted role could not be applied to the following member, likely because the bot has a lower role than them.")
+                .addField("Member", memberName, false)
                 .timestamp(Instant.now())
                 .build();
 
