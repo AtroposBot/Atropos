@@ -1,6 +1,6 @@
 Configuration:
   status: warn
-  name: ErisLogger
+  name: AtroposLogger
   packages: "org.javalite.logging"
   properties:
     property:
@@ -11,18 +11,18 @@ Configuration:
       name: Console
       target: SYSTEM_OUT
       PatternLayout:
-        Pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %C %M - %msg%n"
+        Pattern: "A: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] %C %M - %msg%n"
     File:
       name: File
       fileName: ${log-path}/logfile.log
       PatternLayout:
-        pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] - %msg%n"
+        pattern: "A: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] - %msg%n"
     RollingFile:
       - name: RollingFile
         fileName: ${log-path}/rollingfile.log
         filePattern: "logs/archive/rollingfile.log.%d{yyyy-MM-dd-hh-mm}.gz"
         PatternLayout:
-          pattern: "ERIS: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] - %msg%n"
+          pattern: "A: [%level] %d{yyyy-MM-dd HH:mm:ss.SSS} [%t] - %msg%n"
         Policies:
           SizeBasedTriggeringPolicy:
             size: 1 MB
@@ -35,7 +35,7 @@ Configuration:
       AppenderRef:
         ref: Console
     Logger:
-      - name: dev.laarryy.eris
+      - name: dev.laarryy.atropos
         level: debug
         AppenderRef:
           - ref: File
