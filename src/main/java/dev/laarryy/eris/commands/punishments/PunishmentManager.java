@@ -387,6 +387,45 @@ public class PunishmentManager {
 
         }
 
+        discordServerProperties.save();
+        discordServerProperties.refresh();
+        Member memberToMute = guild
+                .getMemberById(Snowflake.of(userIdSnowflake))
+                .onErrorResume(e -> {
+                    logger.error(e.getMessage());
+                    logger.error(e.getMessage(), e);
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return Mono.empty();
+                })
+                .block();
+
+        if (!onlyCheckIfPunisherHasHighestRole(guild.getSelfMember().block(), memberToMute, guild)) {
+            // This can be used if silently not doing something is no longer preferred at some point. Right now, I think silently failing is the best way to do this.
+            //loggingListener.onMuteNotApplicable(guild, memberToMute);
+            return;
+        }
+
+        if (memberToMute != null) {
+            memberToMute
+                    .addRole(mutedRole.getId())
+                    .onErrorResume(e -> {
+                        logger.error("Error Adding Role on Mute!");
+                        logger.error(e.getMessage());
+                        logger.error(e.getMessage(), e);
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return Mono.empty();
+                    })
+                    .block();
+        }
+        DatabaseLoader.closeConnectionIfOpen();
+    }
+
+    public void updateMutedRoleInAllChannels(Guild guild, Role mutedRole) {
+
+        DatabaseLoader.openConnectionIfClosed();
+
+        DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+
         List<Role> selfRoleList = guild.getSelfMember().block().getRoles().collectList().block();
         Role highestSelfRole = selfRoleList.get(selfRoleList.size() - 1);
 
@@ -410,30 +449,6 @@ public class PunishmentManager {
 
         discordServerProperties.save();
         discordServerProperties.refresh();
-        Member memberToMute = guild
-                .getMemberById(Snowflake.of(userIdSnowflake))
-                .onErrorResume(e -> {
-                    logger.error(e.getMessage());
-                    logger.error(e.getMessage(), e);
-                    DatabaseLoader.closeConnectionIfOpen();
-                    return Mono.empty();
-                })
-                .block();
-
-        if (memberToMute != null) {
-            memberToMute.addRole(mutedRole.getId())
-                    .onErrorResume(e -> {
-                        logger.error(e.getMessage());
-                        logger.error(e.getMessage(), e);
-                        DatabaseLoader.closeConnectionIfOpen();
-                        return Mono.empty();
-                    })
-                    .block();
-        }
-        DatabaseLoader.closeConnectionIfOpen();
-    }
-
-    public void updateMutedRoleInAllChannels(Guild guild, Role mutedRole) {
 
         guild.getChannels().ofType(Category.class)
                 .subscribeOn(Schedulers.boundedElastic())
@@ -568,17 +583,21 @@ public class PunishmentManager {
             return false;
         }
 
-        Set<Snowflake> snowflakeSet = Set.copyOf(punished.getRoles().map(Role::getId).collectList().block());
+        Set<Snowflake> punishedRoles = Set.copyOf(punished.getRoles().map(Role::getId).collectList().block());
 
-        if (!guild.getSelfMember().block().hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
+        if (!guild.getSelfMember().block().hasHigherRoles(punishedRoles).defaultIfEmpty(false).block()) {
             return false;
         }
 
-        if (!punisher.hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
+        if (!punisher.hasHigherRoles(punishedRoles).defaultIfEmpty(false).block()) {
             return false;
-        } else {
+        }
+
+        if (punisher.hasHigherRoles(punishedRoles).block()) {
             return true;
         }
+
+        return false;
     }
 
     public boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ButtonInteractionEvent event) {
