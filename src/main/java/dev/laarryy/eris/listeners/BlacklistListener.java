@@ -147,10 +147,10 @@ public class BlacklistListener {
         Punishment punishment = Punishment.create(
                 "user_id_punished", punishedUser.getUserId(),
                 "name_punished", punishedMember.getUsername(),
-                "discrim_punished", Integer.parseInt(punishedMember.getDiscriminator()),
+                "discrim_punished", punishedMember.getDiscriminator(),
                 "user_id_punisher", punisherUser.getUserId(),
                 "name_punisher", self.getUsername(),
-                "discrim_punisher", Integer.parseInt(self.getDiscriminator()),
+                "discrim_punisher", self.getDiscriminator(),
                 "server_id", server.getServerId(),
                 "punishment_type", type,
                 "punishment_date", date,

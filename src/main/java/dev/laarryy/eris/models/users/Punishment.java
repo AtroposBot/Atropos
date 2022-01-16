@@ -26,12 +26,12 @@ public class Punishment extends Model {
         setString("name_punished", punishedUserName);
     }
 
-    public Integer getPunishedUserDiscrim() {
-        return getInteger("discrim_punished");
+    public String getPunishedUserDiscrim() {
+        return getString("discrim_punished");
     }
 
-    public void setPunishedUserDiscrim(Integer discrim) {
-        setInteger("discrim_punished", discrim);
+    public void setPunishedUserDiscrim(String discrim) {
+        setString("discrim_punished", discrim);
     }
 
     public Integer getPunishingUserId() {
@@ -50,12 +50,12 @@ public class Punishment extends Model {
         setString("name_punisher", punishingUserName);
     }
 
-    public Integer getPunishingUserDiscrim() {
-        return getInteger("discrim_punisher");
+    public String getPunishingUserDiscrim() {
+        return getString("discrim_punisher");
     }
 
-    public void setPunishingUserDiscrim(Integer punishingUserDiscrim) {
-        setInteger("discrim_punisher", punishingUserDiscrim);
+    public void setPunishingUserDiscrim(String punishingUserDiscrim) {
+        setString("discrim_punisher", punishingUserDiscrim);
     }
 
     public int getServerId() {
@@ -154,12 +154,12 @@ public class Punishment extends Model {
         setString("name_punishment_ender", punishmentEnderName);
     }
 
-    public Integer getPunishmentEnderDiscrim() {
-        return getInteger("discrim_punishment_ender");
+    public String getPunishmentEnderDiscrim() {
+        return getString("discrim_punishment_ender");
     }
 
-    public void setPunishmentEnderDiscrim(Integer punishmentEnderDiscrim) {
-        setInteger("discrim_punishment_ender", punishmentEnderDiscrim);
+    public void setPunishmentEnderDiscrim(String punishmentEnderDiscrim) {
+        setString("discrim_punishment_ender", punishmentEnderDiscrim);
     }
 
     public boolean getAutomaticEnd() {

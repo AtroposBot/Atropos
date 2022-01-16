@@ -18,6 +18,7 @@ def discord4jVersion = '3.3.0-SNAPSHOT'
 def configurateVersion = '4.1.1'
 def caffeineVersion = '3.0.4'
 def hikariVersion = '5.0.0'
+def guavaVersion = '31.0.1-jre'
 
 repositories {
     mavenCentral()
@@ -46,6 +47,7 @@ dependencies {
     implementation "org.reflections:reflections:$reflectionsVersion"
     implementation "com.github.ben-manes.caffeine:caffeine:$caffeineVersion"
     implementation "com.zaxxer:HikariCP:$hikariVersion"
+    implementation "com.google.guava:guava:$guavaVersion"
 
 }
 

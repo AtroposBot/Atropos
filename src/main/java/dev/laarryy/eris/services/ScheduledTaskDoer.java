@@ -128,7 +128,7 @@ public class ScheduledTaskDoer {
         punishment.setAutomaticEnd(true);
         punishment.setPunishmentEnder(selfDiscordUser.getUserId());
         punishment.setPunishmentEnderName(self.getUsername());
-        punishment.setPunishmentEnderDiscrim(Integer.parseInt(self.getDiscriminator()));
+        punishment.setPunishmentEnderDiscrim(self.getDiscriminator());
         punishment.setEndReason("Automatically unbanned on timer.");
         punishment.save();
         punishment.refresh();
@@ -151,7 +151,7 @@ public class ScheduledTaskDoer {
         punishment.setAutomaticEnd(true);
         punishment.setPunishmentEnder(selfDiscordUser.getUserId());
         punishment.setPunishmentEnderName(self.getUsername());
-        punishment.setPunishmentEnderDiscrim(Integer.parseInt(self.getDiscriminator()));
+        punishment.setPunishmentEnderDiscrim(self.getDiscriminator());
         punishment.setEndReason("Automatically unmuted on timer.");
         punishment.save();
         punishment.refresh();
