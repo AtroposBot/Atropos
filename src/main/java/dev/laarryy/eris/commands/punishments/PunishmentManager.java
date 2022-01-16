@@ -145,10 +145,10 @@ public class PunishmentManager {
 
                         Punishment punishment = createDatabasePunishmentRecord(punisher,
                                 punisherUser.getUsername(),
-                                Integer.parseInt(punisherUser.getDiscriminator()),
+                                punisherUser.getDiscriminator(),
                                 punished,
                                 punishedUser.getUsername(),
-                                Integer.parseInt(punisherUser.getDiscriminator()),
+                                punisherUser.getDiscriminator(),
                                 serverId,
                                 request.name());
 
@@ -228,10 +228,10 @@ public class PunishmentManager {
 
         Punishment punishment = createDatabasePunishmentRecord(punisher,
                 punishingUser.getUsername(),
-                Integer.parseInt(punishingUser.getDiscriminator()),
+                punishingUser.getDiscriminator(),
                 punished,
                 punishedUser.getUsername(),
-                Integer.parseInt(punishedUser.getDiscriminator()),
+                punishedUser.getDiscriminator(),
                 serverId,
                 request.name());
 
@@ -323,8 +323,8 @@ public class PunishmentManager {
         Notifier.notifyPunished(guild, punishment, reason);
     }
 
-    private Punishment createDatabasePunishmentRecord(DiscordUser punisher, String punisherName, int punisherDiscrim,
-                                                      DiscordUser punished, String punishedName, int punishedDiscrim,
+    private Punishment createDatabasePunishmentRecord(DiscordUser punisher, String punisherName, String punisherDiscrim,
+                                                      DiscordUser punished, String punishedName, String punishedDiscrim,
                                                       int serverId, String punishmentType) {
         return Punishment.createIt(
                 "user_id_punished", punished.getUserId(),
@@ -445,7 +445,6 @@ public class PunishmentManager {
                             PermissionSet.of(
                                     Permission.SEND_MESSAGES,
                                     Permission.ADD_REACTIONS,
-                                    Permission.CHANGE_NICKNAME,
                                     Permission.USE_PUBLIC_THREADS,
                                     Permission.USE_PRIVATE_THREADS,
                                     Permission.USE_SLASH_COMMANDS
@@ -455,6 +454,7 @@ public class PunishmentManager {
                                         .addAllPermissionOverwrites(newOverwrites.stream().toList())
                                         .build())
                                 .onErrorResume(e -> {
+                                    logger.info("------------------------------- Category Edit Not Allowed!");
                                     logger.error(e.getMessage());
                                     logger.error(e.getMessage(), e);
                                     return Mono.empty();
@@ -475,7 +475,6 @@ public class PunishmentManager {
                             PermissionSet.of(
                                     Permission.SEND_MESSAGES,
                                     Permission.ADD_REACTIONS,
-                                    Permission.CHANGE_NICKNAME,
                                     Permission.USE_PUBLIC_THREADS,
                                     Permission.USE_PRIVATE_THREADS,
                                     Permission.USE_SLASH_COMMANDS
@@ -485,6 +484,7 @@ public class PunishmentManager {
                                         .addAllPermissionOverwrites(newOverwrites.stream().toList())
                                         .build())
                                 .onErrorResume(e -> {
+                                    logger.info("------------------------------- TextChannel Edit Not Allowed!");
                                     logger.error(e.getMessage());
                                     logger.error(e.getMessage(), e);
                                     return Mono.empty();
@@ -511,6 +511,7 @@ public class PunishmentManager {
                             .addAllPermissionOverwrites(newOverwrites.stream().toList())
                             .build())
                             .onErrorResume(e -> {
+                                logger.info("------------------------------- VoiceChannel Edit Not Allowed!");
                                 logger.error(e.getMessage());
                                 logger.error(e.getMessage(), e);
                                 return Mono.empty();

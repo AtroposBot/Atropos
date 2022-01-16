@@ -1,5 +1,7 @@
 package dev.laarryy.eris.utils;
 
+import com.google.common.collect.ImmutableMap;
+
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
@@ -10,7 +12,7 @@ import java.util.stream.Collectors;
 public final class DurationParser {
     private DurationParser() {}
 
-    private static final Map<ChronoUnit, String> UNITS_PATTERNS = Map.of(
+    private static final Map<ChronoUnit, String> UNITS_PATTERNS = ImmutableMap.of(
             ChronoUnit.YEARS, "y(?:ear)?s?",
             ChronoUnit.MONTHS, "mo(?:nth)?s?",
             ChronoUnit.WEEKS, "w(?:eek)?s?",

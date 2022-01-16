@@ -188,7 +188,7 @@ public final class ManualPunishmentEnder {
                         punishment.setEndReason(reason);
                         punishment.setPunishmentEnder(punishmentEnderUser.getUserId());
                         punishment.setPunishmentEnderName(punishmentEnder.getUsername());
-                        punishment.setPunishmentEnderDiscrim(Integer.parseInt(punishmentEnder.getDiscriminator()));
+                        punishment.setPunishmentEnderDiscrim(punishmentEnder.getDiscriminator());
                         punishment.setAutomaticEnd(false);
                         punishment.save();
                         punishment.refresh();
