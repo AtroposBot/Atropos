@@ -6,7 +6,7 @@ plugins {
     id "de.schablinski.activejdbc-gradle-plugin" version "2.0"
 }
 
-mainClassName = 'dev.laarryy.eris.Eris'
+mainClassName = 'dev.laarryy.atropos.Atropos'
 group 'dev.laarryy'
 version '1.0'
 sourceCompatibility = '17'
