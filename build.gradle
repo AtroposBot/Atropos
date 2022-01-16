@@ -4,8 +4,6 @@ plugins {
     id 'com.github.johnrengelman.shadow' version '6.1.0'
     id "org.checkerframework" version "0.5.17"
     id "de.schablinski.activejdbc-gradle-plugin" version "2.0"
-    id 'org.springframework.boot' version '2.7.0-SNAPSHOT'
-    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
 }
 
 mainClassName = 'dev.laarryy.eris.Eris'
@@ -48,8 +46,6 @@ dependencies {
     implementation "org.reflections:reflections:$reflectionsVersion"
     implementation "com.github.ben-manes.caffeine:caffeine:$caffeineVersion"
     implementation "com.zaxxer:HikariCP:$hikariVersion"
-    implementation 'org.springframework.boot:spring-boot-starter'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 }
 
