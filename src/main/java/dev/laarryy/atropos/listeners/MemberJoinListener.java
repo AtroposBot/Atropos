@@ -10,6 +10,7 @@ import dev.laarryy.atropos.models.users.DiscordUser;
 import dev.laarryy.atropos.models.users.Punishment;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
@@ -76,6 +77,16 @@ public class MemberJoinListener {
             }
         }
 
+        // Add Early Adopter Role - quick n dirty because I'll remove at release
+
+        if (event.getGuild().block().getId().asString().equals("931389256180580433")) {
+            Member member = event.getMember();
+            for (Guild botGuild : event.getClient().getGuilds().collectList().block()) {
+                if (botGuild.getOwner().block().equals(member)) {
+                    member.addRole(Snowflake.of("931389913503506502")).block();
+                }
+            }
+        }
         DatabaseLoader.closeConnectionIfOpen();
 
         return Mono.empty();
