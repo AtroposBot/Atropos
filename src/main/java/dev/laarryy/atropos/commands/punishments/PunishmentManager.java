@@ -41,7 +41,6 @@ import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -224,7 +223,6 @@ public class PunishmentManager {
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
-
 
         Punishment punishment = createDatabasePunishmentRecord(punisher,
                 punishingUser.getUsername(),
@@ -431,8 +429,8 @@ public class PunishmentManager {
 
         Flux<RoleData> roleDataFlux = Flux.fromIterable(guild.getRoles().map(Role::getData).collectList().block());
 
-        Long roleCount = OrderUtil.orderRoles(roleDataFlux).takeWhile(role -> !role.equals(highestSelfRole)).count().block();
-        int roleInt = roleCount != null ? roleCount.intValue() - 2 : 1;
+        Long roleCount = OrderUtil.orderRoles(roleDataFlux).takeWhile(role -> !role.equals(highestSelfRole.getData())).count().block();
+        int roleInt = roleCount != null ? roleCount.intValue() - 1 : 1;
 
         if (mutedRole != null) {
             discordServerProperties.setMutedRoleSnowflake(mutedRole.getId().asLong());
@@ -453,88 +451,60 @@ public class PunishmentManager {
         guild.getChannels().ofType(Category.class)
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(category -> {
-                    Set<ExtendedPermissionOverwrite> overwrites = category.getPermissionOverwrites();
-                    Set<PermissionOverwrite> newOverwrites = new HashSet<>(overwrites);
-                    newOverwrites.add(PermissionOverwrite.forRole(mutedRole.getId(),
-                            PermissionSet.none(),
-                            PermissionSet.of(
-                                    Permission.SEND_MESSAGES,
-                                    Permission.ADD_REACTIONS,
-                                    Permission.USE_PUBLIC_THREADS,
-                                    Permission.USE_PRIVATE_THREADS,
-                                    Permission.USE_SLASH_COMMANDS
-                            )));
-                    try {
-                        category.edit(CategoryEditSpec.builder()
-                                        .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                        .build())
-                                .onErrorResume(e -> {
-                                    logger.info("------------------------------- Category Edit Not Allowed!");
-                                    logger.error(e.getMessage());
-                                    logger.error(e.getMessage(), e);
-                                    return Mono.empty();
-                                })
-                                .block();
-                    } catch (Exception ignored) {}
-                    return Mono.empty();
-                })
-                .subscribe();
-
-        guild.getChannels().ofType(TextChannel.class)
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(textChannel -> {
-                    Set<ExtendedPermissionOverwrite> overwrites = textChannel.getPermissionOverwrites();
-                    Set<PermissionOverwrite> newOverwrites = new HashSet<>(overwrites);
-                    newOverwrites.add(PermissionOverwrite.forRole(mutedRole.getId(),
-                            PermissionSet.none(),
-                            PermissionSet.of(
-                                    Permission.SEND_MESSAGES,
-                                    Permission.ADD_REACTIONS,
-                                    Permission.USE_PUBLIC_THREADS,
-                                    Permission.USE_PRIVATE_THREADS,
-                                    Permission.USE_SLASH_COMMANDS
-                            )));
-                    try {
-                        textChannel.edit(TextChannelEditSpec.builder()
-                                        .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                        .build())
-                                .onErrorResume(e -> {
-                                    logger.info("------------------------------- TextChannel Edit Not Allowed!");
-                                    logger.error(e.getMessage());
-                                    logger.error(e.getMessage(), e);
-                                    return Mono.empty();
-                                })
-                                .block();
-                    } catch (Exception ignored) {}
-                    return Mono.empty();
-                })
-                .subscribe();
-
-        guild.getChannels().ofType(VoiceChannel.class)
-                .subscribeOn(Schedulers.boundedElastic())
-                .flatMap(voiceChannel -> {
-                    Set<ExtendedPermissionOverwrite> overwrites = voiceChannel.getPermissionOverwrites();
-                    Set<PermissionOverwrite> newOverwrites = new HashSet<>(overwrites);
-                    newOverwrites.add(PermissionOverwrite.forRole(mutedRole.getId(),
-                            PermissionSet.none(),
-                            PermissionSet.of(
-                                    discord4j.rest.util.Permission.SPEAK,
-                                    discord4j.rest.util.Permission.PRIORITY_SPEAKER,
-                                    discord4j.rest.util.Permission.STREAM
-                            )));
-                    voiceChannel.edit(VoiceChannelEditSpec.builder()
-                            .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                            .build())
+                    category.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
+                                    PermissionSet.none(),
+                                    PermissionSet.of(
+                                            Permission.SEND_MESSAGES,
+                                            Permission.ADD_REACTIONS,
+                                            Permission.USE_PUBLIC_THREADS,
+                                            Permission.USE_PRIVATE_THREADS,
+                                            Permission.USE_SLASH_COMMANDS
+                                    )))
                             .onErrorResume(e -> {
-                                logger.info("------------------------------- VoiceChannel Edit Not Allowed!");
-                                logger.error(e.getMessage());
-                                logger.error(e.getMessage(), e);
+                                logger.error("----------------- Category Edit Prohibited");
                                 return Mono.empty();
                             })
                             .block();
                     return Mono.empty();
-                })
-                .blockLast();
+                }).subscribe();
+
+        guild.getChannels().ofType(TextChannel.class)
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(textChannel -> {
+                    textChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
+                            PermissionSet.none(),
+                            PermissionSet.of(
+                                    Permission.SEND_MESSAGES,
+                                    Permission.ADD_REACTIONS,
+                                    Permission.USE_PUBLIC_THREADS,
+                                    Permission.USE_PRIVATE_THREADS,
+                                    Permission.USE_SLASH_COMMANDS
+                            )))
+                            .onErrorResume(e -> {
+                                logger.error("------------------------- Text Channel Edit Prohibited");
+                                return Mono.empty();
+                            })
+                            .block();
+                    return Mono.empty();
+                        }).subscribe();
+
+        guild.getChannels().ofType(VoiceChannel.class)
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(voiceChannel -> {
+                    voiceChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
+                                    PermissionSet.none(),
+                                    PermissionSet.of(
+                                            Permission.SPEAK,
+                                            Permission.PRIORITY_SPEAKER,
+                                            Permission.STREAM
+                                    )))
+                            .onErrorResume(e -> {
+                                logger.error("------------------- Voice Channel Edit Prohibited");
+                                return Mono.empty();
+                            })
+                            .block();
+                    return Mono.empty();
+                }).subscribe();
 
     }
 

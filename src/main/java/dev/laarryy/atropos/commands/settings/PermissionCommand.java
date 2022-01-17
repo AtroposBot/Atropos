@@ -257,6 +257,8 @@ public class PermissionCommand implements Command {
                 DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
+            event.deferReply().block();
+
             Role role = event.getOption("list").get().getOption("role").get().getValue().get().asRole().block();
             long roleId = role.getId().asLong();
             String roleName = role.getName();
@@ -299,7 +301,7 @@ public class PermissionCommand implements Command {
                         .description(rolePermissionsInfo)
                         .build();
             }
-            event.reply().withEmbeds(embed).subscribe();
+            Notifier.replyDeferredInteraction(event, embed);
             AuditLogger.addCommandToDB(event, true);
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
@@ -318,6 +320,8 @@ public class PermissionCommand implements Command {
                 return Mono.empty();
             }
 
+            event.deferReply().block();
+
             ServerRolePermission serverRolePermission = ServerRolePermission.createIt("server_id", serverId, "permission_id", permissionToAddId, "role_id_snowflake", role.getId().asLong());
             serverRolePermission.save();
             serverRolePermission.refresh();
@@ -335,7 +339,7 @@ public class PermissionCommand implements Command {
                     .addField("Role", roleInfo, false)
                     .build();
 
-            event.reply().withEmbeds(embed).subscribe();
+            Notifier.replyDeferredInteraction(event, embed);
             AuditLogger.addCommandToDB(event, true);
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
@@ -352,6 +356,8 @@ public class PermissionCommand implements Command {
                 DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
+
+            event.deferReply().block();
 
             ServerRolePermission serverRolePermission = ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong());
             Permission perm = Permission.findFirst("id = ?", serverRolePermission.getPermissionId());
@@ -370,7 +376,7 @@ public class PermissionCommand implements Command {
                     .addField("Role", roleInfo, false)
                     .build();
 
-            event.reply().withEmbeds(embed).subscribe();
+            Notifier.replyDeferredInteraction(event, embed);
             AuditLogger.addCommandToDB(event, true);
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();

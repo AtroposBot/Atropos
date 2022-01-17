@@ -211,11 +211,6 @@ public class CaseCommand implements Command {
     private void deletePunishment(ChatInputInteractionEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
 
-        if (guild == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            return;
-        }
-
         if (event.getOption("delete").get().getOption("id").isEmpty()) {
             Notifier.notifyCommandUserOfError(event, "malformedInput");
             return;
@@ -241,12 +236,14 @@ public class CaseCommand implements Command {
             return;
         }
 
+        event.deferReply().block();
+
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getMessageDelete() + " Case #" + punishment.getPunishmentId() + " Deleted")
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).block();
+        Notifier.replyDeferredInteraction(event, embed);
 
         punishment.delete();
 
@@ -285,10 +282,7 @@ public class CaseCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.getInteractionResponse().editInitialResponse(
-                WebhookMessageEditRequest.builder()
-                        .addEmbed(resultEmbed.asRequest())
-                        .build()).block();
+        Notifier.replyDeferredInteraction(event, resultEmbed);
 
         AuditLogger.addCommandToDB(event, true);
         DatabaseLoader.closeConnectionIfOpen();
@@ -464,18 +458,13 @@ public class CaseCommand implements Command {
                     .build();
         }
 
-        event.getInteractionResponse().editInitialResponse(
-                WebhookMessageEditRequest.builder()
-                        .addEmbed(embed.asRequest())
-                        .build()).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
 
         AuditLogger.addCommandToDB(event, true);
         DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void searchPunishments(ChatInputInteractionEvent event) {
-
-        event.deferReply().block();
 
         long userIdSnowflake;
         if (event.getOption("search").get().getOption("user").isPresent()
@@ -503,7 +492,6 @@ public class CaseCommand implements Command {
 
         DatabaseLoader.openConnectionIfClosed();
 
-
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
 
         if (discordUser == null) {
@@ -521,6 +509,8 @@ public class CaseCommand implements Command {
             AuditLogger.addCommandToDB(event, false);
             return;
         }
+
+        event.deferReply().block();
 
         int serverId = discordServer.getServerId();
 
@@ -542,10 +532,8 @@ public class CaseCommand implements Command {
                 .build();
 
         AuditLogger.addCommandToDB(event, true);
-        event.getInteractionResponse().editInitialResponse(
-                WebhookMessageEditRequest.builder()
-                        .addEmbed(resultEmbed.asRequest())
-                        .build()).subscribe();
+
+        Notifier.replyDeferredInteraction(event, resultEmbed);
         DatabaseLoader.closeConnectionIfOpen();
     }
 
@@ -575,6 +563,8 @@ public class CaseCommand implements Command {
                 return;
             }
 
+            event.deferReply().block();
+
             EmbedCreateSpec spec = EmbedCreateSpec.builder()
                     .title("Punishment Updated")
                     .color(Color.ENDEAVOUR)
@@ -592,7 +582,7 @@ public class CaseCommand implements Command {
             }
             punishment.save();
             AuditLogger.addCommandToDB(event, true);
-            event.reply().withEmbeds(spec).subscribe();
+            Notifier.replyDeferredInteraction(event, spec);
         }
         DatabaseLoader.closeConnectionIfOpen();
     }

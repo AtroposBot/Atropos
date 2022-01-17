@@ -22,15 +22,33 @@ public final class Notifier {
     private Notifier() {}
     private final Logger logger = LogManager.getLogger(this);
 
-    public static void notifyPunisherForcebanComplete(ChatInputInteractionEvent event, String idInput) {
+    public static void replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
         event.getInteractionResponse().editInitialResponse(
-                        WebhookMessageEditRequest
-                                .builder()
-                                .addEmbed(forceBanCompleteEmbed(idInput).asRequest())
-                                .build()).block();
+                WebhookMessageEditRequest
+                        .builder()
+                        .addEmbed(embed.asRequest())
+                        .build()).subscribe();
+    }
+
+    private static void replyDeferredInteraction(ButtonInteractionEvent event, EmbedCreateSpec embed) {
+        event.getInteractionResponse().editInitialResponse(
+                WebhookMessageEditRequest
+                        .builder()
+                        .addEmbed(embed.asRequest())
+                        .build()).subscribe();
+    }
+
+    public static void notifyPunisherForcebanComplete(ChatInputInteractionEvent event, String idInput) {
+        replyDeferredInteraction(event, forceBanCompleteEmbed(idInput));
     }
 
     public static void notifyPunisher(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
+
+        if (punishment.getPunishmentType().equals("note")) {
+            event.deferReply().withEphemeral(true).block();
+        } else {
+            event.deferReply().block();
+        }
 
         String punishmentEnd;
         if (punishment.getEndDate() != null) {
@@ -46,11 +64,11 @@ public final class Notifier {
         String caseId = String.valueOf(punishment.getPunishmentId());
 
         switch (punishment.getPunishmentType()) {
-            case "warn" -> event.reply().withEmbeds(warnEmbed(userName, punishmentReason, caseId)).subscribe();
-            case "kick" -> event.reply().withEmbeds(kickEmbed(userName, punishmentReason, caseId)).subscribe();
-            case "ban" -> event.reply().withEmbeds(banEmbed(userName, punishmentEnd, punishmentReason, caseId)).subscribe();
-            case "mute" -> event.reply().withEmbeds(muteEmbed(userName, punishmentEnd, punishmentReason, caseId)).subscribe();
-            case "note" -> event.reply().withEmbeds(caseEmbed(userName, punishmentReason, caseId)).withEphemeral(true).subscribe();
+            case "warn" -> replyDeferredInteraction(event, warnEmbed(userName, punishmentReason, caseId));
+            case "kick" -> replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
+            case "ban" -> replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
+            case "mute" -> replyDeferredInteraction(event, muteEmbed(userName, punishmentEnd, punishmentReason, caseId));
+            case "note" -> replyDeferredInteraction(event, noteEmbed(userName, punishmentReason, caseId));
         }
     }
 
@@ -71,7 +89,7 @@ public final class Notifier {
 
         String caseId = String.valueOf(punishment.getPunishmentId());
 
-        event.reply().withEmbeds(banEmbed(userName, punishmentEnd, punishmentReason, caseId)).subscribe();
+        replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
         DatabaseLoader.closeConnectionIfOpen();
     }
 
@@ -92,7 +110,7 @@ public final class Notifier {
 
         String caseId = String.valueOf(punishment.getPunishmentId());
 
-        event.reply().withEmbeds(kickEmbed(userName, punishmentReason, caseId)).subscribe();
+        replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
         DatabaseLoader.closeConnectionIfOpen();
     }
 
@@ -142,15 +160,15 @@ public final class Notifier {
     }
 
     public static void notifyModOfUnban(ChatInputInteractionEvent event, String reason, long userId) {
-        event.reply().withEmbeds(unbanEmbed(userId, reason)).subscribe();
+        replyDeferredInteraction(event, unbanEmbed(userId, reason));
     }
 
     public static void notifyModOfUnmute(ChatInputInteractionEvent event, String username, String reason) {
-        event.reply().withEmbeds(unmuteEmbed(username, reason)).subscribe();
+        replyDeferredInteraction(event, unmuteEmbed(username, reason));
     }
 
     public static void notifyModOfUnmute(ButtonInteractionEvent event, String username, String reason) {
-        event.reply().withEmbeds(unmuteEmbed(username, reason)).subscribe();
+        replyDeferredInteraction(event, unmuteEmbed(username, reason));
     }
 
     public static void notifyCommandUserOfError(ChatInputInteractionEvent event, String errorType) {
@@ -168,11 +186,11 @@ public final class Notifier {
             case "alreadyApplied" -> event.reply().withEmbeds(punishmentAlreadyAppliedEmbed()).withEphemeral(true).subscribe();
             case "404" -> event.reply().withEmbeds(fourOhFourEmbed()).withEphemeral(true).subscribe();
             case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
-            case "noResults" -> event.reply().withEmbeds(noResultsEmbed()).subscribe();
+            case "noResults" -> replyDeferredInteraction(event, noResultsEmbed());
             case "inputTooLong" -> event.reply().withEmbeds(inputTooLongEmbed()).withEphemeral(true).subscribe();
             case "tooManyEntries" -> event.reply().withEmbeds(tooManyEntriesEmbed()).withEphemeral(true).subscribe();
             case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).withEphemeral(true).subscribe();
-            case "invalidChannel" -> event.reply().withEmbeds(invalidChannelEmbed()).subscribe();
+            case "invalidChannel" -> replyDeferredInteraction(event, invalidChannelEmbed());
             case "durationTooLong" -> event.reply().withEmbeds(durationTooLongEmbed()).withEphemeral(true).subscribe();
             default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
         }
@@ -193,11 +211,11 @@ public final class Notifier {
             case "alreadyApplied" -> event.reply().withEmbeds(punishmentAlreadyAppliedEmbed()).withEphemeral(true).subscribe();
             case "404" -> event.reply().withEmbeds(fourOhFourEmbed()).withEphemeral(true).subscribe();
             case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
-            case "noResults" -> event.reply().withEmbeds(noResultsEmbed()).subscribe();
+            case "noResults" -> replyDeferredInteraction(event, noResultsEmbed());
             case "inputTooLong" -> event.reply().withEmbeds(inputTooLongEmbed()).withEphemeral(true).subscribe();
             case "tooManyEntries" -> event.reply().withEmbeds(tooManyEntriesEmbed()).withEphemeral(true).subscribe();
             case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).withEphemeral(true).subscribe();
-            case "invalidChannel" -> event.reply().withEmbeds(invalidChannelEmbed()).subscribe();
+            case "invalidChannel" -> replyDeferredInteraction(event, invalidChannelEmbed());
             case "durationTooLong" -> event.reply().withEmbeds(durationTooLongEmbed()).withEphemeral(true).subscribe();
             default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
         }
@@ -214,7 +232,7 @@ public final class Notifier {
                 .build();
     }
 
-    private static EmbedCreateSpec caseEmbed(String userName, String reason, String caseId) {
+    private static EmbedCreateSpec noteEmbed(String userName, String reason, String caseId) {
         return EmbedCreateSpec.builder()
                 .title("Logged Note for User: " + userName)
                 .description("Successfully stored a record of this note.")

@@ -83,11 +83,6 @@ public class InfoCommand implements Command {
             return Mono.empty();
         }
 
-        if (event.getInteraction().getGuildId().isEmpty() || event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            return Mono.empty();
-        }
-
         if (event.getOption("server").isPresent()) {
             sendServerInfo(event);
             return Mono.empty();
@@ -158,10 +153,7 @@ public class InfoCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.getInteractionResponse().editInitialResponse(
-                WebhookMessageEditRequest.builder()
-                        .addEmbed(embed.asRequest())
-                        .build()).block();
+        Notifier.replyDeferredInteraction(event, embed);
 
         DatabaseLoader.closeConnectionIfOpen();
     }
@@ -256,6 +248,8 @@ public class InfoCommand implements Command {
 
     private void sendUserInfoEmbed(ChatInputInteractionEvent event, User user, StringBuilder field1Content) {
 
+        event.deferReply().block();
+
         String username = user.getUsername() + "#" + user.getDiscriminator();
         String eventUser = event.getInteraction().getUser().getUsername() + "#" + event.getInteraction().getUser().getDiscriminator();
 
@@ -270,10 +264,8 @@ public class InfoCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.getInteractionResponse().editInitialResponse(
-                WebhookMessageEditRequest.builder()
-                        .addEmbed(embed.asRequest())
-                        .build()).block();
+        Notifier.replyDeferredInteraction(event, embed);
+
     }
 
     private void sendServerInfo(ChatInputInteractionEvent event) {
@@ -415,10 +407,7 @@ public class InfoCommand implements Command {
                 .footer("Requested by " + username, requester.getAvatarUrl())
                 .build();
 
-        event.getInteractionResponse().editInitialResponse(
-                WebhookMessageEditRequest.builder()
-                        .addEmbed(embedCreateSpec.asRequest())
-                        .build()).block();
+        Notifier.replyDeferredInteraction(event, embedCreateSpec);
 
         DatabaseLoader.closeConnectionIfOpen();
     }

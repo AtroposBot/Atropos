@@ -51,6 +51,8 @@ public class WipeCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
+        event.deferReply().withEphemeral(true).block();
+
         if (event.getOption("guild").isPresent()) {
             Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::wipeGuild);
         }
@@ -109,7 +111,7 @@ public class WipeCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).withEphemeral(true).block();
+        Notifier.replyDeferredInteraction(event, embed);
 
         discordUser.delete();
         DatabaseLoader.closeConnectionIfOpen();

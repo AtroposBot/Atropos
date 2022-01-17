@@ -146,6 +146,8 @@ public class AuditCommand implements Command {
             return;
         }
 
+        event.deferReply().block();
+
         String succeeded;
         if (commandUse.getSucceeded()) {
             succeeded = "Command succeeded.";
@@ -167,12 +169,15 @@ public class AuditCommand implements Command {
                 .addField("Result", succeeded, false)
                 .build();
 
-        event.reply().withEmbeds(embed).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
 
         DatabaseLoader.closeConnectionIfOpen();
     }
 
     private void recentAudits(ChatInputInteractionEvent event) {
+
+        event.deferReply().block();
+
         DatabaseLoader.openConnectionIfClosed();
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
@@ -190,7 +195,7 @@ public class AuditCommand implements Command {
                     .footer("Run some commands and try again!", "")
                     .timestamp(Instant.now())
                     .build();
-            event.reply().withEmbeds(resultEmbed).subscribe();
+            Notifier.replyDeferredInteraction(event, resultEmbed);
             AuditLogger.addCommandToDB(event, true);
             DatabaseLoader.closeConnectionIfOpen();
             return;
@@ -205,7 +210,7 @@ public class AuditCommand implements Command {
                 .footer("For detailed information, run /audit id <id>", "")
                 .timestamp(Instant.now())
                 .build();
-        event.reply().withEmbeds(resultEmbed).subscribe();
+        Notifier.replyDeferredInteraction(event, resultEmbed);
         AuditLogger.addCommandToDB(event, true);
     }
 
@@ -248,6 +253,8 @@ public class AuditCommand implements Command {
             return;
         }
 
+        event.deferReply().block();
+
         int userId = discordUser.getUserId();
         int serverId = discordServer.getServerId();
 
@@ -273,7 +280,7 @@ public class AuditCommand implements Command {
                 .footer("For detailed information, run /audit id <id>", "")
                 .timestamp(Instant.now())
                 .build();
-        event.reply().withEmbeds(resultEmbed).subscribe();
+        Notifier.replyDeferredInteraction(event, resultEmbed);
         AuditLogger.addCommandToDB(event, true);
     }
 

@@ -86,6 +86,8 @@ public class BlacklistSettings {
             return;
         }
 
+        event.deferReply().block();
+
         long blacklistId = blacklist.getBlacklistId();
         String type = blacklist.getType();
         String trigger = blacklist.getTrigger();
@@ -99,10 +101,13 @@ public class BlacklistSettings {
                 .footer("To remove this entry, run /blacklist remove " + blacklistId, "")
                 .build();
 
-        event.reply().withEmbeds(embed).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
     }
 
     private void listBlacklistEntries(ChatInputInteractionEvent event) {
+
+        event.deferReply().block();
+
         Guild guild = event.getInteraction().getGuild().block();
         long guildId = guild.getId().asLong();
 
@@ -133,7 +138,7 @@ public class BlacklistSettings {
                     .build();
         }
 
-        event.reply().withEmbeds(embed).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
     }
 
     private String getBlacklistListInfo(List<Blacklist> serverBlacklistList) {
@@ -187,6 +192,8 @@ public class BlacklistSettings {
             return;
         }
 
+        event.deferReply().block();
+
         LoadingCache<Long, List<Blacklist>> cache = BlacklistCacheManager.getManager().getBlacklistCache();
         serverBlacklist.delete();
         cache.invalidate(guild.getId().asLong());
@@ -199,7 +206,7 @@ public class BlacklistSettings {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
     }
 
     private void addBlacklistEntry(ChatInputInteractionEvent event) {
@@ -254,6 +261,8 @@ public class BlacklistSettings {
             return;
         }
 
+        event.deferReply().block();
+
         ServerBlacklist blacklist = ServerBlacklist.create("server_id", serverId, "type", type, "regex_trigger", regexTrigger, "action", action);
         blacklist.save();
         blacklist.refresh();
@@ -271,6 +280,6 @@ public class BlacklistSettings {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
     }
 }

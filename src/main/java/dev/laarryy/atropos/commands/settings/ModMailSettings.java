@@ -22,6 +22,7 @@ public class ModMailSettings {
     private final AddServerToDB addServerToDB = new AddServerToDB();
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
+        event.deferReply().block();
 
         Guild guild = event.getInteraction().getGuild().block();
         TextChannel messageChannel = event.getInteraction().getChannel().ofType(TextChannel.class).block();
@@ -38,7 +39,7 @@ public class ModMailSettings {
                     .description("Set ModMail destination channel!")
                     .timestamp(Instant.now())
                     .build();
-            event.reply().withEmbeds(embed).subscribe();
+            Notifier.replyDeferredInteraction(event, embed);
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
@@ -52,7 +53,7 @@ public class ModMailSettings {
                     .description("Unset ModMail destination channel!")
                     .timestamp(Instant.now())
                     .build();
-            event.reply().withEmbeds(embed).subscribe();
+            Notifier.replyDeferredInteraction(event, embed);
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }

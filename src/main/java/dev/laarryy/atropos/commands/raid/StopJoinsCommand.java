@@ -9,6 +9,7 @@ import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AuditLogger;
 import dev.laarryy.atropos.utils.CommandChecks;
+import dev.laarryy.atropos.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
@@ -57,6 +58,8 @@ public class StopJoinsCommand implements Command {
         }
         Guild guild = event.getInteraction().getGuild().block();
 
+        event.deferReply().block();
+
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
 
@@ -70,7 +73,7 @@ public class StopJoinsCommand implements Command {
                         .timestamp(Instant.now())
                         .build();
 
-                event.reply().withEmbeds(embed).subscribe();
+                Notifier.replyDeferredInteraction(event, embed);
                 DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
@@ -90,7 +93,7 @@ public class StopJoinsCommand implements Command {
                     .build();
 
             AuditLogger.addCommandToDB(event, true);
-            event.reply().withEmbeds(embed).subscribe();
+            Notifier.replyDeferredInteraction(event, embed);
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
@@ -104,7 +107,7 @@ public class StopJoinsCommand implements Command {
                         .timestamp(Instant.now())
                         .build();
 
-                event.reply().withEmbeds(embed).subscribe();
+                Notifier.replyDeferredInteraction(event, embed);
                 DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
@@ -121,7 +124,7 @@ public class StopJoinsCommand implements Command {
                     .build();
 
             AuditLogger.addCommandToDB(event, true);
-            event.reply().withEmbeds(embed).subscribe();
+            Notifier.replyDeferredInteraction(event, embed);
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }

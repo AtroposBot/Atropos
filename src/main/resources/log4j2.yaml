@@ -1,5 +1,5 @@
 Configuration:
-  status: warn
+  status: info
   name: AtroposLogger
   packages: "org.javalite.logging"
   properties:
@@ -31,33 +31,36 @@ Configuration:
 
   Loggers:
     Root:
-      level: debug
+      level: info
       AppenderRef:
         ref: Console
-    Logger:
-      - name: dev.laarryy.atropos
-        level: debug
+    logger:
+      -
+        name: dev.laarryy.atropos
+        level: info
+        additivity: false
         AppenderRef:
+          - ref: Console
           - ref: File
-          - ref: RollingFile
-            level: info
-      - name: org.javalite
+      -
+        name: discord4j.rest
+        level: debug
+        additivity: false
+        AppenderRef:
+          ref: Console
+      -
+        name: discord4j.rest.http.JacksonWriterStrategy
+        level: trace
+        additivity: false
+        AppenderRef:
+            ref: Console
+      -
+        name: org.javalite
         level: warn
         AppenderRef:
-          - ref: Console
-            level: warn
-      - name: com.zaxxer
+            ref: Console
+      -
+        name: com.zaxxer
         level: warn
         AppenderRef:
-          - ref: Console
-            level: warn
-      - name: reactor.util
-        level: warn
-        AppenderRef:
-          - ref: Console
-            level: warn
-      - name: discord4j.rest
-        level: error
-        AppenderRef:
-          - ref: Console
-            level: error
+            ref: Console

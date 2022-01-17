@@ -118,6 +118,8 @@ public class RemoveSinceCommand implements Command {
             return Mono.empty();
         }
 
+        event.deferReply().block();
+
         StringBuilder sb = new StringBuilder();
         sb.append("```\n");
 
@@ -143,7 +145,7 @@ public class RemoveSinceCommand implements Command {
                                 .timestamp(Instant.now())
                                 .build();
 
-                        event.reply().withEmbeds(embed).block();
+                        Notifier.replyDeferredInteraction(event, embed);
                     });
         }
 
@@ -169,7 +171,7 @@ public class RemoveSinceCommand implements Command {
                                 .timestamp(Instant.now())
                                 .build();
 
-                        event.reply().withEmbeds(embed).block();
+                        Notifier.replyDeferredInteraction(event, embed);
                     });
         }
         DatabaseLoader.closeConnectionIfOpen();

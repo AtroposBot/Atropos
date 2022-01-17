@@ -61,6 +61,8 @@ public class ModMailCommand implements Command {
             return Mono.empty();
         }
 
+        event.deferReply().withEphemeral(true).block();
+
         String input = event.getOption("message").get().getValue().get().asString();
 
         if (properties.getModMailChannelSnowflake() != null) {
@@ -90,15 +92,15 @@ public class ModMailCommand implements Command {
                     .timestamp(Instant.now())
                     .build();
 
-            event.reply().withEmbeds(embed2).withEphemeral(true).block();
+            Notifier.replyDeferredInteraction(event, embed2);
         } else {
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Unable To Send ModMail")
                     .description("This guild does not yet have a ModMail channel set up - please contact its staff directly.")
                     .color(Color.JAZZBERRY_JAM)
-                    .footer("And maybe mention this to em, eh?", event.getClient().getSelf().block().getAvatarUrl())
+                    .footer("And maybe mention this to them, eh?", event.getClient().getSelf().block().getAvatarUrl())
                     .build();
-            event.reply().withEmbeds(embed).withEphemeral(true).block();
+            Notifier.replyDeferredInteraction(event, embed);
         }
 
         DatabaseLoader.closeConnectionIfOpen();

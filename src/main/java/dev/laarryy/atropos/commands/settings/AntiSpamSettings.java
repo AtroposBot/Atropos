@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.atropos.managers.PropertiesCacheManager;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
+import dev.laarryy.atropos.utils.CommandChecks;
 import dev.laarryy.atropos.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.entity.Guild;
@@ -106,6 +107,8 @@ public class AntiSpamSettings {
             discordServerProperties.setDehoist(dehoist);
         }
 
+        event.deferReply().block();
+
         discordServerProperties.save();
         discordServerProperties.refresh();
 
@@ -132,10 +135,12 @@ public class AntiSpamSettings {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).block();
+        Notifier.replyDeferredInteraction(event, embed);
     }
 
     private void antiSpamInfo(ChatInputInteractionEvent event) {
+        event.deferReply().block();
+
         DatabaseLoader.openConnectionIfClosed();
         Guild guild = event.getInteraction().getGuild().block();
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
@@ -159,6 +164,6 @@ public class AntiSpamSettings {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).block();
+        Notifier.replyDeferredInteraction(event, embed);
     }
 }

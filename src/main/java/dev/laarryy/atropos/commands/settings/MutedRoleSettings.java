@@ -50,6 +50,8 @@ public class MutedRoleSettings {
                 return Mono.empty();
             }
 
+            event.deferReply().block();
+
             Long mutedRoleId = mutedRole.getId().asLong();
 
             discordServerProperties.setMutedRoleSnowflake(mutedRoleId);
@@ -62,12 +64,15 @@ public class MutedRoleSettings {
                     .description("Set muted role successfully!")
                     .timestamp(Instant.now())
                     .build();
-            event.reply().withEmbeds(embed).subscribe();
+            Notifier.replyDeferredInteraction(event, embed);
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         }
 
         if (event.getOption("mutedrole").get().getOption("info").isPresent()) {
+
+            event.deferReply().block();
+
             DatabaseLoader.openConnectionIfClosed();
             Long mutedRoleId = discordServerProperties.getMutedRoleSnowflake();
 
@@ -79,7 +84,7 @@ public class MutedRoleSettings {
                         .footer("Run /settings mutedrole set <role> to set a role as the muted role", "")
                         .timestamp(Instant.now())
                         .build();
-                event.reply().withEmbeds(embed).subscribe();
+                Notifier.replyDeferredInteraction(event, embed);
                 DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
@@ -94,7 +99,7 @@ public class MutedRoleSettings {
                     .footer("Run /settings mutedrole set <role> to set a role as the muted role", "")
                     .timestamp(Instant.now())
                     .build();
-            event.reply().withEmbeds(embed).subscribe();
+            Notifier.replyDeferredInteraction(event, embed);
         }
 
         Notifier.notifyCommandUserOfError(event, "malformedInput");

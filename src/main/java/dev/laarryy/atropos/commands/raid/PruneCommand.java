@@ -66,6 +66,8 @@ public class PruneCommand implements Command {
             return Mono.empty();
         }
 
+        event.deferReply().block();
+
         TextChannel channel = event.getInteraction().getChannel().ofType(TextChannel.class).block();
         channel.getMessagesBefore(Snowflake.of(Instant.now()))
                 .take(number)
@@ -81,7 +83,7 @@ public class PruneCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
 
         AuditLogger.addCommandToDB(event, true);
 

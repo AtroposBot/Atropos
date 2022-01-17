@@ -57,11 +57,13 @@ import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
+import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 public final class LogExecutor {
@@ -530,17 +532,47 @@ public final class LogExecutor {
         }
 
         List<Message> messageList = event.getMessages().stream().toList();
+        List<Snowflake> snowflakes = event.getMessageIds().stream().toList();
         String messages;
-        if (messageList.isEmpty()) {
+        DatabaseLoader.openConnectionIfClosed();
+        if (messageList.isEmpty() && snowflakes.isEmpty()) {
             messages = "Unknown";
         } else {
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.append("```\n");
-            for (Message message : messageList) {
-                if (message.getContent().length() > 17) {
-                    stringBuilder.append(message.getId().asLong()).append(" | ").append(message.getContent(), 0, 17).append("...\n");
-                } else {
-                    stringBuilder.append(message.getId().asLong()).append(" | ").append(message.getContent()).append("\n");
+            if (!messageList.isEmpty()) {
+                for (Message message : messageList) {
+                    if (!message.getContent().isEmpty()) {
+                        if (message.getContent().length() > 17) {
+                            stringBuilder.append(message.getId().asLong()).append(" | ").append(message.getContent(), 0, 17).append("...\n");
+                        } else {
+                            stringBuilder.append(message.getId().asLong()).append(" | ").append(message.getContent()).append("\n");
+                        }
+                    } else {
+                        ServerMessage serverMessage = ServerMessage.findFirst("message_id_snowflake = ?", message.getId().asLong());
+                        if (serverMessage != null) {
+                            if (serverMessage.getContent().length() > 17) {
+                                stringBuilder.append(serverMessage.getMessageSnowflake()).append(" | ").append(serverMessage.getContent(), 0, 17).append("...\n");
+                            } else {
+                                stringBuilder.append(serverMessage.getMessageSnowflake()).append(" | ").append(serverMessage.getContent()).append("\n");
+                            }
+                        }
+                    }
+                }
+            } else {
+                List<ServerMessage> serverMessages = new ArrayList<>();
+                for (Snowflake snowflake : snowflakes) {
+                    ServerMessage message = ServerMessage.findFirst("message_id_snowflake = ?", snowflake.asLong());
+                    serverMessages.add(message);
+                }
+                for (ServerMessage serverMessage : serverMessages) {
+                    if (serverMessage != null) {
+                        if (serverMessage.getContent().length() > 17) {
+                            stringBuilder.append(serverMessage.getMessageSnowflake()).append(" | ").append(serverMessage.getContent(), 0, 17).append("...\n");
+                        } else {
+                            stringBuilder.append(serverMessage.getMessageSnowflake()).append(" | ").append(serverMessage.getContent()).append("\n");
+                        }
+                    }
                 }
             }
             stringBuilder.append("```");
@@ -570,6 +602,7 @@ public final class LogExecutor {
         }
 
         logChannel.createMessage(embed).block();
+        DatabaseLoader.closeConnectionIfOpen();
     }
 
     public static void logMemberJoin(MemberJoinEvent event, TextChannel logChannel) {

@@ -96,6 +96,9 @@ public class LogSettings {
                 return;
             }
         }
+
+        event.deferReply().block();
+
         serverProperties.save();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -106,7 +109,7 @@ public class LogSettings {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
         AuditLogger.addCommandToDB(event, true);
     }
 
@@ -168,6 +171,8 @@ public class LogSettings {
         }
         serverProperties.save();
 
+        event.deferReply().block();
+
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Set Log Channel Successfully")
                 .color(Color.ENDEAVOUR)
@@ -176,13 +181,15 @@ public class LogSettings {
                 .timestamp(Instant.now())
                 .build();
 
-        event.reply().withEmbeds(embed).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
         AuditLogger.addCommandToDB(event, true);
 
     }
 
     private void logSettingsInfo(ChatInputInteractionEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
+
+        event.deferReply().block();
 
         DatabaseLoader.openConnectionIfClosed();
         LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
@@ -229,7 +236,7 @@ public class LogSettings {
                 .addField("\u200B", settings, false)
                 .build();
 
-        event.reply().withEmbeds(embed).subscribe();
+        Notifier.replyDeferredInteraction(event, embed);
 
     }
 }
