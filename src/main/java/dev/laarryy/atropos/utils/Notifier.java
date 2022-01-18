@@ -327,6 +327,10 @@ public final class Notifier {
                                 + Ban Members
                                 --- I need these to kick and ban
                                 + Send Messages
+                                + Use Public Threads
+                                + Use Private Threads
+                                + Use Application Commands
+                                --- I need these so that I can deny them to muted users - that's how discord's permission system works.
                                 + Use External Emoji
                                 --- I need these to log and interact with mods
                                 + Manage Messages

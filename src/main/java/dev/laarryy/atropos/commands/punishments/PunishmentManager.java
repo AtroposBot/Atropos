@@ -495,7 +495,6 @@ public class PunishmentManager {
                                     PermissionSet.none(),
                                     PermissionSet.of(
                                             Permission.SPEAK,
-                                            Permission.PRIORITY_SPEAKER,
                                             Permission.STREAM
                                     )))
                             .onErrorResume(e -> {

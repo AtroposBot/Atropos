@@ -248,8 +248,6 @@ public class InfoCommand implements Command {
 
     private void sendUserInfoEmbed(ChatInputInteractionEvent event, User user, StringBuilder field1Content) {
 
-        event.deferReply().block();
-
         String username = user.getUsername() + "#" + user.getDiscriminator();
         String eventUser = event.getInteraction().getUser().getUsername() + "#" + event.getInteraction().getUser().getDiscriminator();
 

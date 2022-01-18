@@ -107,6 +107,8 @@ public class ButtonUseListener {
             return;
         }
 
+        event.deferReply().block();
+
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
         Punishment initialMute = getPunishmentFromId(punishmentId);
 
@@ -161,6 +163,8 @@ public class ButtonUseListener {
             AuditLogger.addCommandToDB(event, auditString, false);
             return;
         }
+
+        event.deferReply().block();
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
         Punishment initialMute = getPunishmentFromId(punishmentId);
@@ -237,6 +241,8 @@ public class ButtonUseListener {
             DatabaseLoader.closeConnectionIfOpen();
             return;
         }
+
+        event.deferReply().block();
 
         if (mutedRole != null && mutedUser.getRoles().any(role -> role.equals(mutedRole)).block()) {
             mutedUser.removeRole(Snowflake.of(mutedRoleId), reason).block();
