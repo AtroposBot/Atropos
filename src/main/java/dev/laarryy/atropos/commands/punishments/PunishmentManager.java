@@ -191,11 +191,20 @@ public class PunishmentManager {
         Member punishedMember;
         try {
             punishedMember = punishedUser.asMember(guild.getId()).block();
-            if (!checkIfPunisherHasHighestRole(member, punishedMember, guild, event)) {
+        } catch (Exception e) {
+            punishedMember = null;
+            if (request.name().equals("kick") || request.name().equals("mute") || request.name().equals("warn")) {
+                Notifier.notifyCommandUserOfError(event, "noMember");
+                AuditLogger.addCommandToDB(event, false);
                 DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
             }
-        } catch (Exception ignored) {}
+        }
+
+        if (!checkIfPunisherHasHighestRole(member, punishedMember, guild, event)) {
+            DatabaseLoader.closeConnectionIfOpen();
+            return Mono.empty();
+        }
 
         // Get the DB objects for both the punishing user and the punished.
 
@@ -472,21 +481,21 @@ public class PunishmentManager {
                 .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(textChannel -> {
                     textChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
-                            PermissionSet.none(),
-                            PermissionSet.of(
-                                    Permission.SEND_MESSAGES,
-                                    Permission.ADD_REACTIONS,
-                                    Permission.USE_PUBLIC_THREADS,
-                                    Permission.USE_PRIVATE_THREADS,
-                                    Permission.USE_SLASH_COMMANDS
-                            )))
+                                    PermissionSet.none(),
+                                    PermissionSet.of(
+                                            Permission.SEND_MESSAGES,
+                                            Permission.ADD_REACTIONS,
+                                            Permission.USE_PUBLIC_THREADS,
+                                            Permission.USE_PRIVATE_THREADS,
+                                            Permission.USE_SLASH_COMMANDS
+                                    )))
                             .onErrorResume(e -> {
                                 logger.error("------------------------- Text Channel Edit Prohibited");
                                 return Mono.empty();
                             })
                             .block();
                     return Mono.empty();
-                        }).subscribe();
+                }).subscribe();
 
         guild.getChannels().ofType(VoiceChannel.class)
                 .subscribeOn(Schedulers.boundedElastic())

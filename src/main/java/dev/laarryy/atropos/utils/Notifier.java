@@ -178,6 +178,7 @@ public final class Notifier {
             case "botRoleTooLow" -> event.reply().withEmbeds(botRoleTooLow()).withEphemeral(true).subscribe();
             case "nullServer" -> event.reply().withEmbeds(nullServerEmbed()).withEphemeral(true).subscribe();
             case "noUser" -> event.reply().withEmbeds(noUserEmbed()).withEphemeral(true).subscribe();
+            case "noMember" -> event.reply().withEmbeds(noMemberEmbed()).withEphemeral(true).subscribe();
             case "invalidDuration" -> event.reply().withEmbeds(invalidDurationEmbed()).withEphemeral(true).subscribe();
             case "alreadyAssigned" -> event.reply().withEmbeds(alreadyAssignedEmbed()).withEphemeral(true).subscribe();
             case "alreadyBlacklisted" -> event.reply().withEmbeds(alreadyBlacklistedEmbed()).withEphemeral(true).subscribe();
@@ -508,6 +509,17 @@ public final class Notifier {
                 .description("Action aborted due to lack of user.")
                 .addField("Detail", "In order to take this action, the bot needs to know which user to " +
                         "act upon. For some reason, that user cannot be found.", true)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec noMemberEmbed() {
+        return EmbedCreateSpec.builder()
+                .color(Color.RUBY)
+                .title("Error: No Member")
+                .description("Action aborted due to lack of member.")
+                .addField("Detail", "In order to take this action, the bot needs to know which user to " +
+                        "act upon, and the user needs to be a member of this guild. For some reason, that member cannot be found.", true)
                 .timestamp(Instant.now())
                 .build();
     }
