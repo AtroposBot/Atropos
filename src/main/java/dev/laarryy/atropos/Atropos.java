@@ -23,7 +23,9 @@ import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.units.qual.A;
 import reactor.blockhound.BlockHound;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.ReactorBlockHoundIntegration;
 
@@ -77,31 +79,34 @@ public class Atropos {
         Mono<Void> commandRegistration = commandManager.registerCommands(client);
 
         ListenerManager listenerManager = new ListenerManager();
-        listenerManager.registerListeners(client);
+        Mono<Void> listenerRegistration = listenerManager.registerListeners(client);
 
         PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
-        ScheduledTaskDoer scheduledTaskDoer = new ScheduledTaskDoer(client);
-        AddServerToDB addServerToDB = new AddServerToDB();
+        // TODO: Make everything below this reactive
 
+        Mono<Void> scheduledTaskDoer = new ScheduledTaskDoer().startTasks(client);
+
+
+        Mono<Void> addServersToDB = Flux.from(client.getGuilds())
+                .filter(guild -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) == null)
+                .flatMap(guild -> {
+                    AddServerToDB addServerToDB1 = new AddServerToDB();
+                    return addServerToDB1.addServerToDatabase(guild);
+                })
+                .then();
         // Register all guilds and users in them to database
 
         DatabaseLoader.openConnectionIfClosed();
 
-        List<Guild> unregisteredGuilds = client.getGuilds()
-                .filter(guild -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) == null)
-                .collectList().block();
-
-        for (Guild guild : unregisteredGuilds) {
-            logger.info("Registering + " + guild.getId().asLong());
-            addServerToDB.addServerToDatabase(guild);
-        }
-
         Mono.when(
                 ready,
                 commandRegistration,
+                listenerRegistration,
+                scheduledTaskDoer,
+                addServersToDB,
                 client.onDisconnect()
-                ).block();
+        ).block();
 
     }
 }

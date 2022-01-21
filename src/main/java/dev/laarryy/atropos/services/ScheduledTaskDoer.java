@@ -16,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
@@ -27,7 +28,7 @@ public class ScheduledTaskDoer {
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
     GatewayDiscordClient client;
 
-    public ScheduledTaskDoer(GatewayDiscordClient client) {
+    public Mono<Void> startTasks(GatewayDiscordClient client) {
         if (client != null) {
             this.client = client;
         } else {
@@ -35,14 +36,20 @@ public class ScheduledTaskDoer {
         }
 
         DatabaseLoader.openConnectionIfClosed();
-        Flux.interval(Duration.ofMinutes(1))
-                .doOnNext(this::checkPunishmentEnding)
-                .subscribe();
 
-        Flux.interval(Duration.ofDays(1))
+        Mono<Void> startInterval1 = Flux.interval(Duration.ofMinutes(1))
+                .doOnNext(this::checkPunishmentEnding)
+                .then();
+
+        Mono<Void> startInterval2 = Flux.interval(Duration.ofDays(1))
                 .doFirst(() -> wipeOldData(0L))
                 .doOnNext(this::wipeOldData)
-                .subscribe();
+                .then();
+
+        return Mono.when(
+                        startInterval1,
+                        startInterval2)
+                .then();
     }
 
     private void wipeOldData(Long l) {

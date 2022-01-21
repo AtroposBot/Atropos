@@ -8,6 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.reflections.Reflections;
 import org.reflections.scanners.MethodAnnotationsScanner;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -19,50 +20,59 @@ import java.util.Set;
 public class ListenerManager {
     private final Logger logger = LogManager.getLogger(this);
 
-    public void registerListeners(GatewayDiscordClient client) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    public Mono<Void> registerListeners(GatewayDiscordClient client) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         // Register event listeners
         Reflections reflections2 = new Reflections("dev.laarryy.atropos.listeners",
                 new MethodAnnotationsScanner());
-        Set<Method> listenersToRegister = reflections2.getMethodsAnnotatedWith(EventListener.class);
+        Flux<Method> listenersToRegister = Flux.fromIterable(reflections2.getMethodsAnnotatedWith(EventListener.class));
 
-        for (Method registerableListener : listenersToRegister) {
-            Object listener;
-            if (registerableListener.getDeclaringClass().isInstance(LoggingListener.class)) {
-                listener = LoggingListenerManager.getManager().getLoggingListener();
-            } else {
-                listener = registerableListener.getDeclaringClass().getDeclaredConstructor().newInstance();
-            }
-            Parameter[] params = registerableListener.getParameters();
-
-            if (params.length == 0) {
-                logger.error("You have a listener with no parameters!");
-                continue;
-            }
-
-            Class<? extends Event> type = (Class<? extends Event>) params[0].getType();
-
-            client.getEventDispatcher().on(type)
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .flatMap(event -> {
+        Mono<Void> registerListeners = Flux.from(listenersToRegister)
+                .mapNotNull(listenerMethod -> {
+                    Object listener;
+                    if (listenerMethod.getDeclaringClass().isInstance(LoggingListener.class)) {
+                        listener = LoggingListenerManager.getManager().getLoggingListener();
+                    } else {
                         try {
-                            Mono<Void> voidMono = Mono.from((Mono<Void>) registerableListener.invoke(listener, event))
-                                    .onErrorResume(e -> {
-                                        logger.error(e.getMessage());
-                                        logger.error("Error in Listener: ", e);
-                                        return Mono.empty();
-                                    });
+                            listener = listenerMethod.getDeclaringClass().getDeclaredConstructor().newInstance();
+                        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                            e.printStackTrace();
+                            return null;
+                        }
+                    }
+
+                    Parameter[] params = listenerMethod.getParameters();
+
+                    if (params.length == 0) {
+                        logger.error("You have a listener with no parameters!");
+                        return null;
+                    }
+
+                    Class<? extends Event> type = (Class<? extends Event>) params[0].getType();
+
+                    return client.getEventDispatcher().on(type)
+                            .subscribeOn(Schedulers.boundedElastic())
+                            .flatMap(event -> {
+                                try {
+                                    Mono<Void> voidMono = Mono.from((Mono<Void>) listenerMethod.invoke(listener, event))
+                                            .onErrorResume(e -> {
+                                                logger.error(e.getMessage());
+                                                logger.error("Error in Listener: ", e);
+                                                return Mono.empty();
+                                            });
                                     //.log()
                                     //.doFinally(signalType -> logger.info("Done Listener"));
-                            return voidMono;
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        return Mono.empty();
-                    })
-                    .log()
-                    .subscribe(logger::error);
-        }
+                                    return voidMono;
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                                return Mono.empty();
+                            });
+                })
+                .then();
+
 
         logger.info("Registered Listeners!");
+
+        return Mono.when(registerListeners);
     }
 }

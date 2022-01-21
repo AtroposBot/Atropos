@@ -11,6 +11,7 @@ import discord4j.core.object.entity.Member;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.List;
@@ -18,9 +19,7 @@ import java.util.List;
 public final class AddServerToDB {
     private static final Logger logger = LogManager.getLogger(Atropos.class);
 
-    public AddServerToDB() {}
-
-    public boolean addServerToDatabase(Guild guild) {
+    public Mono<Void> addServerToDatabase(Guild guild) {
 
         long serverIdSnowflake = guild.getId().asLong();
         DatabaseLoader.openConnectionIfClosed();
@@ -46,7 +45,7 @@ public final class AddServerToDB {
             properties.save();
         }
 
-        List<Member> unregisteredMembers = guild.getMembers()
+        Mono<Void> registerMembers = guild.getMembers()
                 .filter(member -> {
                     DatabaseLoader.openConnectionIfClosed();
                     DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());
@@ -56,18 +55,10 @@ public final class AddServerToDB {
                     } else {
                         unregisteredUser = null;
                     }
-
                     return unregisteredUser == null;
                 })
-                .collectList().block();
-
-        if (unregisteredMembers != null && !unregisteredMembers.isEmpty()) {
-            Flux.fromIterable(unregisteredMembers)
-                    .map(member -> addUserToDatabase(member, guild))
-                    .subscribe();
-        }
-
-        this.addUserToDatabase(guild.getSelfMember().block(), guild);
+                .flatMap(member -> addUserToDatabase(member, guild))
+                .then();
 
         DatabaseLoader.openConnectionIfClosed();
         properties.refresh();
@@ -75,42 +66,44 @@ public final class AddServerToDB {
 
         DatabaseLoader.closeConnectionIfOpen();
 
-        return true;
+        return registerMembers;
     }
 
-    public boolean addUserToDatabase(Member member, Guild guild) {
+    public Mono<Void> addUserToDatabase(Member member, Guild guild) {
 
-        DatabaseLoader.openConnectionIfClosed();
+        return Mono.empty()
+                .flatMap(mono -> {
+                    DatabaseLoader.openConnectionIfClosed();
 
-        long userIdSnowflake = member.getId().asLong();
-        long serverIdSnowflake = guild.getId().asLong();
+                    long userIdSnowflake = member.getId().asLong();
+                    long serverIdSnowflake = guild.getId().asLong();
 
-        DiscordUser user = DiscordUser.findOrCreateIt("user_id_snowflake", userIdSnowflake);
-        user.save();
-        user.refresh();
+                    DiscordUser user = DiscordUser.findOrCreateIt("user_id_snowflake", userIdSnowflake);
+                    user.save();
+                    user.refresh();
 
-        if (user.getDateEntry() == 0) {
-            user.setDateEntry(Instant.now().toEpochMilli());
-            user.save();
-        }
+                    if (user.getDateEntry() == 0) {
+                        user.setDateEntry(Instant.now().toEpochMilli());
+                        user.save();
+                    }
 
-        DiscordServer server = DiscordServer.findOrCreateIt("server_id", serverIdSnowflake);
+                    DiscordServer server = DiscordServer.findOrCreateIt("server_id", serverIdSnowflake);
 
-        int serverId = server.getServerId();
-        int userId = user.getUserId();
+                    int serverId = server.getServerId();
+                    int userId = user.getUserId();
 
-        ServerUser serverUser = ServerUser.findOrCreateIt("user_id", userId, "server_id", serverId);
-        serverUser.save();
+                    ServerUser serverUser = ServerUser.findOrCreateIt("user_id", userId, "server_id", serverId);
+                    serverUser.save();
 
-        if (serverUser.getDate() == null || serverUser.getDate() == 0) {
-            serverUser.setDate(Instant.now().toEpochMilli());
-            serverUser.save();
-        }
+                    if (serverUser.getDate() == null || serverUser.getDate() == 0) {
+                        serverUser.setDate(Instant.now().toEpochMilli());
+                        serverUser.save();
+                    }
 
-        serverUser.refresh();
+                    serverUser.refresh();
 
-        DatabaseLoader.closeConnectionIfOpen();
-
-        return true;
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return Mono.empty();
+                }).then();
     }
 }
