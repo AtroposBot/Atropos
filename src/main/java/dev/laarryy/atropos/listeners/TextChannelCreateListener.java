@@ -43,8 +43,8 @@ public class TextChannelCreateListener {
                                                     Permission.SEND_MESSAGES,
                                                     Permission.ADD_REACTIONS,
                                                     Permission.CHANGE_NICKNAME,
-                                                    Permission.USE_PUBLIC_THREADS,
-                                                    Permission.USE_PRIVATE_THREADS,
+                                                   // Permission.USE_PUBLIC_THREADS,
+                                                   // Permission.USE_PRIVATE_THREADS,
                                                     Permission.USE_SLASH_COMMANDS
                                             )));
                                     return textChannel.edit(TextChannelEditSpec.builder()

@@ -24,6 +24,7 @@ import discord4j.core.object.entity.channel.PrivateChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.blockhound.BlockHound;
+import reactor.core.publisher.Mono;
 import reactor.core.scheduler.ReactorBlockHoundIntegration;
 
 import java.util.List;
@@ -33,8 +34,6 @@ public class Atropos {
     private static final Logger logger = LogManager.getLogger(Atropos.class);
 
     public static void main(String[] args) throws Exception {
-
-        BlockHound.install();
 
         // Print token and other args to console
         for (String arg : args) {
@@ -54,11 +53,12 @@ public class Atropos {
 
         GatewayDiscordClient client = ClientManager.getManager().getClient();
 
-        client.getEventDispatcher().on(ReadyEvent.class)
-                .subscribe(event -> {
+        var ready = client.getEventDispatcher().on(ReadyEvent.class)
+                .flatMap(event -> {
                     final User self = event.getSelf();
                     logger.info("Logged in as: " + self.getUsername() + "#" + self.getDiscriminator());
-                });
+                    return Mono.empty();
+                }).then();
 
         logger.debug("Connected!");
 
@@ -74,7 +74,7 @@ public class Atropos {
         LoadingCache<Long, List<Blacklist>> blacklistCache = BlacklistCacheManager.getManager().getBlacklistCache();
 
         CommandManager commandManager = new CommandManager();
-        commandManager.registerCommands(client);
+        Mono<Void> commandRegistration = commandManager.registerCommands(client);
 
         ListenerManager listenerManager = new ListenerManager();
         listenerManager.registerListeners(client);
@@ -92,10 +92,15 @@ public class Atropos {
                 .filter(guild -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) == null)
                 .collectList().block();
 
-        for (Guild guild: unregisteredGuilds) {
+        for (Guild guild : unregisteredGuilds) {
             logger.info("Registering + " + guild.getId().asLong());
             addServerToDB.addServerToDatabase(guild);
         }
+
+        Mono.when(
+                ready,
+                commandRegistration
+                ).block();
 
 
         client.onDisconnect().block();

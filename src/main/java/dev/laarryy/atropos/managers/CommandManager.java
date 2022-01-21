@@ -28,41 +28,37 @@ public class CommandManager {
     private final Logger logger = LogManager.getLogger(Atropos.class);
     private final PermissionChecker permissionChecker = new PermissionChecker();
 
-    public void registerCommands(GatewayDiscordClient client) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    public Mono<Void> registerCommands(GatewayDiscordClient client) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         // Register slash commands with Discord
         Reflections reflections = new Reflections("dev.laarryy.atropos.commands", new SubTypesScanner());
-        Set<Class<? extends Command>> commandsToRegister = reflections.getSubTypesOf(Command.class);
+        Flux<Class<? extends Command>> commandsToRegister = Flux.fromIterable(reflections.getSubTypesOf(Command.class));
 
         long applicationId = client.getRestClient().getApplicationId().block();
         ApplicationService applicationService = client.getRestClient().getApplicationService();
-        Map<String, ApplicationCommandData> discordCommands = applicationService
+        Flux<Map<String, ApplicationCommandData>> discordCommands = applicationService
                 .getGlobalApplicationCommands(applicationId)
                 .collectMap(ApplicationCommandData::name)
-                .block();
+                .flux();
 
-        for (Class<? extends Command> registerableCommand : commandsToRegister) {
-            final Command command = registerableCommand.getDeclaredConstructor().newInstance();
+        Flux<Void> registerCommands = Flux.from(commandsToRegister)
+                .mapNotNull(aClass -> {
+                    Command command;
+                    try {
+                        command = aClass.getDeclaredConstructor().newInstance();
+                    } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                        e.printStackTrace();
+                        command = null;
+                    }
+                    COMMANDS.add(command);
+                    return command;
+                })
+                .onErrorResume(throwable -> {
+                    logger.error(throwable);
+                    return Mono.empty();
+                })
+                .filterWhen(command -> discordCommands.any(cMap -> cMap.containsKey(command.getRequest().name())))
+                .flatMap(command -> registerCommand(client, command, applicationId, ConfigManager.getControlGuildId()));
 
-            // Add to command list
-            COMMANDS.add(command);
-
-            // Register the command with discord
-            if (!discordCommands.containsKey(command.getRequest().name())) {
-                logger.info("Beginning command registration with discord: " + command.getRequest().name());
-                if (registerableCommand.getName().equals("PresenceCommand")) {
-                    client.getRestClient().getApplicationService()
-                            .createGuildApplicationCommand(applicationId, Long.parseLong(ConfigManager.getControlGuildId()), command.getRequest())
-                            .subscribe();
-                } else {
-                    client.getRestClient().getApplicationService()
-                            .createGlobalApplicationCommand(applicationId, command.getRequest())
-                            .subscribe();
-                    logger.info("Command registration with discord sent.");
-                }
-            } else {
-                logger.info("Command already registered");
-            }
-        }
 
         // Uncomment this to force re-send all commands: will force update their options in case you add any
         List<ApplicationCommandRequest> applicationCommandRequestList = new ArrayList<>();
@@ -73,40 +69,58 @@ public class CommandManager {
             }
         }
 
-        applicationService.bulkOverwriteGlobalApplicationCommand(applicationId, applicationCommandRequestList);
+        Mono<Void> overwriteCommands = applicationService.bulkOverwriteGlobalApplicationCommand(applicationId, applicationCommandRequestList).then();
 
         // Listen for command event and execute from map
 
-        client.getEventDispatcher().on(ChatInputInteractionEvent.class)
-                .subscribeOn(Schedulers.boundedElastic())
+        Mono<Void> commandInteraction = client.getEventDispatcher().on(ChatInputInteractionEvent.class)
                 .filter(permissionChecker::checkBotPermission) // make sure bot has perms
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
                                 .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
                                 .flatMap(entry -> {
-                                    logger.info("Command Received");
-                                    return entry.execute(event)
-                                            .onErrorResume(e -> {
-                                                logger.error(e.getMessage());
-                                                logger.error("Error in Command: ", e);
-                                                return Mono.empty();
-                                            })
-                                            .log()
-                                            .doFinally(signalType -> logger.info("Command Done"));
+                                            logger.info("Command Received");
+                                            return entry.execute(event)
+                                                    .onErrorResume(e -> {
+                                                        logger.error(e.getMessage());
+                                                        logger.error("Error in Command: ", e);
+                                                        return Mono.empty();
+                                                    })
+                                                    .log()
+                                                    .doFinally(signalType -> logger.info("Command Done"));
                                         }
                                 ).onErrorResume(e -> {
-                                     logger.error(e.getMessage());
-                                     logger.error("Error in Command: ", e);
-                                     return Mono.empty();
-                                 })
+                                    logger.error(e.getMessage());
+                                    logger.error("Error in Command: ", e);
+                                    return Mono.empty();
+                                })
                                 .next()))
                 .onErrorResume(e -> {
                     logger.error(e.getMessage());
                     logger.error("Error in Command: ", e);
                     return Mono.empty();
                 })
-                .subscribe(logger::error);
+                .then();
 
         logger.info("Registered Slash Commands!");
+
+        return Mono.when(
+                registerCommands,
+                commandInteraction
+                );
+    }
+
+    private Mono<Void> registerCommand(GatewayDiscordClient client, Command command, long applicationId, String controlGuildId) {
+        return Mono.just(command)
+                .flatMap(command1 -> {
+                    if (command.getRequest().name().equals("presence")) {
+                        return client.getRestClient().getApplicationService()
+                                .createGuildApplicationCommand(applicationId, Long.parseLong(controlGuildId), command.getRequest());
+                    } else {
+                        return client.getRestClient().getApplicationService()
+                                .createGlobalApplicationCommand(applicationId, command.getRequest());
+                    }
+                })
+                .then();
     }
 }

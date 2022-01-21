@@ -465,8 +465,8 @@ public class PunishmentManager {
                                     PermissionSet.of(
                                             Permission.SEND_MESSAGES,
                                             Permission.ADD_REACTIONS,
-                                            Permission.USE_PUBLIC_THREADS,
-                                            Permission.USE_PRIVATE_THREADS,
+                                           // Permission.USE_PUBLIC_THREADS,
+                                           // Permission.USE_PRIVATE_THREADS,
                                             Permission.USE_SLASH_COMMANDS
                                     )))
                             .onErrorResume(e -> {
@@ -485,8 +485,8 @@ public class PunishmentManager {
                                     PermissionSet.of(
                                             Permission.SEND_MESSAGES,
                                             Permission.ADD_REACTIONS,
-                                            Permission.USE_PUBLIC_THREADS,
-                                            Permission.USE_PRIVATE_THREADS,
+                                           // Permission.USE_PUBLIC_THREADS,
+                                           // Permission.USE_PRIVATE_THREADS,
                                             Permission.USE_SLASH_COMMANDS
                                     )))
                             .onErrorResume(e -> {
