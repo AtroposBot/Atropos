@@ -99,10 +99,9 @@ public class Atropos {
 
         Mono.when(
                 ready,
-                commandRegistration
+                commandRegistration,
+                client.onDisconnect()
                 ).block();
 
-
-        client.onDisconnect().block();
     }
 }
