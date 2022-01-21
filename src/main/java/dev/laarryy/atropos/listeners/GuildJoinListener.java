@@ -1,5 +1,6 @@
 package dev.laarryy.atropos.listeners;
 
+import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.guild.GuildCreateEvent;
@@ -27,12 +28,14 @@ public class GuildJoinListener {
         if (event.getGuild().getId().asString().equals("931389256180580433")) {
             for (Member guildMember : guild.getMembers().collectList().block()) {
                 for (Guild botGuild : event.getClient().getGuilds().collectList().block()) {
-                    if (botGuild.getOwner().block().equals(guildMember)) {
+                    if (botGuild.getOwner().block().equals(guildMember) && !guildMember.getRoles().map(role -> role.getId()).collectList().block().contains(Snowflake.of("931389913503506502"))) {
                         guildMember.addRole(Snowflake.of("931389913503506502")).block();
                     }
                 }
             }
         }
+
+        DatabaseLoader.closeConnectionIfOpen();
 
         return Mono.empty();
     }

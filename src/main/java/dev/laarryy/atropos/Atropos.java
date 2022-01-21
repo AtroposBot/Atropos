@@ -23,6 +23,8 @@ import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import reactor.blockhound.BlockHound;
+import reactor.core.scheduler.ReactorBlockHoundIntegration;
 
 import java.util.List;
 
@@ -31,6 +33,8 @@ public class Atropos {
     private static final Logger logger = LogManager.getLogger(Atropos.class);
 
     public static void main(String[] args) throws Exception {
+
+        BlockHound.install();
 
         // Print token and other args to console
         for (String arg : args) {

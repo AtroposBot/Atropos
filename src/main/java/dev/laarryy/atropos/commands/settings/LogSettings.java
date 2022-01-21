@@ -21,7 +21,7 @@ import java.time.Instant;
 
 public class LogSettings {
     private final Logger logger = LogManager.getLogger(this);
-    private AddServerToDB addServerToDB = new AddServerToDB();
+    private final AddServerToDB addServerToDB = new AddServerToDB();
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
@@ -66,7 +66,7 @@ public class LogSettings {
 
         MessageChannel channel = event.getInteraction().getChannel().block();
 
-        if (!(channel instanceof TextChannel textChannel)) {
+        if (!(channel instanceof TextChannel)) {
             Notifier.notifyCommandUserOfError(event, "invalidChannel");
             AuditLogger.addCommandToDB(event, false);
             return;

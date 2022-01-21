@@ -37,11 +37,6 @@ public class PermissionCommand implements Command {
     List<ApplicationCommandOptionChoiceData> optionChoiceDataList = List.of(
             ApplicationCommandOptionChoiceData
                     .builder()
-                    .name("/test")
-                    .value("test")
-                    .build(),
-            ApplicationCommandOptionChoiceData
-                    .builder()
                     .name("/permission")
                     .value("permission")
                     .build(),

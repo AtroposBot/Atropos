@@ -42,21 +42,24 @@ public class ListenerManager {
             Class<? extends Event> type = (Class<? extends Event>) params[0].getType();
 
             client.getEventDispatcher().on(type)
+                    .subscribeOn(Schedulers.boundedElastic())
                     .flatMap(event -> {
                         try {
-                            Mono<Void> voidMono = Mono.from((Mono<Void>) registerableListener.invoke(listener, event)).onErrorResume(e -> {
-                                logger.error(e.getMessage());
-                                logger.error("Error in Listener: ", e);
-                                return Mono.empty();
-                            });
+                            Mono<Void> voidMono = Mono.from((Mono<Void>) registerableListener.invoke(listener, event))
+                                    .onErrorResume(e -> {
+                                        logger.error(e.getMessage());
+                                        logger.error("Error in Listener: ", e);
+                                        return Mono.empty();
+                                    });
+                                    //.log()
+                                    //.doFinally(signalType -> logger.info("Done Listener"));
                             return voidMono;
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
                         return Mono.empty();
                     })
-
-                    .subscribeOn(Schedulers.boundedElastic())
+                    .log()
                     .subscribe(logger::error);
         }
 

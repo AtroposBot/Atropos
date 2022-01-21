@@ -349,6 +349,9 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(MemberLeaveEvent event) {
+        if (event.getUser().equals(event.getClient().getSelf().block())) {
+            return Mono.empty();
+        }
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 
@@ -365,6 +368,9 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(MemberUpdateEvent event) { // Nickname or role updates
+        if (event.getMember().block().equals(event.getGuild().block().getSelfMember().block())) {
+            return Mono.empty();
+        }
         Guild guild = event.getGuild().block();
         if (guild == null) return Mono.empty();
 

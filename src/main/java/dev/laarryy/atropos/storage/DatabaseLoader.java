@@ -22,6 +22,7 @@ public class DatabaseLoader {
             config.addDataSourceProperty("cachePrepStmts", "true");
             config.addDataSourceProperty("prepStmtCacheSize", "250");
             config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+            config.addDataSourceProperty("autoReconnect", true);
             ds = new HikariDataSource(config);
     }
 

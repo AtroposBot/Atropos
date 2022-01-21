@@ -210,15 +210,13 @@ public class InfoCommand implements Command {
 
         ServerUser serverUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId());
 
-        if (serverUser == null) {
-            serverUser = ServerUser.create("server_id", discordServer.getServerId(), "user_id", discordUser.getUserId(), "date", Instant.now().toEpochMilli());
-            serverUser.save();
-            serverUser.refresh();
-        }
-
         Member selfMember = guild.getSelfMember().block();
         DiscordUser discordSelfUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
         ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
+        if (serverSelfUser == null) {
+            addServerToDB.addUserToDatabase(selfMember, guild);
+        }
+        serverSelfUser.refresh();
         Instant discordJoin = Instant.ofEpochMilli(serverUser.getDate());
         Instant discordBotJoin = Instant.ofEpochMilli(serverSelfUser.getDate());
 
@@ -271,8 +269,8 @@ public class InfoCommand implements Command {
 
         event.deferReply().block();
 
-        Long guildId = event.getInteraction().getGuildId().get().asLong();
         Guild guild = event.getInteraction().getGuild().block();
+        Long guildId = guild.getId().asLong();
 
         DiscordServer server = DiscordServer.findOrCreateIt("server_id", guildId);
         int serverId = server.getServerId();

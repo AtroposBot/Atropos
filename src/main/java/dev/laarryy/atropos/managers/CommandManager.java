@@ -7,6 +7,7 @@ import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.discordjson.json.ApplicationCommandData;
+import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.service.ApplicationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -45,19 +46,6 @@ public class CommandManager {
             // Add to command list
             COMMANDS.add(command);
 
-            // Uncomment this to re-send all commands: will force update their options in case you add any
-
-            /*if (registerableCommand.getName().equals("PresenceCommand")) {
-                client.getRestClient().getApplicationService()
-                        .createGuildApplicationCommand(applicationId, Long.parseLong(ConfigManager.getControlGuildId()), command.getRequest())
-                        .subscribe();
-            } else {
-                client.getRestClient().getApplicationService()
-                        .createGlobalApplicationCommand(applicationId, command.getRequest())
-                        .subscribe();
-                logger.info("Command registration with discord sent.");
-            }*/
-
             // Register the command with discord
             if (!discordCommands.containsKey(command.getRequest().name())) {
                 logger.info("Beginning command registration with discord: " + command.getRequest().name());
@@ -76,26 +64,42 @@ public class CommandManager {
             }
         }
 
+        // Uncomment this to force re-send all commands: will force update their options in case you add any
+        List<ApplicationCommandRequest> applicationCommandRequestList = new ArrayList<>();
+
+        for (Command command : COMMANDS) {
+            if (!command.getRequest().name().equals("presence")) {
+                applicationCommandRequestList.add(command.getRequest());
+            }
+        }
+
+        applicationService.bulkOverwriteGlobalApplicationCommand(applicationId, applicationCommandRequestList);
+
         // Listen for command event and execute from map
 
         client.getEventDispatcher().on(ChatInputInteractionEvent.class)
+                .subscribeOn(Schedulers.boundedElastic())
                 .filter(permissionChecker::checkBotPermission) // make sure bot has perms
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
                                 .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
-                                .flatMap(entry -> entry.execute(event)
-                                        .onErrorResume(e -> {
-                                            logger.error(e.getMessage());
-                                            logger.error("Error in Command: ", e);
-                                            return Mono.empty();
-                                        })
+                                .flatMap(entry -> {
+                                    logger.info("Command Received");
+                                    return entry.execute(event)
+                                            .onErrorResume(e -> {
+                                                logger.error(e.getMessage());
+                                                logger.error("Error in Command: ", e);
+                                                return Mono.empty();
+                                            })
+                                            .log()
+                                            .doFinally(signalType -> logger.info("Command Done"));
+                                        }
                                 ).onErrorResume(e -> {
                                      logger.error(e.getMessage());
                                      logger.error("Error in Command: ", e);
                                      return Mono.empty();
                                  })
                                 .next()))
-                .subscribeOn(Schedulers.boundedElastic())
                 .onErrorResume(e -> {
                     logger.error(e.getMessage());
                     logger.error("Error in Command: ", e);
