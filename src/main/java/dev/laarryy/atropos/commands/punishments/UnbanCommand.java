@@ -44,7 +44,6 @@ public class UnbanCommand implements Command {
         }
 
         Mono.just(event)
-                .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(manualPunishmentEnder::endPunishment);
         return Mono.empty();
     }

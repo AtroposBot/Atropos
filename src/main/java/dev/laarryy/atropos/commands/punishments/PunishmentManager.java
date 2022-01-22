@@ -112,8 +112,7 @@ public class PunishmentManager {
                         Notifier.notifyPunisherForcebanComplete(event, "```\n" + idInput.replaceAll(" ", "\n") + "\n ```");
                         AuditLogger.addCommandToDB(event, true);
                     })
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe(aLong -> {
+                        .subscribe(aLong -> {
 
                         // Ensure nobody is trying to forceban their boss or a bot or someone that doesn't exist
                         try {
@@ -352,7 +351,6 @@ public class PunishmentManager {
                         .deleteMessageDays(messageDeleteDays)
                         .reason(punishmentReason)
                         .build())
-                .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
     }
 
@@ -458,7 +456,6 @@ public class PunishmentManager {
         discordServerProperties.refresh();
 
         guild.getChannels().ofType(Category.class)
-                .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(category -> {
                     category.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
                                     PermissionSet.none(),
@@ -478,7 +475,6 @@ public class PunishmentManager {
                 }).subscribe();
 
         guild.getChannels().ofType(TextChannel.class)
-                .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(textChannel -> {
                     textChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
                                     PermissionSet.none(),
@@ -498,7 +494,6 @@ public class PunishmentManager {
                 }).subscribe();
 
         guild.getChannels().ofType(VoiceChannel.class)
-                .subscribeOn(Schedulers.boundedElastic())
                 .flatMap(voiceChannel -> {
                     voiceChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
                                     PermissionSet.none(),

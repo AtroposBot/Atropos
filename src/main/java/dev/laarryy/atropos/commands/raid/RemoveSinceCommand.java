@@ -128,8 +128,7 @@ public class RemoveSinceCommand implements Command {
                     .map(serverUser -> this.banUsers(serverUser, guild, event.getInteraction().getMember().get()))
                     .filter(string -> !string.equals("none"))
                     .map(string -> sb.append(string).append(" "))
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe(stb -> {
+                        .subscribe(stb -> {
                         sb.append("```");
 
                         String affectedUsers = sb.toString();
@@ -154,8 +153,7 @@ public class RemoveSinceCommand implements Command {
                     .map(serverUser -> this.kickUsers(serverUser, guild, event.getInteraction().getMember().get()))
                     .filter(string -> !string.equals("none"))
                     .map(string -> sb.append(string).append(" "))
-                    .subscribeOn(Schedulers.boundedElastic())
-                    .subscribe(stb -> {
+                        .subscribe(stb -> {
                         sb.append("```");
 
                         String affectedUsers = sb.toString();

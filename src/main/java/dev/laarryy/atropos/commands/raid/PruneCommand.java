@@ -73,7 +73,6 @@ public class PruneCommand implements Command {
                 .take(number)
                 .map(Message::getId)
                 .transform(channel::bulkDelete)
-                .subscribeOn(Schedulers.boundedElastic())
                 .subscribe();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()

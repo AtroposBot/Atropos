@@ -189,7 +189,6 @@ public final class LoggingListener {
         }
 
         getLogChannel(guild, "punishment")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logPunishmentUnban(textChannel, reason, punishment);
@@ -204,7 +203,6 @@ public final class LoggingListener {
         }
 
         getLogChannel(guild, "punishment")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logPunishmentUnmute(textChannel, reason, punishment);
@@ -219,7 +217,6 @@ public final class LoggingListener {
         }
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logMutedRoleDelete(roleId, textChannel);
@@ -234,7 +231,6 @@ public final class LoggingListener {
         }
 
         getLogChannel(guild, "punishment")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logMuteNotApplicable(memberToMute, textChannel);
@@ -248,7 +244,6 @@ public final class LoggingListener {
             return;
         }
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logStopJoinsEnabled(textChannel);
@@ -263,7 +258,6 @@ public final class LoggingListener {
         }
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logStopJoinsDisabled(textChannel);
@@ -278,7 +272,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "message")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logMessageDelete(event, textChannel);
@@ -304,7 +297,6 @@ public final class LoggingListener {
         }
 
         getLogChannel(guild, "message")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logMessageUpdate(event, textChannel);
@@ -320,7 +312,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "message")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logBulkDelete(event, textChannel);
@@ -337,7 +328,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logMemberJoin(event, textChannel);
@@ -356,7 +346,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logMemberLeave(event, textChannel);
@@ -375,7 +364,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "member")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logMemberUpdate(event, textChannel);
@@ -391,7 +379,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "member")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logPresenceUpdate(event, textChannel);
@@ -407,7 +394,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logInviteCreate(event, textChannel);
@@ -423,7 +409,6 @@ public final class LoggingListener {
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logNewsCreate(event, textChannel);
@@ -439,7 +424,6 @@ public final class LoggingListener {
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logNewsDelete(event, textChannel);
@@ -455,7 +439,6 @@ public final class LoggingListener {
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logNewsUpdate(event, textChannel);
@@ -471,7 +454,6 @@ public final class LoggingListener {
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logStoreCreate(event, textChannel);
@@ -487,7 +469,6 @@ public final class LoggingListener {
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logStoreDelete(event, textChannel);
@@ -503,7 +484,6 @@ public final class LoggingListener {
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logStoreUpdate(event, textChannel);
@@ -519,7 +499,6 @@ public final class LoggingListener {
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logVoiceCreate(event, textChannel);
@@ -535,7 +514,6 @@ public final class LoggingListener {
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logVoiceDelete(event, textChannel);
@@ -551,7 +529,6 @@ public final class LoggingListener {
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logVoiceUpdate(event, textChannel);
@@ -567,7 +544,6 @@ public final class LoggingListener {
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logTextCreate(event, textChannel);
@@ -583,7 +559,6 @@ public final class LoggingListener {
         Guild guild = event.getChannel().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logTextDelete(event, textChannel);
@@ -599,7 +574,6 @@ public final class LoggingListener {
         Guild guild = event.getCurrent().getGuild().block();
         if (guild == null) return Mono.empty();
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logTextUpdate(event, textChannel);
@@ -616,7 +590,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logBan(event, textChannel);
@@ -634,7 +607,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logUnban(event, textChannel);
@@ -652,7 +624,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logRoleCreate(event, textChannel);
@@ -670,7 +641,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logRoleDelete(event, textChannel);
@@ -688,7 +658,6 @@ public final class LoggingListener {
         if (guild == null) return Mono.empty();
 
         getLogChannel(guild, "guild")
-                .subscribeOn(Schedulers.boundedElastic())
                 .doOnSuccess(textChannel -> {
                     if (textChannel != null) {
                         LogExecutor.logRoleUpdate(event, textChannel);

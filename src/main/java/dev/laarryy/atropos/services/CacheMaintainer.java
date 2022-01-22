@@ -1,34 +1,32 @@
 package dev.laarryy.atropos.services;
 
-import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
-import reactor.core.scheduler.Schedulers;
+import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 
 public class CacheMaintainer {
     private final Logger logger = LogManager.getLogger(this);
 
-    public CacheMaintainer(AsyncLoadingCache<Long, DiscordServerProperties> cache) {
-        DatabaseLoader.openConnectionIfClosed();
-        Flux.interval(Duration.ofMinutes(3))
-                .doOnNext(l -> refreshPropertiesCache(cache))
-                .subscribeOn(Schedulers.boundedElastic())
-                .subscribe();
-        DatabaseLoader.closeConnectionIfOpen();
+    public Mono<Void> startCacheRefresh(LoadingCache<Long, DiscordServerProperties> cache) {
+        Mono<Void> startRefreshing = Flux.interval(Duration.ofMinutes(3))
+                .doFirst(() -> logger.info("Starting Cache Refresh"))
+                .doOnNext(l -> refreshPropertiesCache(cache)).then();
+
+        return Mono.when(startRefreshing);
     }
 
-    private void refreshPropertiesCache(AsyncLoadingCache<Long, DiscordServerProperties> cache) {
+    private Mono<Void> refreshPropertiesCache(LoadingCache<Long, DiscordServerProperties> cache) {
         DatabaseLoader.openConnectionIfClosed();
         LazyList<DiscordServerProperties> propertiesList = DiscordServerProperties.findAll();
-        Flux.fromIterable(propertiesList)
-                .subscribe(property -> {
-                });
         DatabaseLoader.closeConnectionIfOpen();
+        return Flux.fromIterable(propertiesList)
+                .doOnNext(property -> cache.invalidate(property.getServerIdSnowflake())).then();
     }
 }

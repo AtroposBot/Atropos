@@ -13,6 +13,7 @@ import dev.laarryy.atropos.managers.PunishmentManagerManager;
 import dev.laarryy.atropos.models.guilds.Blacklist;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
+import dev.laarryy.atropos.services.CacheMaintainer;
 import dev.laarryy.atropos.services.ScheduledTaskDoer;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
@@ -89,6 +90,8 @@ public class Atropos {
 
         Mono<Void> scheduledTaskDoer = new ScheduledTaskDoer().startTasks(client);
 
+        Mono<Void> startCacheRefresh = new CacheMaintainer().startCacheRefresh(cache).then();
+
         // Register all guilds and users in them to database
 
         Mono<Void> addServersToDB = Flux.from(client.getGuilds())
@@ -107,6 +110,7 @@ public class Atropos {
                         commandRegistration,
                         listenerRegistration,
                         scheduledTaskDoer,
+                        startCacheRefresh,
                         addServersToDB,
                         client.onDisconnect()
                 )

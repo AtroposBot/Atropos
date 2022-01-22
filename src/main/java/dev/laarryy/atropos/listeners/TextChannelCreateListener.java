@@ -31,8 +31,7 @@ public class TextChannelCreateListener {
         if (discordServerProperties != null && discordServerProperties.getMutedRoleSnowflake() != null && discordServerProperties.getMutedRoleSnowflake() != 0) {
             try {
                 guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake()))
-                        .subscribeOn(Schedulers.boundedElastic())
-                        .flatMap(role -> {
+                                .flatMap(role -> {
                                     //TODO: Fix to be cleaner as D4J #1009 is resolved
                                     TextChannel textChannel = event.getChannel();
                                     Set<ExtendedPermissionOverwrite> overwrites = textChannel.getPermissionOverwrites();
