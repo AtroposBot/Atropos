@@ -25,7 +25,6 @@ import discord4j.core.object.entity.channel.PrivateChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.checkerframework.checker.units.qual.A;
-import reactor.blockhound.BlockHound;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.ReactorBlockHoundIntegration;

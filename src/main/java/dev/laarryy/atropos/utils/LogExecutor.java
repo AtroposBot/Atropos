@@ -385,7 +385,7 @@ public final class LogExecutor {
                 subStringBuilder.append("Description: \n").append(e.getDescription().get().replaceAll("`", "")).append("\n");
             }
             if (e.getColor().isPresent()) {
-                subStringBuilder.append("Colour: ").append(e.getColor().get().getRGB()).append("\n");
+                subStringBuilder.append("Colour: ").append(Integer.toHexString(e.getColor().get().getRGB())).append("\n");
             }
             if (e.getImage().isPresent()) {
                 subStringBuilder.append("Image URL: ").append(e.getImage().get().getUrl()).append("\n");
@@ -1614,10 +1614,10 @@ public final class LogExecutor {
             stringBuilder.append("+ Position: ").append(newRole.getPosition().block()).append("\n");
         }
         if (oldRole.getColor().equals(newRole.getColor())) {
-            stringBuilder.append("--- Colour: ").append(oldRole.getColor().getRGB()).append("\n");
+            stringBuilder.append("--- Colour: ").append(Integer.toHexString(oldRole.getColor().getRGB())).append("\n");
         } else {
-            stringBuilder.append("- Colour: ").append(oldRole.getColor().getRGB()).append("\n");
-            stringBuilder.append("+ Colour: ").append(newRole.getColor().getRGB()).append("\n");
+            stringBuilder.append("- Colour: ").append(Integer.toHexString(oldRole.getColor().getRGB())).append("\n");
+            stringBuilder.append("+ Colour: ").append(Integer.toHexString(newRole.getColor().getRGB())).append("\n");
         }
         if (oldRole.isMentionable() == newRole.isMentionable()) {
             if (oldRole.isMentionable()) {
