@@ -19,7 +19,7 @@ public class CacheMaintainer {
         DatabaseLoader.openConnectionIfClosed();
         Flux.interval(Duration.ofMinutes(3))
                 .doOnNext(l -> refreshPropertiesCache(cache))
-                .subscribeOn(Schedulers.boundedElastic())
+                
                 .subscribe();
         DatabaseLoader.closeConnectionIfOpen();
     }

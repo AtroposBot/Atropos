@@ -53,7 +53,7 @@ public final class ManualPunishmentEnder {
                     .onErrorReturn(Exception.class, 0L)
                     .filter(aLong -> aLong != 0)
                     .filter(aLong -> discordUnban(event.getInteraction().getGuild().block(), aLong, reason))
-                    .subscribeOn(Schedulers.boundedElastic())
+                    
                     .subscribe(lo -> {
                         databaseEndPunishment(lo, event.getInteraction().getGuild().block(), event.getCommandName(), reason, event.getInteraction().getUser(), event.getClient().getUserById(Snowflake.of(lo)).block());
                         Notifier.notifyModOfUnban(event, reason, lo);
@@ -66,7 +66,7 @@ public final class ManualPunishmentEnder {
                     .flatMap(ApplicationCommandInteractionOptionValue::asUser)
                     .flatMap(user -> user.asMember(event.getInteraction().getGuildId().get()))
                     .filter(member -> discordUnmute(member, event, reason))
-                    .subscribeOn(Schedulers.boundedElastic())
+                    
                     .subscribe(member -> databaseEndPunishment(member.getId().asLong(), event.getInteraction().getGuild().block(), event.getCommandName(), reason, event.getInteraction().getUser(), member));
         }
         DatabaseLoader.closeConnectionIfOpen();
@@ -180,7 +180,7 @@ public final class ManualPunishmentEnder {
                                 } else return false;
                             }
                     )
-                    .subscribeOn(Schedulers.boundedElastic())
+                    
                     .subscribe(punishment -> {
                         DatabaseLoader.openConnectionIfClosed();
                         punishment.setEnded(true);

@@ -45,7 +45,7 @@ public class UnmuteCommand implements Command {
         }
 
         Mono.just(event)
-                .subscribeOn(Schedulers.boundedElastic())
+                
                 .subscribe(event1 -> manualPunishmentEnder.endPunishment(event));
         return Mono.empty();
     }

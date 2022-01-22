@@ -52,7 +52,7 @@ public class MuteCommand implements Command {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         Mono.just(event)
-                .subscribeOn(Schedulers.boundedElastic())
+                
                 .subscribe(event1 -> punishmentManager.doPunishment(request, event1));
         return Mono.empty();
     }

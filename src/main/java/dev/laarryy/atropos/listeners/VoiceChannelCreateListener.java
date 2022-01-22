@@ -25,7 +25,7 @@ public class VoiceChannelCreateListener {
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
         if (discordServerProperties != null && discordServerProperties.getMutedRoleSnowflake() != null && discordServerProperties.getMutedRoleSnowflake() != 0) {
             guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake()))
-                    .subscribeOn(Schedulers.boundedElastic())
+                    
                     .flatMap(role -> {
                         VoiceChannel voiceChannel = event.getChannel();
                         Set<ExtendedPermissionOverwrite> overwrites = voiceChannel.getPermissionOverwrites();
@@ -41,7 +41,7 @@ public class VoiceChannelCreateListener {
                             voiceChannel.edit(VoiceChannelEditSpec.builder()
                                             .addAllPermissionOverwrites(newOverwrites.stream().toList())
                                             .build())
-                                    .subscribeOn(Schedulers.boundedElastic())
+                                    
                                     .subscribe();
                         } catch (Exception ignored) {}
 

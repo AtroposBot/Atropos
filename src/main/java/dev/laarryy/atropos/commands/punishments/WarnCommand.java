@@ -47,7 +47,7 @@ public class WarnCommand implements Command {
         PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
         Mono.just(event)
-                .subscribeOn(Schedulers.boundedElastic())
+                
                 .subscribe(event1 -> punishmentManager.doPunishment(request, event1));
         return Mono.empty();
     }

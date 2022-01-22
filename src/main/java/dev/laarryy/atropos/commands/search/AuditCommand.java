@@ -91,17 +91,17 @@ public class AuditCommand implements Command {
         }
 
         if (event.getOption("user").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::searchAuditByUser);
+            Mono.just(event).subscribe(this::searchAuditByUser);
             return Mono.empty();
         }
 
         if (event.getOption("recent").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::recentAudits);
+            Mono.just(event).subscribe(this::recentAudits);
             return Mono.empty();
         }
 
         if (event.getOption("id").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::searchAuditById);
+            Mono.just(event).subscribe(this::searchAuditById);
         }
 
         return Mono.empty();

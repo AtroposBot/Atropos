@@ -174,7 +174,7 @@ public class CaseCommand implements Command {
             if (!CommandChecks.commandChecks(event, "casedelete")) {
                 return Mono.empty();
             }
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::deletePunishment);
+            Mono.just(event).subscribe(this::deletePunishment);
             return Mono.empty();
         }
 
@@ -182,7 +182,7 @@ public class CaseCommand implements Command {
             if (!CommandChecks.commandChecks(event, "caseupdate")) {
                 return Mono.empty();
             }
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::updatePunishment);
+            Mono.just(event).subscribe(this::updatePunishment);
             return Mono.empty();
         }
 
@@ -191,17 +191,17 @@ public class CaseCommand implements Command {
         }
 
         if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("user").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::searchPunishments);
+            Mono.just(event).subscribe(this::searchPunishments);
             return Mono.empty();
         }
 
         if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("id").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::searchForCase);
+            Mono.just(event).subscribe(this::searchForCase);
             return Mono.empty();
         }
 
         if (event.getOption("search").get().getOption("recent").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::recentCases);
+            Mono.just(event).subscribe(this::recentCases);
             return Mono.empty();
         }
 

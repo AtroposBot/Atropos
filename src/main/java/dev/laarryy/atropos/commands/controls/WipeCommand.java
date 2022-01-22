@@ -54,11 +54,11 @@ public class WipeCommand implements Command {
         event.deferReply().withEphemeral(true).block();
 
         if (event.getOption("guild").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::wipeGuild);
+            Mono.just(event).subscribe(this::wipeGuild);
         }
 
         if (event.getOption("user").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::wipeUser);
+            Mono.just(event).subscribe(this::wipeUser);
         }
 
         return Mono.empty();

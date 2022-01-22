@@ -104,7 +104,7 @@ public class CommandManager {
                     logger.error("Error in Command: ", e);
                     return Mono.empty();
                 })
-                .subscribeOn(Schedulers.boundedElastic())
+                
                 .subscribe(logger::error);
 
         logger.info("Registered Slash Commands!");

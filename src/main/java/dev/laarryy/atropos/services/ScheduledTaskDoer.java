@@ -90,7 +90,7 @@ public class ScheduledTaskDoer {
 
         client.getGuildById(Snowflake.of(server.getServerSnowflake()))
                 .onErrorReturn(Exception.class, null)
-                .subscribeOn(Schedulers.boundedElastic())
+                
                 .subscribe(guild1 -> {
                     if (guild1 == null) {
                         // Ensure bot is still in guild - if not, nothing more is required.
