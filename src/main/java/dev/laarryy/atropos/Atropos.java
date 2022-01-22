@@ -55,12 +55,14 @@ public class Atropos {
 
         GatewayDiscordClient client = ClientManager.getManager().getClient();
 
-        var ready = client.getEventDispatcher().on(ReadyEvent.class)
+        Mono<Void> ready = client.getEventDispatcher().on(ReadyEvent.class)
                 .flatMap(event -> {
                     final User self = event.getSelf();
                     logger.info("Logged in as: " + self.getUsername() + "#" + self.getDiscriminator());
                     return Mono.empty();
-                }).then();
+                })
+                .doFinally(signalType -> logger.info("Done Logging in."))
+                .then();
 
         logger.debug("Connected!");
 
@@ -76,17 +78,18 @@ public class Atropos {
         LoadingCache<Long, List<Blacklist>> blacklistCache = BlacklistCacheManager.getManager().getBlacklistCache();
 
         CommandManager commandManager = new CommandManager();
-        Mono<Void> commandRegistration = commandManager.registerCommands(client);
+        Mono<Void> commandRegistration = commandManager.registerCommands(client)
+                .doFinally(signalType -> logger.info("Commands Registered"));
 
         ListenerManager listenerManager = new ListenerManager();
-        Mono<Void> listenerRegistration = listenerManager.registerListeners(client);
+        Mono<Void> listenerRegistration = listenerManager.registerListeners(client)
+                .doFinally(signalType -> logger.info("Listeners Registered"));
 
         PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
-        // TODO: Make everything below this reactive
-
         Mono<Void> scheduledTaskDoer = new ScheduledTaskDoer().startTasks(client);
 
+        // Register all guilds and users in them to database
 
         Mono<Void> addServersToDB = Flux.from(client.getGuilds())
                 .filter(guild -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) == null)
@@ -94,19 +97,25 @@ public class Atropos {
                     AddServerToDB addServerToDB1 = new AddServerToDB();
                     return addServerToDB1.addServerToDatabase(guild);
                 })
+                .doFinally(signalType -> logger.info("Servers Added to Database."))
                 .then();
-        // Register all guilds and users in them to database
 
         DatabaseLoader.openConnectionIfClosed();
 
         Mono.when(
-                ready,
-                commandRegistration,
-                listenerRegistration,
-                scheduledTaskDoer,
-                addServersToDB,
-                client.onDisconnect()
-        ).block();
+                        ready,
+                        commandRegistration,
+                        listenerRegistration,
+                        scheduledTaskDoer,
+                        addServersToDB,
+                        client.onDisconnect()
+                )
+                .onErrorResume(e -> {
+                    logger.error("-- Error in Bot --");
+                    logger.error(e);
+                    return Mono.empty();
+                })
+                .subscribe();
 
     }
 }

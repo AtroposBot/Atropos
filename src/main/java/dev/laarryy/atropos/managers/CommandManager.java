@@ -89,17 +89,8 @@ public class CommandManager {
                                                     .log()
                                                     .doFinally(signalType -> logger.info("Command Done"));
                                         }
-                                ).onErrorResume(e -> {
-                                    logger.error(e.getMessage());
-                                    logger.error("Error in Command: ", e);
-                                    return Mono.empty();
-                                })
+                                )
                                 .next()))
-                .onErrorResume(e -> {
-                    logger.error(e.getMessage());
-                    logger.error("Error in Command: ", e);
-                    return Mono.empty();
-                })
                 .then();
 
         logger.info("Registered Slash Commands!");
@@ -107,7 +98,7 @@ public class CommandManager {
         return Mono.when(
                 registerCommands,
                 commandInteraction
-                );
+        );
     }
 
     private Mono<Void> registerCommand(GatewayDiscordClient client, Command command, long applicationId, String controlGuildId) {
