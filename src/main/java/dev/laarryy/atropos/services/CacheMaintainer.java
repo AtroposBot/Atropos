@@ -1,6 +1,7 @@
 package dev.laarryy.atropos.services;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
+import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import org.apache.logging.log4j.LogManager;
@@ -14,7 +15,7 @@ import java.time.Duration;
 public class CacheMaintainer {
     private final Logger logger = LogManager.getLogger(this);
 
-    public CacheMaintainer(AsyncLoadingCache<Long, DiscordServerProperties> cache) {
+    public CacheMaintainer(LoadingCache<Long, DiscordServerProperties> cache) {
         DatabaseLoader.openConnectionIfClosed();
         Flux.interval(Duration.ofMinutes(3))
                 .doOnNext(l -> refreshPropertiesCache(cache))
@@ -23,11 +24,12 @@ public class CacheMaintainer {
         DatabaseLoader.closeConnectionIfOpen();
     }
 
-    private void refreshPropertiesCache(AsyncLoadingCache<Long, DiscordServerProperties> cache) {
+    private void refreshPropertiesCache(LoadingCache<Long, DiscordServerProperties> cache) {
         DatabaseLoader.openConnectionIfClosed();
         LazyList<DiscordServerProperties> propertiesList = DiscordServerProperties.findAll();
         Flux.fromIterable(propertiesList)
                 .subscribe(property -> {
+                    cache.invalidate(property.getServerIdSnowflake());
                 });
         DatabaseLoader.closeConnectionIfOpen();
     }

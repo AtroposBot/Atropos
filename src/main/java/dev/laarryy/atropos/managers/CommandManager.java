@@ -78,7 +78,6 @@ public class CommandManager {
         // Listen for command event and execute from map
 
         client.getEventDispatcher().on(ChatInputInteractionEvent.class)
-                .subscribeOn(Schedulers.boundedElastic())
                 .filter(permissionChecker::checkBotPermission) // make sure bot has perms
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
@@ -105,6 +104,7 @@ public class CommandManager {
                     logger.error("Error in Command: ", e);
                     return Mono.empty();
                 })
+                .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(logger::error);
 
         logger.info("Registered Slash Commands!");

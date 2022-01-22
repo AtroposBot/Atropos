@@ -42,7 +42,6 @@ public class ListenerManager {
             Class<? extends Event> type = (Class<? extends Event>) params[0].getType();
 
             client.getEventDispatcher().on(type)
-                    .subscribeOn(Schedulers.boundedElastic())
                     .flatMap(event -> {
                         try {
                             Mono<Void> voidMono = Mono.from((Mono<Void>) registerableListener.invoke(listener, event))
@@ -59,7 +58,7 @@ public class ListenerManager {
                         }
                         return Mono.empty();
                     })
-                    .log()
+                    .subscribeOn(Schedulers.boundedElastic())
                     .subscribe(logger::error);
         }
 

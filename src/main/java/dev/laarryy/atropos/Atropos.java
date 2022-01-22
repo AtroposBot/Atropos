@@ -13,6 +13,7 @@ import dev.laarryy.atropos.managers.PunishmentManagerManager;
 import dev.laarryy.atropos.models.guilds.Blacklist;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
+import dev.laarryy.atropos.services.CacheMaintainer;
 import dev.laarryy.atropos.services.ScheduledTaskDoer;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
@@ -82,6 +83,7 @@ public class Atropos {
         PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
         ScheduledTaskDoer scheduledTaskDoer = new ScheduledTaskDoer(client);
+        CacheMaintainer cacheMaintainer = new CacheMaintainer(cache);
         AddServerToDB addServerToDB = new AddServerToDB();
 
         // Register all guilds and users in them to database
