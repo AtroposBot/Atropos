@@ -9,7 +9,6 @@ import org.apache.logging.log4j.Logger;
 import org.reflections.Reflections;
 import org.reflections.scanners.MethodAnnotationsScanner;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

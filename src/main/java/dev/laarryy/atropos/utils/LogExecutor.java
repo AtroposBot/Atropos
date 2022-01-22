@@ -57,7 +57,6 @@ import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
-import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

@@ -9,7 +9,6 @@ import discord4j.discordjson.json.ApplicationCommandRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 public class NoteCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);

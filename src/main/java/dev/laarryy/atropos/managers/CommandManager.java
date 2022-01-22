@@ -15,7 +15,6 @@ import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -104,7 +103,7 @@ public class CommandManager {
                     logger.error("Error in Command: ", e);
                     return Mono.empty();
                 })
-                
+
                 .subscribe(logger::error);
 
         logger.info("Registered Slash Commands!");

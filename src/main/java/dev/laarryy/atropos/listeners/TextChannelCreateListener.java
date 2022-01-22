@@ -14,7 +14,6 @@ import discord4j.rest.util.PermissionSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.HashSet;
 import java.util.Set;

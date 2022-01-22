@@ -4,7 +4,6 @@ import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.atropos.managers.PropertiesCacheManager;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
-import dev.laarryy.atropos.utils.CommandChecks;
 import dev.laarryy.atropos.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.entity.Guild;

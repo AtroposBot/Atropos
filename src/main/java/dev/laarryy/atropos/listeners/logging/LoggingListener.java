@@ -42,7 +42,6 @@ import discord4j.core.object.entity.channel.TextChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 public final class LoggingListener {
     private final Logger logger = LogManager.getLogger(this);

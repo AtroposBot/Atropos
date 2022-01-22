@@ -24,7 +24,6 @@ import discord4j.core.object.entity.channel.Channel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import org.apache.logging.log4j.LogManager;

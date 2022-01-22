@@ -11,7 +11,6 @@ import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.VoiceChannelEditSpec;
 import discord4j.rest.util.PermissionSet;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.util.HashSet;
 import java.util.Set;
