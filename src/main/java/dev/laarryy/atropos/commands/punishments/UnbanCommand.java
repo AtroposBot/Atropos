@@ -43,8 +43,7 @@ public class UnbanCommand implements Command {
             return Mono.empty();
         }
 
-        Mono.just(event)
-                .subscribe(manualPunishmentEnder::endPunishment);
-        return Mono.empty();
+        return Mono.just(event)
+                .flatMap(manualPunishmentEnder::endPunishment);
     }
 }

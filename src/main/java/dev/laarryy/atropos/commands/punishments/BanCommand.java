@@ -57,9 +57,7 @@ public class BanCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        Mono.just(event)
-                .subscribe(event1 -> punishmentManager.doPunishment(request, event1));
-
-        return Mono.empty();
+        return Mono.just(event)
+                .flatMap(event1 -> punishmentManager.doPunishment(request, event1));
     }
 }

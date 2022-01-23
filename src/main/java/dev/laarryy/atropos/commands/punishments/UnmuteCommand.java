@@ -44,8 +44,7 @@ public class UnmuteCommand implements Command {
             return Mono.empty();
         }
 
-        Mono.just(event)
-                .subscribe(event1 -> manualPunishmentEnder.endPunishment(event));
-        return Mono.empty();
+        return Mono.just(event)
+                .flatMap(event1 -> manualPunishmentEnder.endPunishment(event));
     }
 }

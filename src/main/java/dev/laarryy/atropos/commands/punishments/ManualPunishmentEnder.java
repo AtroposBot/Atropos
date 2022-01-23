@@ -25,124 +25,106 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
+import java.util.Objects;
 
 public final class ManualPunishmentEnder {
     private static final Logger logger = LogManager.getLogger(ManualPunishmentEnder.class);
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
 
-    public ManualPunishmentEnder() {}
-
-    public void endPunishment(ChatInputInteractionEvent event) {
-
-        DatabaseLoader.openConnectionIfClosed();
-
-        if (event.getInteraction().getGuild().block() == null || event.getInteraction().getGuildId().isEmpty()) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            AuditLogger.addCommandToDB(event, false);
-            return;
-        }
-
-        String reason;
-        if (event.getOption("reason").isPresent() && event.getOption("reason").get().getValue().isPresent()) {
-            reason = event.getOption("reason").get().getValue().get().asString();
-        } else reason = "No reason provided.";
-
-        if (event.getOption("id").isPresent() && event.getOption("id").get().getValue().isPresent()) {
-            Flux.fromArray(event.getOption("id").get().getValue().get().asString().split(" "))
-                    .map(Long::valueOf)
-                    .onErrorReturn(Exception.class, 0L)
-                    .filter(aLong -> aLong != 0)
-                    .filter(aLong -> discordUnban(event.getInteraction().getGuild().block(), aLong, reason))
-                        .subscribe(lo -> {
-                        databaseEndPunishment(lo, event.getInteraction().getGuild().block(), event.getCommandName(), reason, event.getInteraction().getUser(), event.getClient().getUserById(Snowflake.of(lo)).block());
-                        Notifier.notifyModOfUnban(event, reason, lo);
-                    });
-        }
-
-        if (event.getOption("user").isPresent() && event.getOption("user").get().getValue().isPresent()) {
-            Mono.just(event.getOption("user").get().getValue().get())
-                    .filter(returnVal -> returnVal.asUser().block() != null)
-                    .flatMap(ApplicationCommandInteractionOptionValue::asUser)
-                    .flatMap(user -> user.asMember(event.getInteraction().getGuildId().get()))
-                    .filter(member -> discordUnmute(member, event, reason))
-                        .subscribe(member -> databaseEndPunishment(member.getId().asLong(), event.getInteraction().getGuild().block(), event.getCommandName(), reason, event.getInteraction().getUser(), member));
-        }
-        DatabaseLoader.closeConnectionIfOpen();
+    public ManualPunishmentEnder() {
     }
 
-    public boolean discordUnban(Guild guild, Long unbannedUserSnowflake, String reason) {
-        try {
-            guild.getClient().getUserById(Snowflake.of(unbannedUserSnowflake));
-            guild.unban(Snowflake.of(unbannedUserSnowflake), reason).block();
-            return true;
-        } catch (Exception exception) {
-            return false;
-        }
+    public Mono<Void> endPunishment(ChatInputInteractionEvent event) {
+
+        Mono<Guild> guildMono = event.getInteraction().getGuild();
+
+        return Mono.just(event)
+                .doFirst(DatabaseLoader::openConnectionIfClosed)
+                .flatMap(event1 -> guildMono.flatMap(guild -> {
+                    if (guild == null) {
+                        Notifier.notifyCommandUserOfError(event, "nullServer");
+                        AuditLogger.addCommandToDB(event, false);
+                        return Mono.empty();
+                    }
+
+                    String reason;
+                    if (event.getOption("reason").isPresent() && event.getOption("reason").get().getValue().isPresent()) {
+                        reason = event.getOption("reason").get().getValue().get().asString();
+                    } else reason = "No reason provided.";
+
+                    if (event.getOption("id").isPresent() && event.getOption("id").get().getValue().isPresent()) {
+                        return Flux.fromArray(event.getOption("id").get().getValue().get().asString().split(" "))
+                                .map(Long::valueOf)
+                                .onErrorReturn(Exception.class, 0L)
+                                .filter(aLong -> aLong != 0)
+                                .flatMap(lo -> event.getClient().getUserById(Snowflake.of(lo)).flatMap(user ->
+                                        databaseEndPunishment(lo, guild, event.getCommandName(), reason, event.getInteraction().getUser(), user)
+                                                .flatMap(guild1 -> guild.unban(Snowflake.of(lo), reason))
+                                                .doFinally(s ->
+                                                        Notifier.notifyModOfUnban(event, reason, lo))))
+                                .then();
+                    }
+
+                    if (event.getOption("user").isPresent() && event.getOption("user").get().getValue().isPresent()) {
+                        return Mono.just(event.getOption("user").get().getValue().get())
+                                .flatMap(ApplicationCommandInteractionOptionValue::asUser)
+                                .filter(Objects::nonNull)
+                                .flatMap(user -> user.asMember(guild.getId()))
+                                .flatMap(member ->
+                                        Mono.just(member).flatMap(member1 ->
+                                                        discordUnmute(member1, event, reason))
+                                                .filter(aBoolean -> aBoolean)
+                                                .flatMap(aBoolean ->
+                                                        databaseEndPunishment(member.getId().asLong(), guild, event.getCommandName(), reason, event.getInteraction().getUser(), member)));
+                    }
+
+
+                    return Mono.empty();
+                }));
     }
 
-    public boolean discordUnmute(Member member, ChatInputInteractionEvent event, String reason) {
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getInteraction().getGuildId().get().asLong());
-        Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
-        if (mutedRoleId == null) {
-            Notifier.notifyCommandUserOfError(event, "noMutedRole");
-            AuditLogger.addCommandToDB(event, false);
-            return false;
-        }
-        Role mutedRole;
-        try {
-            mutedRole = event.getInteraction().getGuild().block().getRoleById(Snowflake.of(mutedRoleId)).block();
-        } catch (NullPointerException exception) {
-            Notifier.notifyCommandUserOfError(event, "noMutedRole");
-            AuditLogger.addCommandToDB(event, false);
-            return false;
-        }
-            if (mutedRole != null && member.getRoles().any(role -> role.equals(mutedRole)).block()) {
-                member.removeRole(Snowflake.of(mutedRoleId), reason).block();
-                AuditLogger.addCommandToDB(event, true);
-                Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
-                DatabaseLoader.closeConnectionIfOpen();
-                return true;
-            } else {
-                Notifier.notifyCommandUserOfError(event, "userNotMuted");
-                AuditLogger.addCommandToDB(event, false);
-                DatabaseLoader.closeConnectionIfOpen();
-                return false;
-            }
-    }
-
-    public boolean discordUnmute(Member member, ButtonInteractionEvent event, String reason, String entry) {
+    public Mono<Boolean> discordUnmute(Member member, ChatInputInteractionEvent event, String reason) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getInteraction().getGuildId().get().asLong());
         Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
         if (mutedRoleId == null) {
             Notifier.notifyCommandUserOfError(event, "noMutedRole");
-            AuditLogger.addCommandToDB(event, entry, false);
-            return false;
+            AuditLogger.addCommandToDB(event, false);
+            return Mono.just(false);
         }
-        Role mutedRole;
-        try {
-            mutedRole = event.getInteraction().getGuild().block().getRoleById(Snowflake.of(mutedRoleId)).block();
-        } catch (NullPointerException exception) {
-            Notifier.notifyCommandUserOfError(event, "noMutedRole");
-            AuditLogger.addCommandToDB(event, entry, false);
-            return false;
-        }
-        if (mutedRole != null && member.getRoles().any(role -> role.equals(mutedRole)).block()) {
-            member.removeRole(Snowflake.of(mutedRoleId), reason).block();
-            AuditLogger.addCommandToDB(event, entry, true);
-            Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
-            DatabaseLoader.closeConnectionIfOpen();
-            return true;
-        } else {
-            Notifier.notifyCommandUserOfError(event, "userNotMuted");
-            AuditLogger.addCommandToDB(event, entry,false);
-            DatabaseLoader.closeConnectionIfOpen();
-            return false;
-        }
+        Mono<Role> mutedRole;
+
+            mutedRole = event.getInteraction().getGuild().flatMap(guild -> guild.getRoleById(Snowflake.of(mutedRoleId)));
+
+            return Mono.from(mutedRole)
+                            .flatMap(role -> {
+                                if (role == null) {
+                                    Notifier.notifyCommandUserOfError(event, "noMutedRole");
+                                    AuditLogger.addCommandToDB(event, false);
+                                    return Mono.just(false);
+                                } else {
+                                    return Mono.from(member.getRoles().any(arole -> arole.equals(mutedRole)))
+                                            .filter(aBoolean -> {
+                                                if (aBoolean) {
+                                                    return true;
+                                                } else {
+                                                    Notifier.notifyCommandUserOfError(event, "userNotMuted");
+                                                    AuditLogger.addCommandToDB(event, false);
+                                                    return false;
+                                                }
+                                            })
+                                            .flatMap(aBoolean -> {
+                                                AuditLogger.addCommandToDB(event, true);
+                                                Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
+                                                return member.removeRole(Snowflake.of(mutedRoleId));
+                                            })
+                                            .flatMap(aVoid -> Mono.just(true))
+                                            .onErrorReturn(Exception.class, false);
+                                }
+                            });
     }
 
-    public boolean databaseEndPunishment(Long userIdSnowflake, Guild guild, String commandName, String reason, User punishmentEnder, User punishedUser) {
+    public Mono<Void> databaseEndPunishment(Long userIdSnowflake, Guild guild, String commandName, String reason, User punishmentEnder, User punishedUser) {
         DatabaseLoader.openConnectionIfClosed();
 
         String punishmentType = switch (commandName) {
@@ -171,14 +153,9 @@ public final class ManualPunishmentEnder {
 
             punishmentLazyList.addAll(punishmentLazyList2);
 
-            Flux.fromIterable(punishmentLazyList)
-                    .filter(punishment -> {
-                                if (punishment != null) {
-                                    return true;
-                                } else return false;
-                            }
-                    )
-                        .subscribe(punishment -> {
+            return Flux.fromIterable(punishmentLazyList)
+                    .filter(Objects::nonNull)
+                    .flatMap(punishment -> {
                         DatabaseLoader.openConnectionIfClosed();
                         punishment.setEnded(true);
                         punishment.setEndDate(Instant.now().toEpochMilli());
@@ -196,12 +173,11 @@ public final class ManualPunishmentEnder {
                         if (punishmentType.equals("ban")) {
                             loggingListener.onUnban(guild, reason, punishment);
                         }
-                    });
-            DatabaseLoader.closeConnectionIfOpen();
-            return true;
+                        return Mono.empty();
+                    }).then();
         } else {
             DatabaseLoader.closeConnectionIfOpen();
-            return false;
+            return Mono.empty();
         }
     }
 }
