@@ -3,6 +3,7 @@ package dev.laarryy.atropos.managers;
 import dev.laarryy.atropos.Atropos;
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.ConfigManager;
+import dev.laarryy.atropos.utils.ErrorHandler;
 import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
@@ -74,22 +75,19 @@ public class CommandManager {
         // Listen for command event and execute from map
 
         Mono<Void> commandInteraction = client.getEventDispatcher().on(ChatInputInteractionEvent.class)
-                .filter(permissionChecker::checkBotPermission) // make sure bot has perms
+                .filterWhen(permissionChecker::checkBotPermission) // make sure bot has perms
                 .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
                         .flatMap(content -> Flux.fromIterable(COMMANDS)
                                 .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
                                 .flatMap(entry -> {
                                             logger.info("Command Received");
-                                            return entry.execute(event)
-                                                    .onErrorResume(e -> {
-                                                        logger.error(e.getMessage());
-                                                        logger.error("Error in Command: ", e);
-                                                        return Mono.empty();
-                                                    })
-                                                    .log()
-                                                    .doFinally(signalType -> logger.info("Command Done"));
+                                            return Mono.from(event.deferReply().withEphemeral(true)).flatMap(unused ->
+                                                    entry.execute(event)
+                                                            .log()
+                                                            .doFinally(signalType -> logger.info("Command Done")));
                                         }
                                 )
+                                .onErrorResume(e -> ErrorHandler.handleError(e, event))
                                 .next()))
                 .then();
 

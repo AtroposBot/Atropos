@@ -69,13 +69,11 @@ public class WipeCommand implements Command {
 
         return Mono.from(event.getInteraction().getGuild())
                 .doFirst(DatabaseLoader::openConnectionIfClosed)
+                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
+                .onErrorResume(Mono::error)
                 .filter(Objects::nonNull)
+                .filterWhen(guild -> permissionChecker.checkIsAdministrator(event.getInteraction().getMember().get()))
                 .flatMap(guild -> Mono.from(event.getInteraction().getChannel()).flatMap(messageChannel -> {
-                    if (event.getInteraction().getMember().isEmpty() || !permissionChecker.checkIsAdministrator(guild, event.getInteraction().getMember().get())) {
-                        Notifier.notifyCommandUserOfError(event, "noPermission");
-                        return Mono.empty();
-                    }
-
                     DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
                     if (discordServer == null) {

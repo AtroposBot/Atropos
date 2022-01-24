@@ -2,6 +2,7 @@ package dev.laarryy.atropos.commands.controls;
 
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.ConfigManager;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.utils.Notifier;
 import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
@@ -104,8 +105,7 @@ public class PresenceCommand implements Command {
         return Mono.just(event)
                 .map(event1 -> {
                     if (!event.getInteraction().getUser().getId().equals(Snowflake.of(ConfigManager.getControllerId()))) {
-                        Notifier.notifyCommandUserOfError(event, "noPermission");
-                        return Mono.empty();
+                        return Mono.error(new NoPermissionsException("No Permission"));
                     }
 
                     GatewayDiscordClient client = event.getClient();

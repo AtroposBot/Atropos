@@ -1,6 +1,7 @@
 package dev.laarryy.atropos.utils;
 
 import dev.laarryy.atropos.exceptions.BotPermissionsException;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.permissions.ServerRolePermission;
@@ -21,12 +22,21 @@ import reactor.core.publisher.Mono;
 public final class PermissionChecker {
     private final Logger logger = LogManager.getLogger(this);
 
+    /**
+     *
+     * @param guild Guild to check permission in
+     * @param user User to check permissions of
+     * @param requestName Command name to check permission of
+     * @return a true {@link Mono<Boolean>} if user has permission in guild, or an error signal indicating no permission.
+     */
+
     public Mono<Boolean> checkPermission(Guild guild, User user, String requestName) {
         Snowflake guildIdSnowflake = guild.getId();
 
         return Mono.from(user.asMember(guildIdSnowflake))
+                .doFirst(DatabaseLoader::openConnectionIfClosed)
+                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                 .flatMap(member -> {
-                    DatabaseLoader.openConnectionIfClosed();
                     dev.laarryy.atropos.models.guilds.permissions.Permission permission = dev.laarryy.atropos.models.guilds.permissions.Permission.findOrCreateIt("permission", requestName);
                     permission.save();
                     permission.refresh();
@@ -41,21 +51,23 @@ public final class PermissionChecker {
 
                         int guildId = DiscordServer.findFirst("server_id = ?", guildIdSnowflake.asLong()).getInteger("id");
 
-                        return Mono.from(
-                                guild.getRoles()
+                        return Mono.from(guild.getRoles()
                                 .filter(role ->
                                         (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null)
                                                 || (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null)
                                                 || role.getPermissions().contains(Permission.ADMINISTRATOR))
-                                .flatMap(role -> Mono.from(
-                                                member.getRoles()
-                                                        .mergeWith(guild.getEveryoneRole())
-                                                        .any(memberRole -> memberRole.equals(role))
+                                .flatMap(role -> Mono.from(member.getRoles()
+                                                .mergeWith(guild.getEveryoneRole())
+                                                .any(memberRole -> memberRole.equals(role))
                                         )
                                         .flatMap(bool -> {
-                                            return Mono.just(bool);
+                                            if (!bool) {
+                                                return Mono.error(new NoPermissionsException("No Permission"));
+                                            } else {
+                                                return Mono.just(true);
+                                            }
                                         }))
-                                );
+                        );
                     });
                 });
     }
@@ -68,7 +80,7 @@ public final class PermissionChecker {
                 .any(permissions -> permissions.contains(Permission.ADMINISTRATOR));
     }
 
-    public Mono<Boolean> checkBotPermission(ChatInputInteractionEvent event) throws NullServerException, BotPermissionsException {
+    public Mono<Boolean> checkBotPermission(ChatInputInteractionEvent event) {
 
         return Mono.from(event.getInteraction().getGuild())
                 .flatMap(guild -> {
