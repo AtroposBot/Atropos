@@ -23,6 +23,7 @@ import dev.laarryy.atropos.exceptions.UserNotMutedExcception;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.WebhookMessageEditRequest;
+import discord4j.rest.http.client.ClientException;
 import discord4j.rest.util.Color;
 import reactor.core.publisher.Mono;
 
@@ -47,6 +48,15 @@ public class ErrorHandler {
                             .builder()
                             .addEmbed(noBotPermissionsEmbed().asRequest())
                             .build()))
+                    .then();
+        }
+
+        if (error instanceof ClientException) {
+            return Mono.from(
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(discordSideError().asRequest())
+                                    .build()))
                     .then();
         }
 
@@ -269,6 +279,16 @@ public class ErrorHandler {
                 .title("Error: Bot Role Too Low")
                 .description("Action aborted because my highest role is too low.")
                 .addField("Information", "In order to take this action, I need to have a higher role than the target.", false)
+                .color(Color.RUBY)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec discordSideError() {
+        return EmbedCreateSpec.builder()
+                .title("Error: Discord Says No")
+                .description("Discord returned an error that was not caught by this bot.")
+                .addField("Information", "Please use `/info bot` to join the support discord and notify the author.", false)
                 .color(Color.RUBY)
                 .timestamp(Instant.now())
                 .build();
