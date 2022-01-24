@@ -15,6 +15,7 @@ import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 
@@ -22,12 +23,13 @@ public final class Notifier {
     private Notifier() {}
     private final Logger logger = LogManager.getLogger(this);
 
-    public static void replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
-        event.getInteractionResponse().editInitialResponse(
+    public static Mono<Void> replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
+        return event.getInteractionResponse().editInitialResponse(
                 WebhookMessageEditRequest
                         .builder()
                         .addEmbed(embed.asRequest())
-                        .build()).subscribe();
+                        .build())
+                .then();
     }
 
     private static void replyDeferredInteraction(ButtonInteractionEvent event, EmbedCreateSpec embed) {
@@ -169,6 +171,10 @@ public final class Notifier {
 
     public static void notifyModOfUnmute(ButtonInteractionEvent event, String username, String reason) {
         replyDeferredInteraction(event, unmuteEmbed(username, reason));
+    }
+
+    public static Mono<Void> notifyCommandUserOfError(ChatInputInteractionEvent event, Class<? extends Exception> error) {
+
     }
 
     public static void notifyCommandUserOfError(ChatInputInteractionEvent event, String errorType) {

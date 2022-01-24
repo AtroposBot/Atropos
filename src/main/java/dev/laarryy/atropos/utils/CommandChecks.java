@@ -1,5 +1,7 @@
 package dev.laarryy.atropos.utils;
 
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
+import dev.laarryy.atropos.exceptions.NullServerException;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.entity.Guild;
@@ -9,11 +11,10 @@ public class CommandChecks {
     static final PermissionChecker permissionChecker = new PermissionChecker();
 
 
-    public static boolean commandChecks(ChatInputInteractionEvent event, String requestName) {
+    public static boolean commandChecks(ChatInputInteractionEvent event, String requestName) throws NullServerException, NoPermissionsException {
 
         if (event.getInteraction().getGuild().blockOptional().isEmpty() || event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            return false;
+            throw new NullServerException("No Guild");
         }
 
         Guild guild = event.getInteraction().getGuild().block();
@@ -22,19 +23,17 @@ public class CommandChecks {
             if (permissionChecker.checkIsAdministrator(guild, event.getInteraction().getMember().get())) {
                 return true;
             }
-            Notifier.notifyCommandUserOfError(event, "noPermission");
             AuditLogger.addCommandToDB(event, false);
-            return false;
+            throw new NoPermissionsException("No Permission");
         }
 
         return true;
     }
 
-    public static boolean commandChecks(ButtonInteractionEvent event, String requestName) {
+    public static boolean commandChecks(ButtonInteractionEvent event, String requestName) throws NullServerException, NoPermissionsException {
 
         if (event.getInteraction().getGuild().blockOptional().isEmpty() || event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            return false;
+            throw new NullServerException("No Guild");
         }
 
         Guild guild = event.getInteraction().getGuild().block();
@@ -43,8 +42,7 @@ public class CommandChecks {
             if (permissionChecker.checkIsAdministrator(guild, event.getInteraction().getMember().get())) {
                 return true;
             }
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            return false;
+            throw new NoPermissionsException("No Permission");
         }
 
         return true;

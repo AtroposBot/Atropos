@@ -100,36 +100,39 @@ public class PresenceCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!event.getInteraction().getUser().getId().equals(Snowflake.of(ConfigManager.getControllerId()))) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            return Mono.empty();
-        }
 
-        GatewayDiscordClient client = event.getClient();
+        return Mono.just(event)
+                .map(event1 -> {
+                    if (!event.getInteraction().getUser().getId().equals(Snowflake.of(ConfigManager.getControllerId()))) {
+                        Notifier.notifyCommandUserOfError(event, "noPermission");
+                        return Mono.empty();
+                    }
 
-        String statusInput = event.getOption("type").get().getValue().get().asString();
-        Status status = switch (statusInput) {
-            case "dnd" -> Status.DO_NOT_DISTURB;
-            case "idle" -> Status.IDLE;
-            case "offline" -> Status.OFFLINE;
-            default -> Status.ONLINE;
-        };
+                    GatewayDiscordClient client = event.getClient();
 
-        String activityInput = event.getOption("activity").get().getValue().get().asString();
-        String valueInput = event.getOption("value").get().getValue().get().asString();
+                    String statusInput = event.getOption("type").get().getValue().get().asString();
+                    Status status = switch (statusInput) {
+                        case "dnd" -> Status.DO_NOT_DISTURB;
+                        case "idle" -> Status.IDLE;
+                        case "offline" -> Status.OFFLINE;
+                        default -> Status.ONLINE;
+                    };
 
-        ClientActivity clientActivity = switch (activityInput) {
-            case "playing" -> ClientActivity.playing(valueInput);
-            case "competing" -> ClientActivity.competing(valueInput);
-            case "listening" -> ClientActivity.listening(valueInput);
-            case "streaming" -> ClientActivity.streaming(valueInput, "https://twitch.tv/null");
-            default -> ClientActivity.watching(valueInput);
-        };
+                    String activityInput = event.getOption("activity").get().getValue().get().asString();
+                    String valueInput = event.getOption("value").get().getValue().get().asString();
+
+                    ClientActivity clientActivity = switch (activityInput) {
+                        case "playing" -> ClientActivity.playing(valueInput);
+                        case "competing" -> ClientActivity.competing(valueInput);
+                        case "listening" -> ClientActivity.listening(valueInput);
+                        case "streaming" -> ClientActivity.streaming(valueInput, "https://twitch.tv/null");
+                        default -> ClientActivity.watching(valueInput);
+                    };
 
 
-        client.updatePresence(ClientPresence.of(status, clientActivity)).block();
+                    client.updatePresence(ClientPresence.of(status, clientActivity)).block();
 
-        event.reply("Done.").block();
-        return Mono.empty();
+                    return event.reply("Done.");
+                }).then();
     }
 }

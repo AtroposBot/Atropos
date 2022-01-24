@@ -102,7 +102,7 @@ public final class LoggingListener {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) return;
 
-        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+        getLogChannel(guild, "punishment").subscribe(textChannel -> {
             if (textChannel == null) return;
             LogExecutor.logInsubordination(event, textChannel, target);
         });
@@ -112,7 +112,7 @@ public final class LoggingListener {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) return;
 
-        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+        getLogChannel(guild, "punishment").subscribe(textChannel -> {
             if (textChannel == null) return;
             LogExecutor.logInsubordination(event, textChannel, target);
         });
@@ -122,7 +122,7 @@ public final class LoggingListener {
         Guild guild = event.getGuild().block();
         if (guild == null) return;
 
-        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+        getLogChannel(guild, "punishment").subscribe(textChannel -> {
             if (textChannel == null) return;
             LogExecutor.logBlacklistTrigger(event, blacklist, punishment, textChannel);
         });
@@ -132,7 +132,7 @@ public final class LoggingListener {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) return;
 
-        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+        getLogChannel(guild, "punishment").subscribe(textChannel -> {
             if (textChannel == null) return;
             LogExecutor.logPunishment(punishment, textChannel);
         });
@@ -143,7 +143,7 @@ public final class LoggingListener {
         Guild guild = event.getGuild().block();
         if (guild == null) return;
 
-        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+        getLogChannel(guild, "punishment").subscribe(textChannel -> {
             if (textChannel == null) return;
             LogExecutor.logPunishment(punishment, textChannel);
         });
@@ -154,7 +154,7 @@ public final class LoggingListener {
         Guild guild = event.getInteraction().getGuild().block();
         if (guild == null) return;
 
-        getLogChannel(guild, "punishment").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+        getLogChannel(guild, "punishment").subscribe(textChannel -> {
             if (textChannel == null) return;
             LogExecutor.logPunishment(punishment, textChannel);
         });
@@ -165,7 +165,7 @@ public final class LoggingListener {
         Guild guild = event.getGuild().block();
         if (guild == null) return;
 
-        getLogChannel(guild, "modmail").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+        getLogChannel(guild, "modmail").subscribe(textChannel -> {
             if (textChannel == null) return;
             LogExecutor.logAutoMute(punishment, textChannel);
         });
@@ -176,7 +176,7 @@ public final class LoggingListener {
         Guild guild = event.getGuild().block();
         if (guild == null) return;
 
-        getLogChannel(guild, "modmail").subscribeOn(Schedulers.boundedElastic()).subscribe(textChannel -> {
+        getLogChannel(guild, "modmail").subscribe(textChannel -> {
             if (textChannel == null) return;
             LogExecutor.logAutoMute(punishment, textChannel);
         });

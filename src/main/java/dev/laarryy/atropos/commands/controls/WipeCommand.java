@@ -20,6 +20,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
+import java.util.Objects;
 
 public class WipeCommand implements Command {
 
@@ -51,69 +52,68 @@ public class WipeCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        event.deferReply().withEphemeral(true).block();
+        Mono<Void> deferMono = event.deferReply().withEphemeral(true);
 
         if (event.getOption("guild").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::wipeGuild);
+            return Mono.just(event).flatMap(event1 -> Mono.from(deferMono).flatMap(v -> this.wipeGuild(event1)));
         }
 
         if (event.getOption("user").isPresent()) {
-            Mono.just(event).subscribeOn(Schedulers.boundedElastic()).subscribe(this::wipeUser);
+            return Mono.just(event).flatMap(event1 -> Mono.from(deferMono).flatMap(v -> this.wipeUser(event1)));
         }
 
         return Mono.empty();
     }
 
-    private void wipeGuild(ChatInputInteractionEvent event) {
-        if (event.getInteraction().getGuild().block() == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-        }
+    private Mono<Void> wipeGuild(ChatInputInteractionEvent event) {
 
-        Guild guild = event.getInteraction().getGuild().block();
+        return Mono.from(event.getInteraction().getGuild())
+                .doFirst(DatabaseLoader::openConnectionIfClosed)
+                .filter(Objects::nonNull)
+                .flatMap(guild -> Mono.from(event.getInteraction().getChannel()).flatMap(messageChannel -> {
+                    if (event.getInteraction().getMember().isEmpty() || !permissionChecker.checkIsAdministrator(guild, event.getInteraction().getMember().get())) {
+                        Notifier.notifyCommandUserOfError(event, "noPermission");
+                        return Mono.empty();
+                    }
 
-        if (event.getInteraction().getMember().isEmpty() || !permissionChecker.checkIsAdministrator(guild, event.getInteraction().getMember().get())) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            return;
-        }
+                    DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
-        DatabaseLoader.openConnectionIfClosed();
+                    if (discordServer == null) {
+                        Notifier.notifyCommandUserOfError(event, "nullServer");
+                        return Mono.empty();
+                    }
 
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-
-        if (discordServer == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            return;
-        }
-
-        event.getInteraction().getChannel().block().createMessage("Administrator Server Wipe Activated. Farewell!").block();
-
-        discordServer.delete();
-        DatabaseLoader.closeConnectionIfOpen();
-
-        event.getInteraction().getGuild().block().leave().retry(10).block();
+                    return Mono.from(messageChannel.createMessage("Administrator Server Wipe Activated. Farewell!").flatMap(message -> {
+                        discordServer.delete();
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return Mono.from(guild.leave().retry(10));
+                    }));
+                }));
     }
 
-    private void wipeUser(ChatInputInteractionEvent event) {
+    private Mono<Void> wipeUser(ChatInputInteractionEvent event) {
 
         User user = event.getInteraction().getUser();
 
-        DatabaseLoader.openConnectionIfClosed();
+        return Mono.from(event.getInteraction().getGuild())
+                .doFirst(DatabaseLoader::openConnectionIfClosed)
+                .filter(Objects::nonNull)
+                .flatMap(guild -> {
+                    DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", user.getId().asLong());
 
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", user.getId().asLong());
+                    logger.info("User with ID " + user.getId().asLong() + " has requested the deletion of their data. Complying.");
 
-        logger.info("User with ID " + user.getId().asLong() + " has requested the deletion of their data. Complying.");
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title(EmojiManager.getMessageDelete() + " User Information Cleared")
+                            .description("Leave this guild immediately if you do not want further information recorded in any manner. " +
+                                    "For information about how Atropos stores and uses data, please refer to [the Privacy Policy](https://atropos.laarryy.dev/privacy-policy/)" +
+                                    "and [the Terms of Use](https://atropos.laarryy.dev/terms-of-use/)")
+                            .timestamp(Instant.now())
+                            .build();
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getMessageDelete() + " User Information Cleared")
-                .description("Leave this guild immediately if you do not want further information recorded in any manner. " +
-                        "For information about how Atropos stores and uses data, please refer to [the Privacy Policy](https://atropos.laarryy.dev/privacy-policy/)" +
-                        "and [the Terms of Use](https://atropos.laarryy.dev/terms-of-use/)")
-                .timestamp(Instant.now())
-                .build();
-
-        Notifier.replyDeferredInteraction(event, embed);
-
-        discordUser.delete();
-        DatabaseLoader.closeConnectionIfOpen();
+                    discordUser.delete();
+                    return Notifier.replyDeferredInteraction(event, embed);
+                })
+                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen());
     }
 }

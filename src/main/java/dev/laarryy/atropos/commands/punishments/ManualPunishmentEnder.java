@@ -118,7 +118,7 @@ public final class ManualPunishmentEnder {
                                                 Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
                                                 return member.removeRole(Snowflake.of(mutedRoleId));
                                             })
-                                            .flatMap(aVoid -> Mono.just(true))
+                                            .thenReturn(true)
                                             .onErrorReturn(Exception.class, false);
                                 }
                             });
