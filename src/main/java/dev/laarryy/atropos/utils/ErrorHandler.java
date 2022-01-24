@@ -22,7 +22,7 @@ import dev.laarryy.atropos.exceptions.TooManyEntriesException;
 import dev.laarryy.atropos.exceptions.UserNotMutedExcception;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.core.spec.InteractionFollowupCreateSpec;
+import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
 import reactor.core.publisher.Mono;
 
@@ -34,189 +34,189 @@ public class ErrorHandler {
 
         if (error instanceof NoPermissionsException) {
             return Mono.from(
-                    event.createFollowup(InteractionFollowupCreateSpec.builder()
-                            .ephemeral(true)
-                            .addEmbed(noPermissionsEmbed())
+                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                            .builder()
+                            .addEmbed(noPermissionsEmbed().asRequest())
                             .build()))
                     .then();
         }
 
         if (error instanceof BotPermissionsException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(noBotPermissionsEmbed())
-                                    .build()))
+                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                            .builder()
+                            .addEmbed(noBotPermissionsEmbed().asRequest())
+                            .build()))
                     .then();
         }
 
         if (error instanceof NullServerException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(nullServerEmbed())
-                                    .build()))
+                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                            .builder()
+                            .addEmbed(nullServerEmbed().asRequest())
+                            .build()))
                     .then();
         }
 
         if (error instanceof BotRoleException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(botRoleTooLow())
-                                    .build()))
+                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                            .builder()
+                            .addEmbed(botRoleTooLow().asRequest())
+                            .build()))
                     .then();
         }
 
         if (error instanceof AlreadyAppliedException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(punishmentAlreadyAppliedEmbed())
-                                    .build()))
+                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                            .builder()
+                            .addEmbed(punishmentAlreadyAppliedEmbed().asRequest())
+                            .build()))
                     .then();
         }
 
         if (error instanceof AlreadyAssignedException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(alreadyAssignedEmbed())
-                                    .build()))
+                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                            .builder()
+                            .addEmbed(alreadyAssignedEmbed().asRequest())
+                            .build()))
                     .then();
         }
 
         if (error instanceof AlreadyBlacklistedException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(alreadyBlacklistedEmbed())
-                                    .build()))
+                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                            .builder()
+                            .addEmbed(alreadyBlacklistedEmbed().asRequest())
+                            .build()))
                     .then();
         }
 
         if (error instanceof CannotTargetBotsException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(cannotTargetBotsEmbed())
-                                    .build()))
+                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                            .builder()
+                            .addEmbed(cannotTargetBotsEmbed().asRequest())
+                            .build()))
                     .then();
         }
 
         if (error instanceof DurationTooLongException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(durationTooLongEmbed())
-                                    .build()))
+                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                            .builder()
+                            .addEmbed(durationTooLongEmbed().asRequest())
+                            .build()))
                     .then();
         }
 
         if (error instanceof InputTooLongException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(inputTooLongEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(inputTooLongEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof InvalidChannelException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(invalidChannelEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(invalidChannelEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof InvalidDurationException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(invalidDurationEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(invalidDurationEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof MalformedInputException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(malformedInputEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(malformedInputEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof NoMemberException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(noMemberEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(noMemberEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof NoMutedRoleException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(noMutedRoleEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(noMutedRoleEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof NoResultsException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(noResultsEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(noResultsEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof NotFoundException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(fourOhFourEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(fourOhFourEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof NoUserException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(noUserEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(noUserEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof TooManyEntriesException) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(tooManyEntriesEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(tooManyEntriesEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
         if (error instanceof UserNotMutedExcception) {
             return Mono.from(
-                            event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                    .ephemeral(true)
-                                    .addEmbed(userNotMutedEmbed())
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(userNotMutedEmbed().asRequest())
                                     .build()))
                     .then();
         }
 
 
         return Mono.from(
-                        event.createFollowup(InteractionFollowupCreateSpec.builder()
-                                .ephemeral(true)
-                                .addEmbed(unknownErrorEmbed())
+                        event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                .builder()
+                                .addEmbed(unknownErrorEmbed().asRequest())
                                 .build()))
                 .then();
 

@@ -10,9 +10,12 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionFollowupCreateSpec;
+import discord4j.discordjson.json.WebhookExecuteRequest;
 import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
+import discord4j.rest.util.MultipartRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
@@ -20,15 +23,21 @@ import reactor.core.publisher.Mono;
 import java.time.Instant;
 
 public final class Notifier {
-    private Notifier() {}
+    private Notifier() {
+    }
+
+    //TODO: Do notifications on COMPLETE so the error stream lines up
+
     private final Logger logger = LogManager.getLogger(this);
 
-    public static Mono<Void> replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
-        return event.getInteractionResponse().editInitialResponse(
-                WebhookMessageEditRequest
-                        .builder()
-                        .addEmbed(embed.asRequest())
-                        .build())
+    public static Mono<Void> sendResultsEmbed(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
+
+        return Mono.from(event.getInteractionResponse().deleteInitialResponse())
+                .thenReturn(event.getInteractionResponse().createFollowupMessage(
+                                MultipartRequest.ofRequest(WebhookExecuteRequest
+                                        .builder()
+                                        .addEmbed(embed.asRequest())
+                                        .build())))
                 .then();
     }
 
@@ -154,7 +163,8 @@ public final class Notifier {
         try {
             PrivateChannel privateChannel = punishedUser.getPrivateChannel().block();
             privateChannel.createMessage(embed).block();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
         punishment.setDMed(true);
         punishment.save();
@@ -171,61 +181,6 @@ public final class Notifier {
 
     public static void notifyModOfUnmute(ButtonInteractionEvent event, String username, String reason) {
         replyDeferredInteraction(event, unmuteEmbed(username, reason));
-    }
-
-    public static Mono<Void> notifyCommandUserOfError(ChatInputInteractionEvent event, Class<? extends Exception> error) {
-
-    }
-
-    public static void notifyCommandUserOfError(ChatInputInteractionEvent event, String errorType) {
-        switch (errorType) {
-            case "noPermission" -> event.reply().withEmbeds(noPermissionsEmbed()).withEphemeral(true).subscribe();
-            case "noBotPermission" -> event.reply().withEmbeds(noBotPermissionsEmbed()).withEphemeral(true).subscribe();
-            case "botRoleTooLow" -> event.reply().withEmbeds(botRoleTooLow()).withEphemeral(true).subscribe();
-            case "nullServer" -> event.reply().withEmbeds(nullServerEmbed()).withEphemeral(true).subscribe();
-            case "noUser" -> event.reply().withEmbeds(noUserEmbed()).withEphemeral(true).subscribe();
-            case "noMember" -> event.reply().withEmbeds(noMemberEmbed()).withEphemeral(true).subscribe();
-            case "invalidDuration" -> event.reply().withEmbeds(invalidDurationEmbed()).withEphemeral(true).subscribe();
-            case "alreadyAssigned" -> event.reply().withEmbeds(alreadyAssignedEmbed()).withEphemeral(true).subscribe();
-            case "alreadyBlacklisted" -> event.reply().withEmbeds(alreadyBlacklistedEmbed()).withEphemeral(true).subscribe();
-            case "noMutedRole" -> event.reply().withEmbeds(noMutedRoleEmbed()).withEphemeral(true).subscribe();
-            case "userNotMuted" -> event.reply().withEmbeds(userNotMutedEmbed()).withEphemeral(true).subscribe();
-            case "alreadyApplied" -> event.reply().withEmbeds(punishmentAlreadyAppliedEmbed()).withEphemeral(true).subscribe();
-            case "404" -> event.reply().withEmbeds(fourOhFourEmbed()).withEphemeral(true).subscribe();
-            case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
-            case "noResults" -> replyDeferredInteraction(event, noResultsEmbed());
-            case "inputTooLong" -> event.reply().withEmbeds(inputTooLongEmbed()).withEphemeral(true).subscribe();
-            case "tooManyEntries" -> event.reply().withEmbeds(tooManyEntriesEmbed()).withEphemeral(true).subscribe();
-            case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).withEphemeral(true).subscribe();
-            case "invalidChannel" -> replyDeferredInteraction(event, invalidChannelEmbed());
-            case "durationTooLong" -> event.reply().withEmbeds(durationTooLongEmbed()).withEphemeral(true).subscribe();
-            default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
-        }
-    }
-
-    public static void notifyCommandUserOfError(ButtonInteractionEvent event, String errorType) {
-        switch (errorType) {
-            case "noPermission" -> event.reply().withEmbeds(noPermissionsEmbed()).withEphemeral(true).subscribe();
-            case "noBotPermission" -> event.reply().withEmbeds(noBotPermissionsEmbed()).withEphemeral(true).subscribe();
-            case "botRoleTooLow" -> event.reply().withEmbeds(botRoleTooLow()).withEphemeral(true).subscribe();
-            case "nullServer" -> event.reply().withEmbeds(nullServerEmbed()).withEphemeral(true).subscribe();
-            case "noUser" -> event.reply().withEmbeds(noUserEmbed()).withEphemeral(true).subscribe();
-            case "invalidDuration" -> event.reply().withEmbeds(invalidDurationEmbed()).withEphemeral(true).subscribe();
-            case "alreadyAssigned" -> event.reply().withEmbeds(alreadyAssignedEmbed()).withEphemeral(true).subscribe();
-            case "alreadyBlacklisted" -> event.reply().withEmbeds(alreadyBlacklistedEmbed()).withEphemeral(true).subscribe();
-            case "noMutedRole" -> event.reply().withEmbeds(noMutedRoleEmbed()).withEphemeral(true).subscribe();
-            case "userNotMuted" -> event.reply().withEmbeds(userNotMutedEmbed()).withEphemeral(true).subscribe();
-            case "alreadyApplied" -> event.reply().withEmbeds(punishmentAlreadyAppliedEmbed()).withEphemeral(true).subscribe();
-            case "404" -> event.reply().withEmbeds(fourOhFourEmbed()).withEphemeral(true).subscribe();
-            case "malformedInput" -> event.reply().withEmbeds(malformedInputEmbed()).withEphemeral(true).subscribe();
-            case "noResults" -> replyDeferredInteraction(event, noResultsEmbed());
-            case "inputTooLong" -> event.reply().withEmbeds(inputTooLongEmbed()).withEphemeral(true).subscribe();
-            case "tooManyEntries" -> event.reply().withEmbeds(tooManyEntriesEmbed()).withEphemeral(true).subscribe();
-            case "cannotTargetBots" -> event.reply().withEmbeds(cannotTargetBotsEmbed()).withEphemeral(true).subscribe();
-            case "invalidChannel" -> replyDeferredInteraction(event, invalidChannelEmbed());
-            case "durationTooLong" -> event.reply().withEmbeds(durationTooLongEmbed()).withEphemeral(true).subscribe();
-            default -> event.reply().withEmbeds(unknownErrorEmbed()).withEphemeral(true).subscribe();
-        }
     }
 
     private static EmbedCreateSpec warnEmbed(String userName, String reason, String caseId) {
@@ -473,8 +428,8 @@ public final class Notifier {
                 .title("Error: No Permission")
                 .description("Action aborted due to lack of permission.")
                 .addField("Detail", "In order to take this action, you must be an administrator or have " +
-                        "its permission granted to you. If you have been given permission, this action was denied due" +
-                        " to its target having higher roles than you, or being an administrator while you are not. ",
+                                "its permission granted to you. If you have been given permission, this action was denied due" +
+                                " to its target having higher roles than you, or being an administrator while you are not. ",
                         true)
                 .footer("To gain permission, have an administrator run /permission add <role> <command name> for a " +
                         "role that you have. If you have permission to run the /permission command, you can run " +
@@ -566,7 +521,7 @@ public final class Notifier {
                 .title("Error: Punishment Already Applied")
                 .description("Action aborted due to selected user already having a current punishment of this type.")
                 .addField("Detail", "In order to take this action, the user must not already have an " +
-                        "active punishment of this type on their record. You must first unmute or unban the user.",
+                                "active punishment of this type on their record. You must first unmute or unban the user.",
                         true)
                 .timestamp(Instant.now())
                 .build();
