@@ -1,6 +1,8 @@
 package dev.laarryy.atropos.commands.settings;
 
 import dev.laarryy.atropos.commands.Command;
+import dev.laarryy.atropos.exceptions.MalformedInputException;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.CommandChecks;
 import dev.laarryy.atropos.utils.Notifier;
@@ -294,52 +296,75 @@ public class SettingsCommand implements Command {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         if (event.getOption("antispam").isPresent()) {
-            if (!CommandChecks.commandChecks(event, "antispamsettings")) {
-                return Mono.empty();
-            }
-            antiSpamSettings.execute(event);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
+
+            return Mono.from(CommandChecks.commandChecks(event, "antispamsettings"))
+                    .doFirst(DatabaseLoader::openConnectionIfClosed)
+                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
+                    .flatMap(aBoolean -> {
+                        if (aBoolean) {
+                            return Mono.from(antiSpamSettings.execute(event));
+                        } else {
+                            return Mono.empty();
+                        }
+                    });
         }
 
         if (event.getOption("blacklist").isPresent()) {
-            if (!CommandChecks.commandChecks(event, "blacklistsettings")) {
-                return Mono.empty();
-            }
-            blacklistSettings.execute(event);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
+
+            return Mono.from(CommandChecks.commandChecks(event, "blacklistsettings"))
+                    .doFirst(DatabaseLoader::openConnectionIfClosed)
+                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
+                    .flatMap(aBoolean -> {
+                        if (aBoolean) {
+                            return Mono.from(antiSpamSettings.execute(event));
+                        } else {
+                            return Mono.empty();
+                        }
+                    });
         }
 
         if (event.getOption("log").isPresent()) {
-            if (!CommandChecks.commandChecks(event, "logsettings")) {
-                return Mono.empty();
-            }
-            logSettings.execute(event);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
+
+            return Mono.from(CommandChecks.commandChecks(event, "logsettings"))
+                    .doFirst(DatabaseLoader::openConnectionIfClosed)
+                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
+                    .flatMap(aBoolean -> {
+                        if (aBoolean) {
+                            return Mono.from(antiSpamSettings.execute(event));
+                        } else {
+                            return Mono.empty();
+                        }
+                    });
         }
 
         if (event.getOption("modmail").isPresent()) {
-            if (!CommandChecks.commandChecks(event, "modmailsettings")) {
-                return Mono.empty();
-            }
-            modMailSettings.execute(event);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
+
+            return Mono.from(CommandChecks.commandChecks(event, "modmailsettings"))
+                    .doFirst(DatabaseLoader::openConnectionIfClosed)
+                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
+                    .flatMap(aBoolean -> {
+                        if (aBoolean) {
+                            return Mono.from(antiSpamSettings.execute(event));
+                        } else {
+                            return Mono.empty();
+                        }
+                    });
         }
 
         if (event.getOption("mutedrole").isPresent()) {
-            if (!CommandChecks.commandChecks(event, "mutedrolesettings")) {
-                return Mono.empty();
-            }
-            mutedRoleSettings.execute(event);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
+
+            return Mono.from(CommandChecks.commandChecks(event, "mutedrolesettings"))
+                    .doFirst(DatabaseLoader::openConnectionIfClosed)
+                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
+                    .flatMap(aBoolean -> {
+                        if (aBoolean) {
+                            return Mono.from(antiSpamSettings.execute(event));
+                        } else {
+                            return Mono.empty();
+                        }
+                    });
         }
 
-        Notifier.notifyCommandUserOfError(event, "malformedInput");
-        DatabaseLoader.closeConnectionIfOpen();
-        return Mono.empty();
+        return Mono.error(new MalformedInputException("Malformed Input"));
     }
 }
