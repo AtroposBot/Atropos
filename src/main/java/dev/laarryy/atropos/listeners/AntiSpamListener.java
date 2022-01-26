@@ -84,7 +84,10 @@ public class AntiSpamListener {
             "steamcommunity\\.com",
             "steamgames\\.com",
             "steampowered\\.com",
-            "discordcdn\\.com"
+            "discordcdn\\.com",
+            "steamdb\\.info",
+            "steamdeck\\.com",
+            "discohook\\.org"
     );
 
     private final List<Pattern> officialLinks = Flux.fromIterable(officialLinkStrings)

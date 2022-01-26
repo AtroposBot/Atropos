@@ -16,6 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -89,7 +90,7 @@ public class ScheduledTaskDoer {
 
         client.getGuildById(Snowflake.of(server.getServerSnowflake()))
                 .onErrorReturn(Exception.class, null)
-                
+                .subscribeOn(Schedulers.boundedElastic())
                 .subscribe(guild1 -> {
                     if (guild1 == null) {
                         // Ensure bot is still in guild - if not, nothing more is required.
