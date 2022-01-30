@@ -1,6 +1,7 @@
 package dev.laarryy.atropos.commands.punishments;
 
 import dev.laarryy.atropos.exceptions.AlreadyAppliedException;
+import dev.laarryy.atropos.exceptions.BotPermissionsException;
 import dev.laarryy.atropos.exceptions.BotRoleException;
 import dev.laarryy.atropos.exceptions.CannotTargetBotsException;
 import dev.laarryy.atropos.exceptions.InvalidDurationException;
@@ -22,7 +23,6 @@ import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.object.ExtendedPermissionOverwrite;
 import discord4j.core.object.PermissionOverwrite;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
@@ -32,10 +32,7 @@ import discord4j.core.object.entity.channel.Category;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.BanQuerySpec;
-import discord4j.core.spec.CategoryEditSpec;
 import discord4j.core.spec.RoleCreateSpec;
-import discord4j.core.spec.TextChannelEditSpec;
-import discord4j.core.spec.VoiceChannelEditSpec;
 import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.discordjson.json.RoleData;
 import discord4j.rest.util.OrderUtil;
@@ -45,7 +42,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -349,7 +345,7 @@ public class PunishmentManager {
                         }
                     });
                 });
-        }
+    }
 
     public void notifyPunishedUser(Guild guild, Punishment punishment, String reason) {
         punishment.setDMed(true);
@@ -390,7 +386,8 @@ public class PunishmentManager {
     public Mono<Void> discordMuteUser(Guild guild, Long userIdSnowflake) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
-        Role mutedRole;
+        Mono<Role> mutedRole;
+        boolean needToUpdateMutedRole;
         if (discordServerProperties.getMutedRoleSnowflake() == null || discordServerProperties.getMutedRoleSnowflake() == 0) {
             mutedRole = guild.createRole(RoleCreateSpec.builder()
                     .name("Muted")
@@ -398,145 +395,105 @@ public class PunishmentManager {
                     .reason("In order to mute users, a muted role must first be created.")
                     .mentionable(false)
                     .hoist(false)
-                    .build()).block();
-            updateMutedRoleInAllChannels(guild, mutedRole);
+                    .build());
+            needToUpdateMutedRole = true;
             discordServerProperties.save();
             discordServerProperties.refresh();
         } else {
-            mutedRole = guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake())).block();
-            if (mutedRole == null) {
-                logger.info("muted role null (try block)");
-                mutedRole = guild.createRole(RoleCreateSpec.builder()
-                        .name("Muted")
-                        .permissions(PermissionSet.none())
-                        .reason("In order to mute users, a muted role must first be created.")
-                        .mentionable(false)
-                        .hoist(false)
-                        .build()).block();
-                discordServerProperties.setMutedRoleSnowflake(mutedRole.getId().asLong());
-                discordServerProperties.save();
-                discordServerProperties.refresh();
-                updateMutedRoleInAllChannels(guild, mutedRole);
-            }
-
+            mutedRole = guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake()));
+            needToUpdateMutedRole = false;
+            discordServerProperties.save();
+            discordServerProperties.refresh();
         }
 
-        discordServerProperties.save();
-        discordServerProperties.refresh();
-        Member memberToMute = guild
-                .getMemberById(Snowflake.of(userIdSnowflake))
-                .onErrorResume(e -> {
-                    logger.error(e.getMessage());
-                    logger.error(e.getMessage(), e);
-                    DatabaseLoader.closeConnectionIfOpen();
-                    return Mono.empty();
-                })
-                .block();
-
-        if (!onlyCheckIfPunisherHasHighestRole(guild.getSelfMember().block(), memberToMute, guild)) {
-            // This can be used if silently not doing something is no longer preferred at some point. Right now, I think silently failing is the best way to do this.
-            //loggingListener.onMuteNotApplicable(guild, memberToMute);
-            return;
-        }
-
-        if (memberToMute != null) {
-            memberToMute
-                    .addRole(mutedRole.getId())
-                    .onErrorResume(e -> {
-                        logger.error("Error Adding Role on Mute!");
-                        logger.error(e.getMessage());
-                        logger.error(e.getMessage(), e);
-                        DatabaseLoader.closeConnectionIfOpen();
-                        return Mono.empty();
-                    })
-                    .block();
-        }
-        DatabaseLoader.closeConnectionIfOpen();
+        return Mono.from(guild.getMemberById(Snowflake.of(userIdSnowflake))).flatMap(punishedMember ->
+                Mono.from(guild.getSelfMember()).flatMap(selfMember ->
+                        Mono.from(onlyCheckIfPunisherHasHighestRole(selfMember, punishedMember, guild)).flatMap(aBoolean -> {
+                            if (!aBoolean) {
+                                return Mono.error(new BotPermissionsException("No Bot Permission"));
+                            }
+                            if (needToUpdateMutedRole) {
+                                return Mono.from(updateMutedRoleInAllChannels(guild, mutedRole)).flatMap(unused ->
+                                        Mono.from(mutedRole).flatMap(role ->
+                                                punishedMember.addRole(role.getId())));
+                            } else {
+                                return Mono.from(mutedRole).flatMap(role ->
+                                        punishedMember.addRole(role.getId()));
+                            }
+                        })));
     }
 
-    public void updateMutedRoleInAllChannels(Guild guild, Role mutedRole) {
+    public Mono<Void> updateMutedRoleInAllChannels(Guild guild, Mono<Role> mutedRoleMono) {
 
         DatabaseLoader.openConnectionIfClosed();
 
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
-        List<Role> selfRoleList = guild.getSelfMember().block().getRoles().collectList().block();
-        Role highestSelfRole = selfRoleList.get(selfRoleList.size() - 1);
+        return Mono.from(guild.getSelfMember()).flatMap(selfMember -> {
+            return Mono.from(selfMember.getRoles().collectList()).flatMap(selfRoleList -> {
+                return Mono.from(guild.getRoles().map(Role::getData).collectList()).flatMap(roleData -> {
+                    Flux<RoleData> roleDataFlux = Flux.fromIterable(roleData);
+                    Role highestSelfRole = selfRoleList.get(selfRoleList.size() - 1);
+                    return Mono.from(OrderUtil.orderRoles(roleDataFlux).takeWhile(role -> !role.equals(highestSelfRole.getData())).count()).flatMap(roleCount -> {
+                        int roleInt = roleCount != null ? roleCount.intValue() - 1 : 1;
 
-        Flux<RoleData> roleDataFlux = Flux.fromIterable(guild.getRoles().map(Role::getData).collectList().block());
+                        return Mono.from(mutedRoleMono).flatMap(mutedRole -> {
+                            Mono<Void> changePositionMono;
+                            if (mutedRole != null) {
+                                discordServerProperties.setMutedRoleSnowflake(mutedRole.getId().asLong());
+                                discordServerProperties.save();
 
-        Long roleCount = OrderUtil.orderRoles(roleDataFlux).takeWhile(role -> !role.equals(highestSelfRole.getData())).count().block();
-        int roleInt = roleCount != null ? roleCount.intValue() - 1 : 1;
+                                changePositionMono = mutedRole.changePosition(roleInt).then();
+                            } else {
+                                changePositionMono = Mono.empty();
+                            }
 
-        if (mutedRole != null) {
-            discordServerProperties.setMutedRoleSnowflake(mutedRole.getId().asLong());
-            discordServerProperties.save();
+                            discordServerProperties.save();
+                            discordServerProperties.refresh();
 
-            mutedRole.changePosition(roleInt)
-                    .onErrorResume(e -> {
-                        logger.error(e.getMessage());
-                        logger.error(e.getMessage(), e);
-                        return Mono.empty();
-                    })
-                    .subscribe();
-        }
+                            Mono<Void> updateTextPerms = guild.getChannels().ofType(TextChannel.class)
+                                    .flatMap(textChannel -> {
+                                        return textChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
+                                                        PermissionSet.none(),
+                                                        PermissionSet.of(
+                                                                Permission.SEND_MESSAGES,
+                                                                Permission.ADD_REACTIONS,
+                                                                // Permission.USE_PUBLIC_THREADS,
+                                                                // Permission.USE_PRIVATE_THREADS,
+                                                                Permission.USE_SLASH_COMMANDS
+                                                        )))
+                                                .onErrorResume(e -> {
+                                                    logger.error("------------------------- Text Channel Edit Prohibited");
+                                                    return Mono.empty();
+                                                });
+                                    })
+                                    .then();
 
-        discordServerProperties.save();
-        discordServerProperties.refresh();
+                            Mono<Void> updateVoicePerms = guild.getChannels().ofType(VoiceChannel.class)
+                                    .flatMap(voiceChannel -> {
+                                        return voiceChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
+                                                        PermissionSet.none(),
+                                                        PermissionSet.of(
+                                                                Permission.SPEAK,
+                                                                Permission.STREAM
+                                                        )))
+                                                .onErrorResume(e -> {
+                                                    logger.error("------------------- Voice Channel Edit Prohibited");
+                                                    return Mono.empty();
+                                                });
+                                    }).then();
 
-        guild.getChannels().ofType(Category.class)
-                .flatMap(category -> {
-                    category.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
-                                    PermissionSet.none(),
-                                    PermissionSet.of(
-                                            Permission.SEND_MESSAGES,
-                                            Permission.ADD_REACTIONS,
-                                            // Permission.USE_PUBLIC_THREADS,
-                                            // Permission.USE_PRIVATE_THREADS,
-                                            Permission.USE_SLASH_COMMANDS
-                                    )))
-                            .onErrorResume(e -> {
-                                logger.error("----------------- Category Edit Prohibited");
-                                return Mono.empty();
-                            })
-                            .block();
-                    return Mono.empty();
-                }).subscribe();
+                            return Mono.when(
+                                    changePositionMono,
+                                    updateTextPerms,
+                                    updateVoicePerms
+                                    );
+                        });
+                    });
+                });
+            });
+        });
 
-        guild.getChannels().ofType(TextChannel.class)
-                .flatMap(textChannel -> {
-                    textChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
-                                    PermissionSet.none(),
-                                    PermissionSet.of(
-                                            Permission.SEND_MESSAGES,
-                                            Permission.ADD_REACTIONS,
-                                            // Permission.USE_PUBLIC_THREADS,
-                                            // Permission.USE_PRIVATE_THREADS,
-                                            Permission.USE_SLASH_COMMANDS
-                                    )))
-                            .onErrorResume(e -> {
-                                logger.error("------------------------- Text Channel Edit Prohibited");
-                                return Mono.empty();
-                            })
-                            .block();
-                    return Mono.empty();
-                }).subscribe();
-
-        guild.getChannels().ofType(VoiceChannel.class)
-                .flatMap(voiceChannel -> {
-                    voiceChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
-                                    PermissionSet.none(),
-                                    PermissionSet.of(
-                                            Permission.SPEAK,
-                                            Permission.STREAM
-                                    )))
-                            .onErrorResume(e -> {
-                                logger.error("------------------- Voice Channel Edit Prohibited");
-                                return Mono.empty();
-                            })
-                            .block();
-                    return Mono.empty();
-                }).subscribe();
 
     }
 
