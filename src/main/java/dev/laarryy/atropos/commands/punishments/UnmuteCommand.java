@@ -1,6 +1,7 @@
 package dev.laarryy.atropos.commands.punishments;
 
 import dev.laarryy.atropos.commands.Command;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.utils.CommandChecks;
 import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
@@ -40,11 +41,13 @@ public class UnmuteCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!CommandChecks.commandChecks(event, request.name())) {
-            return Mono.empty();
-        }
 
-        return Mono.just(event)
-                .flatMap(event1 -> manualPunishmentEnder.endPunishment(event));
+        return Mono.from(CommandChecks.commandChecks(event, request.name())).flatMap(aBoolean -> {
+            if (aBoolean) {
+                return Mono.from(manualPunishmentEnder.endPunishment(event));
+            } else {
+                return Mono.error(new NoPermissionsException("No Permission"));
+            }
+        }).then();
     }
 }

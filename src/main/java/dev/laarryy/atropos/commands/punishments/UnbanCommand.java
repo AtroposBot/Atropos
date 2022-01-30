@@ -1,6 +1,7 @@
 package dev.laarryy.atropos.commands.punishments;
 
 import dev.laarryy.atropos.commands.Command;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.utils.CommandChecks;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
@@ -39,11 +40,13 @@ public class UnbanCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!CommandChecks.commandChecks(event, request.name())) {
-            return Mono.empty();
-        }
 
-        return Mono.just(event)
-                .flatMap(manualPunishmentEnder::endPunishment);
+        return Mono.from(CommandChecks.commandChecks(event, request.name())).flatMap(aBoolean -> {
+            if (aBoolean) {
+                return Mono.from(manualPunishmentEnder.endPunishment(event));
+            } else {
+                return Mono.error(new NoPermissionsException("No Permission"));
+            }
+        }).then();
     }
 }
