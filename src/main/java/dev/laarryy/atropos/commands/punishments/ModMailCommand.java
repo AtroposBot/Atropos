@@ -1,6 +1,8 @@
 package dev.laarryy.atropos.commands.punishments;
 
 import dev.laarryy.atropos.commands.Command;
+import dev.laarryy.atropos.exceptions.CannotSendModMailException;
+import dev.laarryy.atropos.exceptions.MalformedInputException;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
@@ -46,64 +48,56 @@ public class ModMailCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!CommandChecks.commandChecks(event, request.name())) {
-            return Mono.empty();
-        }
+        Mono<Guild> guildMono = event.getInteraction().getGuild();
 
-        Guild guild = event.getInteraction().getGuild().block();
-        Member member = event.getInteraction().getMember().get();
+        return Mono.from(guildMono)
+                .flatMap(guild -> {
+                    Member member = event.getInteraction().getMember().get();
 
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordServerProperties properties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+                    DatabaseLoader.openConnectionIfClosed();
+                    DiscordServerProperties properties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
-        if (event.getOption("message").isEmpty() || event.getOption("message").get().getValue().isEmpty()) {
-            Notifier.notifyCommandUserOfError(event, "malformedInput");
-            return Mono.empty();
-        }
+                    if (event.getOption("message").isEmpty() || event.getOption("message").get().getValue().isEmpty()) {
+                        return Mono.error(new MalformedInputException("Malformed Input"));
+                    }
 
-        event.deferReply().withEphemeral(true).block();
 
-        String input = event.getOption("message").get().getValue().get().asString();
+                    String input = event.getOption("message").get().getValue().get().asString();
 
-        if (properties.getModMailChannelSnowflake() != null) {
-            TextChannel channel = guild.getChannelById(Snowflake.of(properties.getModMailChannelSnowflake())).ofType(TextChannel.class).block();
-            String content;
-            if (input.length() > 3985) {
-                content = "```\n" + input.substring(0, 3975) + "\n```";
-            } else {
-                content = "```\n" + input + "\n```";
-            }
+                    if (properties.getModMailChannelSnowflake() != null) {
+                        Mono<TextChannel> channelMono = guild.getChannelById(Snowflake.of(properties.getModMailChannelSnowflake())).ofType(TextChannel.class);
 
-            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                    .title("ModMail from: " + member.getUsername() + "#" + member.getDiscriminator())
-                    .description(content)
-                    .color(Color.ENDEAVOUR)
-                    .thumbnail(event.getInteraction().getMember().get().getAvatarUrl())
-                    .footer("Sent on the least laden swallows available", event.getClient().getSelf().block().getAvatarUrl())
-                    .timestamp(Instant.now())
-                    .build();
+                        return Mono.from(channelMono).flatMap(channel -> {
+                            String content;
+                            if (input.length() > 3985) {
+                                content = "```\n" + input.substring(0, 3975) + "\n```";
+                            } else {
+                                content = "```\n" + input + "\n```";
+                            }
 
-            channel.createMessage(embed).block();
+                            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                                    .title("ModMail from: " + member.getUsername() + "#" + member.getDiscriminator())
+                                    .description(content)
+                                    .color(Color.ENDEAVOUR)
+                                    .thumbnail(event.getInteraction().getMember().get().getAvatarUrl())
+                                    .footer("Sent on the least laden swallows available", "")
+                                    .timestamp(Instant.now())
+                                    .build();
 
-            EmbedCreateSpec embed2 = EmbedCreateSpec.builder()
-                    .title("Success")
-                    .description("Sent to ModMail successfully.")
-                    .color(Color.SEA_GREEN)
-                    .timestamp(Instant.now())
-                    .build();
+                            return Mono.from(channel.createMessage(embed)).flatMap(message -> {
+                                EmbedCreateSpec embed2 = EmbedCreateSpec.builder()
+                                        .title("Success")
+                                        .description("Sent to ModMail successfully.")
+                                        .color(Color.SEA_GREEN)
+                                        .timestamp(Instant.now())
+                                        .build();
 
-            Notifier.replyDeferredInteraction(event, embed2);
-        } else {
-            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                    .title("Unable To Send ModMail")
-                    .description("This guild does not yet have a ModMail channel set up - please contact its staff directly.")
-                    .color(Color.JAZZBERRY_JAM)
-                    .footer("And maybe mention this to them, eh?", event.getClient().getSelf().block().getAvatarUrl())
-                    .build();
-            Notifier.replyDeferredInteraction(event, embed);
-        }
-
-        DatabaseLoader.closeConnectionIfOpen();
-        return Mono.empty();
+                                return Notifier.sendResultsEmbed(event, embed2);
+                            });
+                        });
+                    } else {
+                        return Mono.error(new CannotSendModMailException("Cannot Send ModMail"));
+                    }
+                });
     }
 }

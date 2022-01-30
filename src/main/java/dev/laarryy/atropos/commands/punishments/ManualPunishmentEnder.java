@@ -1,5 +1,8 @@
 package dev.laarryy.atropos.commands.punishments;
 
+import dev.laarryy.atropos.exceptions.NoMutedRoleException;
+import dev.laarryy.atropos.exceptions.NullServerException;
+import dev.laarryy.atropos.exceptions.UserNotMutedExcception;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
 import dev.laarryy.atropos.managers.LoggingListenerManager;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
@@ -42,9 +45,8 @@ public final class ManualPunishmentEnder {
                 .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .flatMap(event1 -> guildMono.flatMap(guild -> {
                     if (guild == null) {
-                        Notifier.notifyCommandUserOfError(event, "nullServer");
                         AuditLogger.addCommandToDB(event, false);
-                        return Mono.empty();
+                        return Mono.error(new NullServerException("No Server"));
                     }
 
                     String reason;
@@ -71,11 +73,11 @@ public final class ManualPunishmentEnder {
                                 .filter(Objects::nonNull)
                                 .flatMap(user -> user.asMember(guild.getId()))
                                 .flatMap(member ->
-                                        Mono.just(member).flatMap(member1 ->
-                                                        discordUnmute(member1, event, reason))
-                                                .filter(aBoolean -> aBoolean)
-                                                .flatMap(aBoolean ->
-                                                        databaseEndPunishment(member.getId().asLong(), guild, event.getCommandName(), reason, event.getInteraction().getUser(), member)));
+                                        Mono.just(member).flatMap(member1 -> {
+                                            return Mono.when(discordUnmute(member1, event, reason),
+                                                    databaseEndPunishment(member.getId().asLong(), guild, event.getCommandName(), reason, event.getInteraction().getUser(), member));
+
+                                                }));
                     }
 
 
@@ -88,9 +90,8 @@ public final class ManualPunishmentEnder {
         DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getInteraction().getGuildId().get().asLong());
         Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
         if (mutedRoleId == null) {
-            Notifier.notifyCommandUserOfError(event, "noMutedRole");
             AuditLogger.addCommandToDB(event, false);
-            return Mono.just(false);
+            return Mono.error(new NoMutedRoleException("No Muted Role"));
         }
         Mono<Role> mutedRole;
 
@@ -99,21 +100,17 @@ public final class ManualPunishmentEnder {
             return Mono.from(mutedRole)
                             .flatMap(role -> {
                                 if (role == null) {
-                                    Notifier.notifyCommandUserOfError(event, "noMutedRole");
                                     AuditLogger.addCommandToDB(event, false);
-                                    return Mono.just(false);
+                                    return Mono.error(new NoMutedRoleException("No Muted Role"));
                                 } else {
-                                    return Mono.from(member.getRoles().any(arole -> arole.equals(mutedRole)))
-                                            .filter(aBoolean -> {
-                                                if (aBoolean) {
-                                                    return true;
-                                                } else {
-                                                    Notifier.notifyCommandUserOfError(event, "userNotMuted");
-                                                    AuditLogger.addCommandToDB(event, false);
-                                                    return false;
-                                                }
-                                            })
+                                    return Mono.from(member.getRoles().any(arole -> arole.equals(role)))
                                             .flatMap(aBoolean -> {
+
+                                                if (!aBoolean) {
+                                                    AuditLogger.addCommandToDB(event, false);
+                                                    return Mono.error(new UserNotMutedExcception("User Not Muted"));
+                                                }
+
                                                 AuditLogger.addCommandToDB(event, true);
                                                 Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
                                                 return member.removeRole(Snowflake.of(mutedRoleId));

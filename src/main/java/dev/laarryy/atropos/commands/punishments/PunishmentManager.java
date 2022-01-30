@@ -1,5 +1,13 @@
 package dev.laarryy.atropos.commands.punishments;
 
+import dev.laarryy.atropos.exceptions.AlreadyAppliedException;
+import dev.laarryy.atropos.exceptions.BotRoleException;
+import dev.laarryy.atropos.exceptions.CannotTargetBotsException;
+import dev.laarryy.atropos.exceptions.InvalidDurationException;
+import dev.laarryy.atropos.exceptions.NoMemberException;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
+import dev.laarryy.atropos.exceptions.NoUserException;
+import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
 import dev.laarryy.atropos.managers.LoggingListenerManager;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
@@ -42,6 +50,7 @@ import reactor.core.scheduler.Schedulers;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class PunishmentManager {
@@ -58,268 +67,289 @@ public class PunishmentManager {
             return Mono.empty();
         }
 
-        // Gather some necessary information for the rest of this
+        return Mono.from(event.getInteraction().getGuild())
+                .flatMap(guild -> {
+                    Member member = event.getInteraction().getMember().get();
+                    User user = event.getInteraction().getUser();
+                    Long punishingUserIdSnowflake = member.getId().asLong();
 
-        Guild guild = event.getInteraction().getGuild().block();
+                    DatabaseLoader.openConnectionIfClosed();
 
-        Member member = event.getInteraction().getMember().get();
-        User user = event.getInteraction().getUser();
-        Long punishingUserIdSnowflake = member.getId().asLong();
-
-        DatabaseLoader.openConnectionIfClosed();
-
-        // Make sure user has permission to do this, or stop here
-
-        if (!permissionChecker.checkPermission(guild, user, request.name())) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            return Mono.empty();
-        }
-
-        Long guildIdSnowflake = guild.getId().asLong();
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildIdSnowflake);
-        int serverId;
-
-        if (discordServer != null) {
-            serverId = discordServer.getServerId();
-        } else {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        }
-
-        // Handle forceban via API before dealing with literally every other punishment (that can actually provide a user)
-
-        if (event.getOption("id").isPresent() && event.getOption("id").get().getValue().isPresent()) {
-
-            String idInput = event.getOption("id").get().getValue().get().asString();
-
-            String reason;
-            if (event.getOption("reason").isPresent() && event.getOption("reason").get().getValue().isPresent()) {
-                reason = event.getOption("reason").get().getValue().get().asString();
-            } else {
-                reason = "Mass API banned by staff.";
-            }
-
-            Punishment latestBatch = Punishment.findFirst("batch_id is not NULL order by batch_id desc");
-            int batchId = latestBatch != null ? latestBatch.getBatchId() + 1 : 1;
-
-            Flux.fromArray(idInput.split(" "))
-                    .map(Long::valueOf)
-                    .onErrorReturn(NumberFormatException.class, 0L)
-                    .filter(aLong -> aLong != 0)
-                    .doFirst(() -> event.deferReply().block())
-                    .doOnComplete(() -> {
-                        Notifier.notifyPunisherForcebanComplete(event, "```\n" + idInput.replaceAll(" ", "\n") + "\n ```");
-                        AuditLogger.addCommandToDB(event, true);
-                    })
-                        .subscribe(aLong -> {
-
-                        // Ensure nobody is trying to forceban their boss or a bot or someone that doesn't exist
-                        try {
-                            guild.getMemberById(Snowflake.of(aLong));
-                            if (guild.getMemberById(Snowflake.of(aLong)).block() != null) {
-                                if (!checkIfPunisherHasHighestRole(event.getInteraction().getMember().get(), guild.getMemberById(Snowflake.of(aLong)).block(), guild, event)) {
-                                    return;
-                                }
-                                if (guild.getMemberById(Snowflake.of(aLong)).block().isBot()) {
-                                    return;
-                                }
-                                try {
-                                    event.getClient().getUserById(Snowflake.of(aLong)).block();
-                                } catch (Exception e) {
-                                    return;
-                                }
-                                discordBanUser(guild, aLong, 1, reason);
-                            }
-                        } catch (Exception ignored) {
+                    // Make sure user has permission to do this, or stop here
+                    return Mono.from(permissionChecker.checkPermission(guild, user, request.name())).flatMap(aBoolean -> {
+                        if (!aBoolean) {
+                            return Mono.error(new NoPermissionsException("No Permission"));
                         }
 
-                        DatabaseLoader.openConnectionIfClosed();
-                        User punishedUser = event.getClient().getUserById(Snowflake.of(aLong)).block();
-                        User punisherUser = event.getInteraction().getUser();
+                        Long guildIdSnowflake = guild.getId().asLong();
+                        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildIdSnowflake);
+                        int serverId;
 
-                        DiscordUser punished = DiscordUser.findOrCreateIt("user_id_snowflake", aLong);
-                        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", punishingUserIdSnowflake);
+                        if (discordServer != null) {
+                            serverId = discordServer.getServerId();
+                        } else {
+                            DatabaseLoader.closeConnectionIfOpen();
+                            return Mono.error(new NullServerException("Null Server"));
+                        }
 
-                        Punishment punishment = createDatabasePunishmentRecord(punisher,
-                                punisherUser.getUsername(),
-                                punisherUser.getDiscriminator(),
-                                punished,
-                                punishedUser.getUsername(),
-                                punisherUser.getDiscriminator(),
-                                serverId,
-                                request.name());
+                        // Handle forceban via API before dealing with literally every other punishment (that can actually provide a user)
 
-                        punishment.save();
-                        punishment.refresh();
-                        punishment.setPermanent(true);
-                        punishment.setPunishmentMessage(reason);
-                        punishment.setBatchId(batchId);
-                        punishment.setEnded(false);
+                        if (event.getOption("id").isPresent() && event.getOption("id").get().getValue().isPresent()) {
 
-                        punishment.save();
-                        punishment.refresh();
+                            String idInput = event.getOption("id").get().getValue().get().asString();
+
+                            String reason;
+                            if (event.getOption("reason").isPresent() && event.getOption("reason").get().getValue().isPresent()) {
+                                reason = event.getOption("reason").get().getValue().get().asString();
+                            } else {
+                                reason = "Mass API banned by staff.";
+                            }
+
+                            Punishment latestBatch = Punishment.findFirst("batch_id is not NULL order by batch_id desc");
+                            int batchId = latestBatch != null ? latestBatch.getBatchId() + 1 : 1;
+
+                            return Flux.fromArray(idInput.split(" "))
+                                    .map(Long::valueOf)
+                                    .onErrorReturn(NumberFormatException.class, 0L)
+                                    .filter(aLong -> aLong != 0)
+                                    .doOnComplete(() -> {
+                                        Notifier.notifyPunisherForcebanComplete(event, "```\n" + idInput.replaceAll(" ", "\n") + "\n ```");
+                                        AuditLogger.addCommandToDB(event, true);
+                                    })
+                                    .flatMap(aLong -> {
+
+                                        // Ensure nobody is trying to forceban their boss or a bot or someone that doesn't exist
+                                        return Mono.from(guild.getMemberById(Snowflake.of(aLong)))
+                                                .filter(Objects::nonNull)
+                                                .flatMap(punishedMember -> Mono.from(checkIfPunisherHasHighestRole(event.getInteraction().getMember().get(), punishedMember, guild, event))
+                                                        .flatMap(aBoolean1 -> {
+                                                            if (!aBoolean1) {
+                                                                return Mono.error(new NoPermissionsException("No Permission"));
+                                                            }
+                                                            if (punishedMember.isBot()) {
+                                                                return Mono.error(new CannotTargetBotsException("Cannot Target Bots"));
+                                                            }
+                                                            return discordBanUser(guild, aLong, 1, reason);
+                                                        }))
+                                                .flatMap(unused -> {
+                                                    DatabaseLoader.openConnectionIfClosed();
+                                                    return Mono.from(event.getClient().getUserById(Snowflake.of(aLong)))
+                                                            .flatMap(punishedUser -> {
+                                                                User punisherUser = event.getInteraction().getUser();
+
+                                                                DiscordUser punished = DiscordUser.findOrCreateIt("user_id_snowflake", aLong);
+                                                                DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", punishingUserIdSnowflake);
+
+                                                                Punishment punishment = createDatabasePunishmentRecord(punisher,
+                                                                        punisherUser.getUsername(),
+                                                                        punisherUser.getDiscriminator(),
+                                                                        punished,
+                                                                        punishedUser.getUsername(),
+                                                                        punisherUser.getDiscriminator(),
+                                                                        serverId,
+                                                                        request.name());
+
+                                                                punishment.save();
+                                                                punishment.refresh();
+                                                                punishment.setPermanent(true);
+                                                                punishment.setPunishmentMessage(reason);
+                                                                punishment.setBatchId(batchId);
+                                                                punishment.setEnded(false);
+
+                                                                punishment.save();
+                                                                punishment.refresh();
+                                                                return Mono.empty();
+                                                            });
+                                                })
+                                                .then();
+
+
+                                    }).then();
+                        }
+
+                        if (event.getOption("user").isPresent() && event.getOption("user").get().getValue().isPresent()) {
+                            return Mono.from(event.getOption("user").get().getValue().get().asUser()).flatMap(punishedUser -> {
+                                if (punishedUser.isBot()) {
+                                    AuditLogger.addCommandToDB(event, false);
+                                    DatabaseLoader.closeConnectionIfOpen();
+                                    return Mono.error(new CannotTargetBotsException("Cannot Target Bots"));
+                                }
+
+                                User punishingUser = event.getInteraction().getUser();
+
+                                // Make sure the punisher is higher up the food chain than the person they're trying to punish in the guild they're both in.
+
+                                return Mono.from(punishedUser.asMember(guild.getId())).flatMap(punishedMember -> {
+
+
+                                    if (punishedMember == null && (request.name().equals("kick") || request.name().equals("mute") || request.name().equals("warn"))) {
+                                        AuditLogger.addCommandToDB(event, false);
+                                        DatabaseLoader.closeConnectionIfOpen();
+                                        return Mono.error(new NoMemberException("No Member"));
+                                    }
+
+                                    return Mono.from(checkIfPunisherHasHighestRole(member, punishedMember, guild, event)).flatMap(hasHighestRole -> {
+                                        // Get the DB objects for both the punishing user and the punished.
+
+                                        if (!hasHighestRole) {
+                                            return Mono.error(new NoPermissionsException("No Permission"));
+                                        }
+
+                                        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", punishingUserIdSnowflake);
+                                        if (punisher == null) {
+                                            punisher = DiscordUser.create("user_id_snowflake", punishingUserIdSnowflake, "date", Instant.now().toEpochMilli());
+                                            punisher.save();
+                                            punisher.refresh();
+                                        }
+
+                                        DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", punishedUser.getId().asLong());
+                                        if (punished == null) {
+                                            punished = DiscordUser.create("user_id_snowflake", punishedUser.getId().asLong(), "date", Instant.now().toEpochMilli());
+                                            punished.save();
+                                            punished.refresh();
+                                        }
+
+                                        if (Punishment.findFirst("user_id_punished = ? and server_id = ? and punishment_type = ? and end_date_passed = ? and permanent = ?",
+                                                punished.getUserId(),
+                                                serverId,
+                                                request.name(),
+                                                false,
+                                                false) != null) {
+                                            AuditLogger.addCommandToDB(event, false);
+                                            DatabaseLoader.closeConnectionIfOpen();
+                                            return Mono.error(new AlreadyAppliedException("Punishment Already Applied"));
+                                        }
+
+                                        Punishment punishment = createDatabasePunishmentRecord(punisher,
+                                                punishingUser.getUsername(),
+                                                punishingUser.getDiscriminator(),
+                                                punished,
+                                                punishedUser.getUsername(),
+                                                punishedUser.getDiscriminator(),
+                                                serverId,
+                                                request.name());
+
+                                        punishment.save();
+                                        punishment.refresh();
+
+                                        String punishmentReason;
+                                        if (event.getOption("reason").isPresent()) {
+                                            String punishmentMessage = event.getOption("reason").get().getValue().get().asString();
+                                            punishment.refresh();
+                                            punishment.setPunishmentMessage(punishmentMessage);
+                                            punishment.save();
+                                            punishmentReason = punishmentMessage;
+                                        } else {
+                                            punishmentReason = "No reason provided.";
+                                            punishment.refresh();
+                                            punishment.setPunishmentMessage(punishmentReason);
+                                            punishment.save();
+                                        }
+
+                                        // Check if there's a duration on this punishment, and if so save it to database
+
+                                        if (event.getOption("duration").isPresent() && event.getOption("duration").get().getValue().isPresent()) {
+                                            try {
+                                                Duration punishmentDuration = DurationParser.parseDuration(event.getOption("duration").get().getValue().get().asString());
+                                                Instant punishmentEndDate = Instant.now().plus(punishmentDuration);
+                                                punishment.setEndDate(punishmentEndDate.toEpochMilli());
+                                                punishment.setPermanent(false);
+                                                punishment.save();
+                                            } catch (Exception exception) {
+                                                AuditLogger.addCommandToDB(event, false);
+                                                punishment.delete();
+                                                DatabaseLoader.closeConnectionIfOpen();
+                                                return Mono.error(new InvalidDurationException("Invalid Duration"));
+                                            }
+                                        } else {
+                                            punishment.setEnded(false);
+                                            punishment.setPermanent(true);
+                                            punishment.save();
+                                            punishment.refresh();
+                                        }
+
+                                        // Find out how many days worth of messages to delete if this is a member ban
+
+                                        int messageDeleteDays;
+                                        if (event.getOption("days").isPresent() && event.getOption("days").get().getValue().isPresent()) {
+                                            long preliminaryResult = event.getOption("days").get().getValue().get().asLong();
+                                            if (preliminaryResult > 7 || preliminaryResult < 0) {
+                                                messageDeleteDays = 0;
+                                            } else messageDeleteDays = (int) preliminaryResult;
+                                        } else messageDeleteDays = 0;
+
+                                        if (event.getCommandName().equals("note")) {
+                                            punishment.setDMed(false);
+                                            punishment.save();
+                                            punishment.refresh();
+                                        }
+
+                                        // DMing the punished user, notifying the punishing user that it's worked out
+
+                                        if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
+                                                || ((event.getOption("dm").isEmpty()) && !event.getCommandName().equals("note"))) {
+                                            notifyPunishedUser(guild, punishment, punishmentReason);
+                                        }
+
+                                        // Actually do the punishment, discord-side. Nothing to do for warnings or notes.
+
+                                        DatabaseLoader.openConnectionIfClosed();
+                                        switch (punishment.getPunishmentType()) {
+                                            case "mute" -> discordMuteUser(guild, punished.getUserIdSnowflake());
+                                            case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
+                                            case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
+                                        }
+
+                                        loggingListener.onPunishment(event, punishment);
+                                        Notifier.notifyPunisher(event, punishment, punishmentReason);
+                                        AuditLogger.addCommandToDB(event, true);
+                                        DatabaseLoader.closeConnectionIfOpen();
+
+                                        DiscordUser finalPunished = punished;
+                                        return Mono.just(punishment.getPunishmentType()).flatMap(typeString -> {
+                                            switch (punishment.getPunishmentType()) {
+                                                case "mute" -> {
+                                                    return Mono.from(discordMuteUser(guild, finalPunished.getUserIdSnowflake())).flatMap(unused -> {
+                                                        loggingListener.onPunishment(event, punishment);
+                                                        Notifier.notifyPunisher(event, punishment, punishmentReason);
+                                                        AuditLogger.addCommandToDB(event, true);
+                                                        DatabaseLoader.closeConnectionIfOpen();
+                                                        return Mono.empty();
+                                                    });
+                                                }
+                                                case "ban" -> {
+                                                    return Mono.from(discordBanUser(guild, finalPunished.getUserIdSnowflake(), messageDeleteDays, punishmentReason)).flatMap(unused -> {
+                                                        loggingListener.onPunishment(event, punishment);
+                                                        Notifier.notifyPunisher(event, punishment, punishmentReason);
+                                                        AuditLogger.addCommandToDB(event, true);
+                                                        DatabaseLoader.closeConnectionIfOpen();
+                                                        return Mono.empty();
+                                                    });
+                                                }
+                                                case "kick" -> {
+                                                    return Mono.from(discordKickUser(guild, finalPunished.getUserIdSnowflake(), punishmentReason)).flatMap(unused -> {
+                                                        loggingListener.onPunishment(event, punishment);
+                                                        Notifier.notifyPunisher(event, punishment, punishmentReason);
+                                                        AuditLogger.addCommandToDB(event, true);
+                                                        DatabaseLoader.closeConnectionIfOpen();
+                                                        return Mono.empty();
+                                                    });
+                                                }
+                                                default -> {
+                                                    DatabaseLoader.closeConnectionIfOpen();
+                                                    return Mono.empty();
+                                                }
+                                            }
+                                        });
+                                    });
+                                });
+                            });
+                        } else {
+                            return Mono.error(new NoUserException("No User"));
+                        }
                     });
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
+                });
         }
-
-        // Ensure bot is not a target
-
-        if (event.getOption("user").isPresent() && event.getOption("user").get().getValue().isPresent()) {
-            if (event.getOption("user").get().getValue().get().asUser().block().isBot()) {
-                Notifier.notifyCommandUserOfError(event, "cannotTargetBots");
-                AuditLogger.addCommandToDB(event, false);
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.empty();
-            }
-        }
-        // All other punishments have Users, so if we're missing one here it's a problem, we need to stop.
-
-        if (event.getOption("user").isEmpty()) {
-            Notifier.notifyCommandUserOfError(event, "noUser");
-            AuditLogger.addCommandToDB(event, false);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        }
-        User punishedUser = event.getOption("user").get().getValue().get().asUser().block();
-        User punishingUser = event.getInteraction().getUser();
-
-        // Make sure the punisher is higher up the food chain than the person they're trying to punish in the guild they're both in.
-
-        Member punishedMember;
-        try {
-            punishedMember = punishedUser.asMember(guild.getId()).block();
-        } catch (Exception e) {
-            punishedMember = null;
-            if (request.name().equals("kick") || request.name().equals("mute") || request.name().equals("warn")) {
-                Notifier.notifyCommandUserOfError(event, "noMember");
-                AuditLogger.addCommandToDB(event, false);
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.empty();
-            }
-        }
-
-        if (!checkIfPunisherHasHighestRole(member, punishedMember, guild, event)) {
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        }
-
-        // Get the DB objects for both the punishing user and the punished.
-
-        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", punishingUserIdSnowflake);
-        if (punisher == null) {
-            punisher = DiscordUser.create("user_id_snowflake", punishingUserIdSnowflake, "date", Instant.now().toEpochMilli());
-            punisher.save();
-            punisher.refresh();
-        }
-        DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", punishedUser.getId().asLong());
-        if (punished == null) {
-            punished = DiscordUser.create("user_id_snowflake", punishedUser.getId().asLong(), "date", Instant.now().toEpochMilli());
-            punished.save();
-            punished.refresh();
-        }
-
-        if (Punishment.findFirst("user_id_punished = ? and server_id = ? and punishment_type = ? and end_date_passed = ? and permanent = ?",
-                punished.getUserId(),
-                serverId,
-                request.name(),
-                false,
-                false) != null) {
-            Notifier.notifyCommandUserOfError(event, "alreadyApplied");
-            AuditLogger.addCommandToDB(event, false);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        }
-
-        Punishment punishment = createDatabasePunishmentRecord(punisher,
-                punishingUser.getUsername(),
-                punishingUser.getDiscriminator(),
-                punished,
-                punishedUser.getUsername(),
-                punishedUser.getDiscriminator(),
-                serverId,
-                request.name());
-
-        punishment.save();
-        punishment.refresh();
-
-        String punishmentReason;
-        if (event.getOption("reason").isPresent()) {
-            String punishmentMessage = event.getOption("reason").get().getValue().get().asString();
-            punishment.refresh();
-            punishment.setPunishmentMessage(punishmentMessage);
-            punishment.save();
-            punishmentReason = punishmentMessage;
-        } else {
-            punishmentReason = "No reason provided.";
-            punishment.refresh();
-            punishment.setPunishmentMessage(punishmentReason);
-            punishment.save();
-        }
-
-        // Check if there's a duration on this punishment, and if so save it to database
-
-        if (event.getOption("duration").isPresent() && event.getOption("duration").get().getValue().isPresent()) {
-            try {
-                Duration punishmentDuration = DurationParser.parseDuration(event.getOption("duration").get().getValue().get().asString());
-                Instant punishmentEndDate = Instant.now().plus(punishmentDuration);
-                punishment.setEndDate(punishmentEndDate.toEpochMilli());
-                punishment.setPermanent(false);
-                punishment.save();
-            } catch (Exception exception) {
-                Notifier.notifyCommandUserOfError(event, "invalidDuration");
-                AuditLogger.addCommandToDB(event, false);
-                punishment.delete();
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.empty();
-            }
-        } else {
-            punishment.setEnded(false);
-            punishment.setPermanent(true);
-            punishment.save();
-            punishment.refresh();
-        }
-
-        // Find out how many days worth of messages to delete if this is a member ban
-
-        int messageDeleteDays;
-        if (event.getOption("days").isPresent() && event.getOption("days").get().getValue().isPresent()) {
-            long preliminaryResult = event.getOption("days").get().getValue().get().asLong();
-            if (preliminaryResult > 7 || preliminaryResult < 0) {
-                messageDeleteDays = 0;
-            } else messageDeleteDays = (int) preliminaryResult;
-        } else messageDeleteDays = 0;
-
-        if (event.getCommandName().equals("note")) {
-            punishment.setDMed(false);
-            punishment.save();
-            punishment.refresh();
-        }
-
-        // DMing the punished user, notifying the punishing user that it's worked out
-
-        if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
-                || ((event.getOption("dm").isEmpty()) && !event.getCommandName().equals("note"))) {
-            notifyPunishedUser(guild, punishment, punishmentReason);
-        }
-
-        // Actually do the punishment, discord-side. Nothing to do for warnings or notes.
-
-        DatabaseLoader.openConnectionIfClosed();
-        switch (punishment.getPunishmentType()) {
-            case "mute" -> discordMuteUser(guild, punished.getUserIdSnowflake());
-            case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
-            case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
-        }
-
-        loggingListener.onPunishment(event, punishment);
-        Notifier.notifyPunisher(event, punishment, punishmentReason);
-        AuditLogger.addCommandToDB(event, true);
-        DatabaseLoader.closeConnectionIfOpen();
-
-        return Mono.empty();
-    }
 
     public void notifyPunishedUser(Guild guild, Punishment punishment, String reason) {
         punishment.setDMed(true);
@@ -346,19 +376,18 @@ public class PunishmentManager {
         );
     }
 
-    public void discordBanUser(Guild guild, Long userIdSnowflake, int messageDeleteDays, String punishmentReason) {
-        guild.ban(Snowflake.of(userIdSnowflake), BanQuerySpec.builder()
-                        .deleteMessageDays(messageDeleteDays)
-                        .reason(punishmentReason)
-                        .build())
-                .subscribe();
+    public Mono<Void> discordBanUser(Guild guild, Long userIdSnowflake, int messageDeleteDays, String punishmentReason) {
+        return guild.ban(Snowflake.of(userIdSnowflake), BanQuerySpec.builder()
+                .deleteMessageDays(messageDeleteDays)
+                .reason(punishmentReason)
+                .build());
     }
 
-    public void discordKickUser(Guild guild, Long userIdSnowflake, String punishmentReason) {
-        guild.kick(Snowflake.of(userIdSnowflake), punishmentReason).subscribe();
+    public Mono<Void> discordKickUser(Guild guild, Long userIdSnowflake, String punishmentReason) {
+        return guild.kick(Snowflake.of(userIdSnowflake), punishmentReason);
     }
 
-    public void discordMuteUser(Guild guild, Long userIdSnowflake) {
+    public Mono<Void> discordMuteUser(Guild guild, Long userIdSnowflake) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
         Role mutedRole;
@@ -462,8 +491,8 @@ public class PunishmentManager {
                                     PermissionSet.of(
                                             Permission.SEND_MESSAGES,
                                             Permission.ADD_REACTIONS,
-                                           // Permission.USE_PUBLIC_THREADS,
-                                           // Permission.USE_PRIVATE_THREADS,
+                                            // Permission.USE_PUBLIC_THREADS,
+                                            // Permission.USE_PRIVATE_THREADS,
                                             Permission.USE_SLASH_COMMANDS
                                     )))
                             .onErrorResume(e -> {
@@ -481,8 +510,8 @@ public class PunishmentManager {
                                     PermissionSet.of(
                                             Permission.SEND_MESSAGES,
                                             Permission.ADD_REACTIONS,
-                                           // Permission.USE_PUBLIC_THREADS,
-                                           // Permission.USE_PRIVATE_THREADS,
+                                            // Permission.USE_PUBLIC_THREADS,
+                                            // Permission.USE_PRIVATE_THREADS,
                                             Permission.USE_SLASH_COMMANDS
                                     )))
                             .onErrorResume(e -> {
@@ -511,97 +540,128 @@ public class PunishmentManager {
 
     }
 
-    public boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ChatInputInteractionEvent event) {
+    public Mono<Boolean> checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ChatInputInteractionEvent event) {
 
         if (punisher.equals(punished)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            return false;
+            return Mono.error(new NoPermissionsException("No Permission"));
         }
 
-        if (permissionChecker.checkIsAdministrator(guild, punisher) && !permissionChecker.checkIsAdministrator(guild, punished)) {
-            return true;
-        } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
-            loggingListener.onAttemptedInsubordination(event, punished);
-            return false;
-        }
+        Mono<Boolean> adminDiff = Mono.empty().flatMap(a -> {
+            return Mono.from(permissionChecker.checkIsAdministrator(punisher)).flatMap(punisherIsAdmin -> {
+                return Mono.from(permissionChecker.checkIsAdministrator(punished)).flatMap(punishedIsAdmin -> {
+                    if (punisherIsAdmin && !punishedIsAdmin) {
+                        return Mono.just(true);
+                    } else if (punishedIsAdmin && punisherIsAdmin) {
+                        loggingListener.onAttemptedInsubordination(event, punished);
+                        AuditLogger.addCommandToDB(event, false);
+                        return Mono.just(false);
+                    }
+                    return Mono.just(false);
+                });
+            });
+        });
 
-        Set<Snowflake> snowflakeSet = Set.copyOf(punished.getRoles().map(Role::getId).collectList().block());
-
-        if (!guild.getSelfMember().block().hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
-            Notifier.notifyCommandUserOfError(event, "botRoleTooLow");
-            AuditLogger.addCommandToDB(event, false);
-            return false;
-        }
-
-        if (!punisher.hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            AuditLogger.addCommandToDB(event, false);
-            loggingListener.onAttemptedInsubordination(event, punished);
-            return false;
-        } else {
-            return true;
-        }
+        return Mono.from(punished.getRoles().map(Role::getId).collectList())
+                .flatMap(snowflakes -> Mono.from(adminDiff).flatMap(aBoolean -> {
+                    if (!aBoolean) {
+                        return Mono.error(new NoPermissionsException("No Permission"));
+                    }
+                    return Mono.from(guild.getSelfMember()).flatMap(selfMember -> Mono.from(selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(botHasHigherRoles -> {
+                        if (!botHasHigherRoles) {
+                            return Mono.error(new BotRoleException("Bot Role Too Low"));
+                        } else {
+                            return Mono.from(punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(punisherHasHigherRoles -> {
+                                if (!punisherHasHigherRoles) {
+                                    loggingListener.onAttemptedInsubordination(event, punished);
+                                    return Mono.error(new NoPermissionsException("No Permission"));
+                                } else {
+                                    return Mono.just(true);
+                                }
+                            });
+                        }
+                    }));
+                }));
     }
 
-    public boolean onlyCheckIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild) {
+    public Mono<Boolean> onlyCheckIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild) {
 
         if (punisher.equals(punished)) {
-            return false;
+            return Mono.error(new NoPermissionsException("No Permission"));
         }
 
-        if (permissionChecker.checkIsAdministrator(guild, punisher) && !permissionChecker.checkIsAdministrator(guild, punished)) {
-            return true;
-        } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
-            return false;
-        }
+        Mono<Boolean> adminDiff = Mono.empty().flatMap(a -> {
+            return Mono.from(permissionChecker.checkIsAdministrator(punisher)).flatMap(punisherIsAdmin -> {
+                return Mono.from(permissionChecker.checkIsAdministrator(punished)).flatMap(punishedIsAdmin -> {
+                    if (punisherIsAdmin && !punishedIsAdmin) {
+                        return Mono.just(true);
+                    } else if (punishedIsAdmin && punisherIsAdmin) {
+                        return Mono.just(false);
+                    }
+                    return Mono.just(false);
+                });
+            });
+        });
 
-        Set<Snowflake> punishedRoles = Set.copyOf(punished.getRoles().map(Role::getId).collectList().block());
-
-        if (!guild.getSelfMember().block().hasHigherRoles(punishedRoles).defaultIfEmpty(false).block()) {
-            return false;
-        }
-
-        if (!punisher.hasHigherRoles(punishedRoles).defaultIfEmpty(false).block()) {
-            return false;
-        }
-
-        if (punisher.hasHigherRoles(punishedRoles).block()) {
-            return true;
-        }
-
-        return false;
+        return Mono.from(punished.getRoles().map(Role::getId).collectList())
+                .flatMap(snowflakes -> Mono.from(adminDiff).flatMap(aBoolean -> {
+                    if (!aBoolean) {
+                        return Mono.error(new NoPermissionsException("No Permission"));
+                    }
+                    return Mono.from(guild.getSelfMember()).flatMap(selfMember -> Mono.from(selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(botHasHigherRoles -> {
+                        if (!botHasHigherRoles) {
+                            return Mono.error(new BotRoleException("Bot Role Too Low"));
+                        } else {
+                            return Mono.from(punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(punisherHasHigherRoles -> {
+                                if (!punisherHasHigherRoles) {
+                                    return Mono.error(new NoPermissionsException("No Permission"));
+                                } else {
+                                    return Mono.just(true);
+                                }
+                            });
+                        }
+                    }));
+                }));
     }
 
-    public boolean checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ButtonInteractionEvent event) {
+    public Mono<Boolean> checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ButtonInteractionEvent event) {
 
-        if (punisher.equals(punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            return false;
+        if (punisher.equals(punished)) {
+            return Mono.error(new NoPermissionsException("No Permission"));
         }
 
-        if (permissionChecker.checkIsAdministrator(guild, punisher) && !permissionChecker.checkIsAdministrator(guild, punished)) {
-            return true;
-        } else if (permissionChecker.checkIsAdministrator(guild, punished) && !permissionChecker.checkIsAdministrator(guild, punisher)) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            loggingListener.onAttemptedInsubordination(event, punished);
-            return false;
-        }
+        Mono<Boolean> adminDiff = Mono.empty().flatMap(a -> {
+            return Mono.from(permissionChecker.checkIsAdministrator(punisher)).flatMap(punisherIsAdmin -> {
+                return Mono.from(permissionChecker.checkIsAdministrator(punished)).flatMap(punishedIsAdmin -> {
+                    if (punisherIsAdmin && !punishedIsAdmin) {
+                        return Mono.just(true);
+                    } else if (punishedIsAdmin && punisherIsAdmin) {
+                        loggingListener.onAttemptedInsubordination(event, punished);
+                        return Mono.just(false);
+                    }
+                    return Mono.just(false);
+                });
+            });
+        });
 
-        Set<Snowflake> snowflakeSet = Set.copyOf(punished.getRoles().map(Role::getId).collectList().block());
-
-        if (!guild.getSelfMember().block().hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
-            Notifier.notifyCommandUserOfError(event, "botRoleTooLow");
-            return false;
-        }
-
-        if (!punisher.hasHigherRoles(snowflakeSet).defaultIfEmpty(false).block()) {
-            Notifier.notifyCommandUserOfError(event, "noPermission");
-            loggingListener.onAttemptedInsubordination(event, punished);
-            return false;
-        } else {
-            return true;
-        }
+        return Mono.from(punished.getRoles().map(Role::getId).collectList())
+                .flatMap(snowflakes -> Mono.from(adminDiff).flatMap(aBoolean -> {
+                    if (!aBoolean) {
+                        return Mono.error(new NoPermissionsException("No Permission"));
+                    }
+                    return Mono.from(guild.getSelfMember()).flatMap(selfMember -> Mono.from(selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(botHasHigherRoles -> {
+                        if (!botHasHigherRoles) {
+                            return Mono.error(new BotRoleException("Bot Role Too Low"));
+                        } else {
+                            return Mono.from(punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(punisherHasHigherRoles -> {
+                                if (!punisherHasHigherRoles) {
+                                    loggingListener.onAttemptedInsubordination(event, punished);
+                                    return Mono.error(new NoPermissionsException("No Permission"));
+                                } else {
+                                    return Mono.just(true);
+                                }
+                            });
+                        }
+                    }));
+                }));
     }
 }

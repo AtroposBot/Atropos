@@ -5,6 +5,7 @@ import dev.laarryy.atropos.exceptions.AlreadyAssignedException;
 import dev.laarryy.atropos.exceptions.AlreadyBlacklistedException;
 import dev.laarryy.atropos.exceptions.BotPermissionsException;
 import dev.laarryy.atropos.exceptions.BotRoleException;
+import dev.laarryy.atropos.exceptions.CannotSendModMailException;
 import dev.laarryy.atropos.exceptions.CannotTargetBotsException;
 import dev.laarryy.atropos.exceptions.DurationTooLongException;
 import dev.laarryy.atropos.exceptions.InputTooLongException;
@@ -30,6 +31,8 @@ import reactor.core.publisher.Mono;
 import java.time.Instant;
 
 public class ErrorHandler {
+
+    //TODO: Make each error's embed a field of the Exception class and not stored here, then just get the error's EmbedCreateSpec
 
     public static Mono<Void> handleError(Throwable error, ChatInputInteractionEvent event) {
 
@@ -214,6 +217,15 @@ public class ErrorHandler {
         }
 
         if (error instanceof UserNotMutedExcception) {
+            return Mono.from(
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(userNotMutedEmbed().asRequest())
+                                    .build()))
+                    .then();
+        }
+
+        if (error instanceof CannotSendModMailException) {
             return Mono.from(
                             event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
@@ -489,6 +501,15 @@ public class ErrorHandler {
                                 "active punishment of this type on their record. You must first unmute or unban the user.",
                         true)
                 .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec cannotSendModmail() {
+        return EmbedCreateSpec.builder()
+                .title("Unable To Send ModMail")
+                .description("This guild does not yet have a ModMail channel set up - please contact its staff directly.")
+                .color(Color.JAZZBERRY_JAM)
+                .footer("And maybe mention this to them, eh?", "")
                 .build();
     }
 

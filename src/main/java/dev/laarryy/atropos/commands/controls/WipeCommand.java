@@ -2,6 +2,8 @@ package dev.laarryy.atropos.commands.controls;
 
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.EmojiManager;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
+import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.users.DiscordUser;
 import dev.laarryy.atropos.storage.DatabaseLoader;
@@ -77,8 +79,7 @@ public class WipeCommand implements Command {
                     DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
                     if (discordServer == null) {
-                        Notifier.notifyCommandUserOfError(event, "nullServer");
-                        return Mono.empty();
+                        return Mono.error(new NullServerException("No Server"));
                     }
 
                     return Mono.from(messageChannel.createMessage("Administrator Server Wipe Activated. Farewell!").flatMap(message -> {
@@ -110,7 +111,7 @@ public class WipeCommand implements Command {
                             .build();
 
                     discordUser.delete();
-                    return Notifier.replyDeferredInteraction(event, embed);
+                    return Notifier.sendResultsEmbed(event, embed);
                 })
                 .doFinally(s -> DatabaseLoader.closeConnectionIfOpen());
     }

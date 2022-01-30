@@ -17,7 +17,7 @@ public class CacheMaintainer {
     public Mono<Void> startCacheRefresh(LoadingCache<Long, DiscordServerProperties> cache) {
         Mono<Void> startRefreshing = Flux.interval(Duration.ofMinutes(3))
                 .doFirst(() -> logger.info("Starting Cache Refresh"))
-                .doOnNext(l -> refreshPropertiesCache(cache)).then();
+                .flatMap(l -> refreshPropertiesCache(cache)).then();
 
         return Mono.when(startRefreshing);
     }
