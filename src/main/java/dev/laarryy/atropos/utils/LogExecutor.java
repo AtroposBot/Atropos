@@ -64,7 +64,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public final class LogExecutor {
     private LogExecutor() {
@@ -569,40 +571,31 @@ public final class LogExecutor {
         DatabaseLoader.closeConnectionIfOpen();
     }
 
-    public static void logMemberJoin(MemberJoinEvent event, TextChannel logChannel) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
+    public static Mono<Void> logMemberJoin(MemberJoinEvent event, TextChannel logChannel) {
+        return event.getGuild().flatMap($ -> {
+            final Member eventMember = event.getMember();
+            long memberId = eventMember.getId().asLong();
+            String username = eventMember.getUsername() + '#' + eventMember.getDiscriminator();
+            String member = "`%s`:`%d`:%s".formatted(username, memberId, eventMember.getMention());
 
-        long memberId = event.getMember().getId().asLong();
-        String username = event.getMember().getUsername() + "#" + event.getMember().getDiscriminator();
-        String member = "`" + username + "`:`" + memberId + "`:<@" + memberId + ">";
+            String avatarUrl = eventMember.getAvatarUrl();
 
-        String avatarUrl = event.getMember().getAvatarUrl();
+            String createDate = TimestampMaker.getTimestampFromEpochSecond(
+                eventMember.getId().getTimestamp().getEpochSecond(),
+                TimestampMaker.TimestampType.LONG_DATETIME
+            );
 
-        String createDate = TimestampMaker.getTimestampFromEpochSecond(
-                event.getMember().getId().getTimestamp().getEpochSecond(),
-                TimestampMaker.TimestampType.LONG_DATETIME);
-
-        String badges = getBadges(event.getMember());
-
-
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+            final EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserJoin() + " User Joined")
                 .color(Color.ENDEAVOUR)
                 .addField("User", member, false)
                 .thumbnail(avatarUrl)
                 .addField("Account Created", createDate, false)
-                .timestamp(Instant.now())
-                .build();
+                .timestamp(Instant.now());
+            getBadges(eventMember).ifPresent(s -> embed.addField("Badges", s, false));
 
-        if (!badges.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Badges", badges, false)
-                    .build();
-        }
-
-        logChannel.createMessage(embed).block();
+            return logChannel.createMessage(embed.build());
+        }).then();
     }
 
     private static String getIconUrl(Guild guild) {
@@ -620,114 +613,74 @@ public final class LogExecutor {
         return guildIconUrl;
     }
 
-    public static String getBadges(Member member) {
-        StringBuilder stringBuilder = new StringBuilder();
-        if (member.getPublicFlags().contains(User.Flag.DISCORD_CERTIFIED_MODERATOR)) {
-            stringBuilder.append(EmojiManager.getModeratorBadge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.EARLY_SUPPORTER)) {
-            stringBuilder.append(EmojiManager.getEarlySupporterBadge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.BUG_HUNTER_LEVEL_1)) {
-            stringBuilder.append(EmojiManager.getBugHunter1Badge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.BUG_HUNTER_LEVEL_2)) {
-            stringBuilder.append(EmojiManager.getBugHunter2Badge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.DISCORD_EMPLOYEE)) {
-            stringBuilder.append(EmojiManager.getEmployeeBadge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.DISCORD_PARTNER)) {
-            stringBuilder.append(EmojiManager.getPartnerBadge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.VERIFIED_BOT_DEVELOPER)) {
-            stringBuilder.append(EmojiManager.getDeveloperBadge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.HYPESQUAD_EVENTS)) {
-            stringBuilder.append(EmojiManager.getHypeSquad2Badge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.HOUSE_BALANCE)) {
-            stringBuilder.append(EmojiManager.getBalanceBadge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.HOUSE_BRAVERY)) {
-            stringBuilder.append(EmojiManager.getBraveryBadge()).append(" ");
-        }
-        if (member.getPublicFlags().contains(User.Flag.HOUSE_BRILLIANCE)) {
-            stringBuilder.append(EmojiManager.getBrillianceBadge()).append(" ");
-        }
-        if (member.getPremiumTime().isPresent()) {
-            stringBuilder.append(EmojiManager.getNitroBadge()).append(" ");
-        }
-        if (stringBuilder.isEmpty()) {
-            return "none";
-        } else return stringBuilder.toString();
+    public static Optional<String> getBadges(Member member) {
+        return Stream.concat(
+            member.getPublicFlags().stream()
+                .map(LogExecutor::getEmojiForBadge)
+                .flatMap(Optional::stream),
+            member.getPremiumTime().map($ -> EmojiManager.getNitroBadge()).stream()
+        ).reduce((lhs, rhs) -> lhs + ' ' + rhs);
     }
 
-    public static void logMemberLeave(MemberLeaveEvent event, TextChannel logChannel) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
+    private static Optional<String> getEmojiForBadge(final User.Flag badge) {
+        return switch (badge) {
+            case DISCORD_CERTIFIED_MODERATOR -> Optional.ofNullable(EmojiManager.getModeratorBadge());
+            case EARLY_SUPPORTER -> Optional.ofNullable(EmojiManager.getEarlySupporterBadge());
+            case BUG_HUNTER_LEVEL_1 -> Optional.ofNullable(EmojiManager.getBugHunter1Badge());
+            case BUG_HUNTER_LEVEL_2 -> Optional.ofNullable(EmojiManager.getBugHunter2Badge());
+            case DISCORD_EMPLOYEE -> Optional.ofNullable(EmojiManager.getEmployeeBadge());
+            case DISCORD_PARTNER -> Optional.ofNullable(EmojiManager.getPartnerBadge());
+            case VERIFIED_BOT_DEVELOPER -> Optional.ofNullable(EmojiManager.getDeveloperBadge());
+            case HYPESQUAD_EVENTS -> Optional.ofNullable(EmojiManager.getHypeSquad2Badge());
+            case HOUSE_BALANCE -> Optional.ofNullable(EmojiManager.getBalanceBadge());
+            case HOUSE_BRAVERY -> Optional.ofNullable(EmojiManager.getBraveryBadge());
+            case HOUSE_BRILLIANCE -> Optional.ofNullable(EmojiManager.getBrillianceBadge());
+            default -> Optional.empty();
+        };
+    }
 
-        long memberId = event.getUser().getId().asLong();
-        String username = event.getUser().getUsername() + "#" + event.getUser().getDiscriminator();
-        String memberName = "`" + username + "`:" + "`" + memberId + "`:<@" + memberId + ">";
-        String avatarUrl = event.getUser().getAvatarUrl();
+    public static Mono<Void> logMemberLeave(MemberLeaveEvent event, TextChannel logChannel) {
+        return event.getGuild().flatMap($ -> {
+            final User eventUser = event.getUser();
+            long memberId = eventUser.getId().asLong();
+            String username = eventUser.getUsername() + '#' + eventUser.getDiscriminator();
+            String memberName = "`%s`:`%d`:%s".formatted(username, memberId, eventUser.getMention());
+            String avatarUrl = eventUser.getAvatarUrl();
 
-        Member member;
-        if (event.getMember().isPresent()) {
-            member = event.getMember().get();
-        } else {
-            member = null;
-        }
 
-        String badges;
-        String roles;
-        if (member != null) {
-            badges = getBadges(member);
-            roles = getRolesString(member);
-        } else {
-            badges = "none";
-            roles = "none";
-        }
+            Member member = event.getMember().orElse(null);
+            Optional<String> badges;
+            Mono<String> rolesMono;
+            if (member != null) {
+                badges = getBadges(member);
+                rolesMono = getRolesString(member);
+            } else {
+                badges = Optional.empty();
+                rolesMono = Mono.just("No roles");
+            }
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+            final EmbedCreateSpec.Builder embedBuilder = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserLeave() + " User Left")
                 .addField("User", memberName, false)
                 .thumbnail(avatarUrl)
-                .timestamp(Instant.now())
-                .build();
+                .timestamp(Instant.now());
+            badges.ifPresent(s -> embedBuilder.addField("Badges", s, false));
 
-        if (!badges.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Badges", badges, false)
-                    .build();
-        }
-
-        if (!roles.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Roles", roles, false)
-                    .build();
-        }
-
-        logChannel.createMessage(embed).block();
+            return rolesMono.map(roles -> embedBuilder.addField("Roles", roles, false).build())
+                .flatMap(logChannel::createMessage);
+        }).then();
     }
 
-    public static String getRolesString(Member member) {
-        StringBuilder stringBuilder = new StringBuilder();
-        List<Role> roleList = member.getRoles().collectList().block();
-        if (roleList == null) {
-            return "none";
-        }
-        if (roleList.isEmpty()) {
-            return "No roles";
-        }
-        for (Role role : roleList) {
-            if (roleList.indexOf(role) == roleList.size() - 1) {
-                stringBuilder.append("`").append(role.getName()).append("`:<@&").append(role.getId().asLong()).append(">");
+    public static Mono<String> getRolesString(Member member) {
+        return member.getRoles().collectList().map(roles -> {
+            if (roles.isEmpty()) {
+                return "No roles";
             } else {
-                stringBuilder.append("`").append(role.getName()).append("`:<@&").append(role.getId().asLong()).append(">, ");
+                return roles.stream()
+                    .map(role -> "`%s`:%s".formatted(role.getName(), role.getMention()))
+                    .collect(Collectors.joining(", "));
             }
-        }
-        return stringBuilder.toString();
+        });
     }
 
     public static void logMemberUpdate(MemberUpdateEvent event, TextChannel logChannel) {

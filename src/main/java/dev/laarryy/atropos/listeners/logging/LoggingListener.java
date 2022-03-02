@@ -262,36 +262,19 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
-        wait(2000);
-        Guild guild = event.getGuild().block();
-        if (guild == null) return Mono.empty();
-
-        getLogChannel(guild, "guild")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logMemberJoin(event, textChannel);
-                    }
-                })
-                .subscribe();
-        return Mono.empty();
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "guild"))
+            .flatMap(channel -> LogExecutor.logMemberJoin(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(MemberLeaveEvent event) {
-        if (event.getUser().equals(event.getClient().getSelf().block())) {
-            return Mono.empty();
-        }
-        Guild guild = event.getGuild().block();
-        if (guild == null) return Mono.empty();
-
-        getLogChannel(guild, "guild")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logMemberLeave(event, textChannel);
-                    }
-                })
-                .subscribe();
-        return Mono.empty();
+        return event.getClient().getSelf()
+            .map(event.getUser()::equals)
+            .filter(isSelf -> !isSelf)
+            .flatMap($ -> event.getGuild())
+            .flatMap(guild -> getLogChannel(guild, "guild"))
+            .flatMap(channel -> LogExecutor.logMemberLeave(event, channel));
     }
 
     @EventListener
