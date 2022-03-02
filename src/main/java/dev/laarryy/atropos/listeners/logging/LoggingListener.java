@@ -92,37 +92,22 @@ public final class LoggingListener {
             .flatMap(channel -> LogExecutor.logBlacklistTrigger(event, blacklist, punishment, channel));
     }
 
-    public void onPunishment(ChatInputInteractionEvent event, Punishment punishment) {
-        Guild guild = event.getInteraction().getGuild().block();
-        if (guild == null) return;
-
-        getLogChannel(guild, "punishment").subscribe(textChannel -> {
-            if (textChannel == null) return;
-            LogExecutor.logPunishment(punishment, textChannel);
-        });
-
+    public Mono<Void> onPunishment(ChatInputInteractionEvent event, Punishment punishment) {
+        return event.getInteraction().getGuild()
+            .flatMap(guild -> getLogChannel(guild, "punishment"))
+            .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
     }
 
-    public void onPunishment(MessageCreateEvent event, Punishment punishment) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
-
-        getLogChannel(guild, "punishment").subscribe(textChannel -> {
-            if (textChannel == null) return;
-            LogExecutor.logPunishment(punishment, textChannel);
-        });
-
+    public Mono<Void> onPunishment(MessageCreateEvent event, Punishment punishment) {
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "punishment"))
+            .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
     }
 
-    public void onPunishment(ButtonInteractionEvent event, Punishment punishment) {
-        Guild guild = event.getInteraction().getGuild().block();
-        if (guild == null) return;
-
-        getLogChannel(guild, "punishment").subscribe(textChannel -> {
-            if (textChannel == null) return;
-            LogExecutor.logPunishment(punishment, textChannel);
-        });
-
+    public Mono<Void> onPunishment(ButtonInteractionEvent event, Punishment punishment) {
+        return event.getInteraction().getGuild()
+            .flatMap(guild -> getLogChannel(guild, "punishment"))
+            .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
     }
 
     public void onScamMute(MessageCreateEvent event, Punishment punishment) {

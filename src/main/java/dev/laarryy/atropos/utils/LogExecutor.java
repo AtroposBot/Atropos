@@ -155,30 +155,32 @@ public final class LogExecutor {
         }).then();
     }
 
-    public static void logPunishment(Punishment punishment, TextChannel logChannel) {
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser punishedUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-        DiscordUser punishingUser = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
-        String type = switch (punishment.getPunishmentType()) {
-            case "warn" -> EmojiManager.getUserWarn() + " Warn";
-            case "note" -> EmojiManager.getUserCase() + " Note";
-            case "mute" -> EmojiManager.getUserMute() + " Mute";
-            case "kick" -> EmojiManager.getUserKick() + " Kick";
-            case "ban" -> EmojiManager.getUserBan() + " Ban";
-            default -> punishment.getPunishmentType();
-        };
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+    public static Mono<Void> logPunishment(Punishment punishment, TextChannel logChannel) {
+        return Mono.defer(() -> {
+            DatabaseLoader.openConnectionIfClosed();
+            DiscordUser punishedUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+            DiscordUser punishingUser = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
+            String type = switch (punishment.getPunishmentType()) {
+                case "warn" -> EmojiManager.getUserWarn() + " Warn";
+                case "note" -> EmojiManager.getUserCase() + " Note";
+                case "mute" -> EmojiManager.getUserMute() + " Mute";
+                case "kick" -> EmojiManager.getUserKick() + " Kick";
+                case "ban" -> EmojiManager.getUserBan() + " Ban";
+                default -> punishment.getPunishmentType();
+            };
+            DatabaseLoader.closeConnectionIfOpen();
+            EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(type + ": ID #" + punishment.getPunishmentId())
                 .color(Color.ENDEAVOUR)
-                .addField("Punished User", "`" + punishedUser.getUserIdSnowflake() + "`:<@" + punishedUser.getUserIdSnowflake() + ">", false)
-                .addField("Punishing User", "`" + punishingUser.getUserIdSnowflake() + "`:<@" + punishingUser.getUserIdSnowflake() + ">", false)
+                .addField("Punished User", "`%d`:<@%1$d>".formatted(punishedUser.getUserIdSnowflake()), false)
+                .addField("Punishing User", "`%d`:<@%1$d>".formatted(punishingUser.getUserIdSnowflake()), false)
                 .addField("Reason", punishment.getPunishmentMessage(), false)
                 .footer("For more information, run /case search id " + punishment.getPunishmentId(), "")
                 .timestamp(Instant.now())
                 .build();
 
-        logChannel.createMessage(embed).block();
-        DatabaseLoader.closeConnectionIfOpen();
+            return logChannel.createMessage(embed);
+        }).then();
     }
 
     public static void logAutoMute(Punishment punishment, TextChannel logChannel) {
