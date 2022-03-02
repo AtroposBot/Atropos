@@ -86,14 +86,10 @@ public final class LoggingListener {
             .flatMap(channel -> LogExecutor.logInsubordination(event, channel, target));
     }
 
-    public void onBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
-
-        getLogChannel(guild, "punishment").subscribe(textChannel -> {
-            if (textChannel == null) return;
-            LogExecutor.logBlacklistTrigger(event, blacklist, punishment, textChannel);
-        });
+    public Mono<Void> onBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment) {
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "punishment"))
+            .flatMap(channel -> LogExecutor.logBlacklistTrigger(event, blacklist, punishment, channel));
     }
 
     public void onPunishment(ChatInputInteractionEvent event, Punishment punishment) {

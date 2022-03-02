@@ -64,6 +64,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public final class LogExecutor {
     private LogExecutor() {
@@ -123,47 +124,35 @@ public final class LogExecutor {
         }).then();
     }
 
-    public static void logBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment, TextChannel logChannel) {
-        DatabaseLoader.openConnectionIfClosed();
+    public static Mono<Void> logBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment, TextChannel logChannel) {
+        return event.getMember().map(user -> {
+            DatabaseLoader.openConnectionIfClosed();
+            long userId = user.getId().asLong();
+            String username = user.getUsername() + '#' + user.getDiscriminator();
+            String userInfo = "`%s`:`%d`:%s".formatted(username, userId, user.getMention());
 
-        Member user = event.getMember().get();
-        long userId = user.getId().asLong();
-        String username = user.getUsername() + "#" + user.getDiscriminator();
-        String userInfo = "`" + username + "`:" +"`" + userId + "`:<@" + userId + ">";
+            String content = event.getMessage().getContent();
 
-        String content = event.getMessage().getContent();
+            int blacklistId = blacklist.getBlacklistId();
 
-        String attachments;
-        if (!event.getMessage().getAttachments().isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (Attachment a : event.getMessage().getAttachments()) {
-                sb.append(a.getFilename()).append("\n");
-            }
-            attachments = sb.toString();
-        } else {
-            attachments = "none";
-        }
-
-        int blacklistId = blacklist.getBlacklistId();
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+            EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserWarn() + " Blacklist Triggered")
                 .color(Color.MOON_YELLOW)
-                .description("Blacklist ID #`" + blacklistId + "` was triggered and the message detected has been deleted. " +
-                        "A case has been opened for the user who triggered it with ID #`" + punishment.getPunishmentId() + "`")
-                .addField("Content", getStringWithLegalLength(content, 1024), false)
+                .description(
+                    "Blacklist ID #`" + blacklistId + "` was triggered and the message detected has been deleted. " +
+                    "A case has been opened for the user who triggered it with ID #`" + punishment.getPunishmentId() + '`'
+                ).addField("Content", getStringWithLegalLength(content, 1024), false)
                 .footer("To see information about this blacklist entry, run /settings blacklist info " + blacklistId, "")
-                .timestamp(Instant.now())
-                .build();
+                .timestamp(Instant.now());
 
-        if (!attachments.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Attachments", attachments, false)
-                    .build();
-        }
+            final List<Attachment> attachments = event.getMessage().getAttachments();
+            if (!attachments.isEmpty()) {
+                embed.addField("Attachments", attachments.stream().map(Attachment::getFilename).collect(Collectors.joining("\n")), false);
+            }
 
-        logChannel.createMessage(embed).subscribe();
-        DatabaseLoader.closeConnectionIfOpen();
+            DatabaseLoader.closeConnectionIfOpen();
+            return logChannel.createMessage(embed.build());
+        }).then();
     }
 
     public static void logPunishment(Punishment punishment, TextChannel logChannel) {
