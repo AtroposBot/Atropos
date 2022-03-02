@@ -125,7 +125,7 @@ public final class LogExecutor {
     }
 
     public static Mono<Void> logBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment, TextChannel logChannel) {
-        return event.getMember().map(user -> {
+        return Mono.justOrEmpty(event.getMember()).flatMap(user -> {
             DatabaseLoader.openConnectionIfClosed();
             long userId = user.getId().asLong();
             String username = user.getUsername() + '#' + user.getDiscriminator();
@@ -183,26 +183,27 @@ public final class LogExecutor {
         }).then();
     }
 
-    public static void logAutoMute(Punishment punishment, TextChannel logChannel) {
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser punishedUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+    public static Mono<Void> logAutoMute(Punishment punishment, TextChannel logChannel) {
+        return Mono.defer(() -> {
+            DatabaseLoader.openConnectionIfClosed();
+            DiscordUser punishedUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+            DatabaseLoader.closeConnectionIfOpen();
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+            EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title("Automatic Mute")
                 .color(Color.ENDEAVOUR)
-                .addField("Punished User", "`" + punishedUser.getUserIdSnowflake() + "`:<@" + punishedUser.getUserIdSnowflake() + ">", false)
+                .addField("Punished User", "`%d`:<@%1$d>".formatted(punishedUser.getUserIdSnowflake()), false)
                 .addField("Reason", punishment.getPunishmentMessage(), false)
                 .footer("Use the buttons to take appropriate action. ID: " + punishment.getPunishmentId(), "")
                 .timestamp(Instant.now())
                 .build();
 
-        Button banButton = Button.danger(punishment.getPunishmentId() + "-atropos-ban-" + punishedUser.getUserId(), "Ban User");
-        Button unmuteButton = Button.success(punishment.getPunishmentId() + "-atropos-unmute-" + punishedUser.getUserId(), "Unmute User");
-        Button kickButton = Button.primary(punishment.getPunishmentId() + "-atropos-kick-" + punishedUser.getUserId(), "Kick User");
+            Button banButton = Button.danger(punishment.getPunishmentId() + "-atropos-ban-" + punishedUser.getUserId(), "Ban User");
+            Button unmuteButton = Button.success(punishment.getPunishmentId() + "-atropos-unmute-" + punishedUser.getUserId(), "Unmute User");
+            Button kickButton = Button.primary(punishment.getPunishmentId() + "-atropos-kick-" + punishedUser.getUserId(), "Kick User");
 
-        logChannel.createMessage(embed).withComponents(ActionRow.of(banButton, kickButton, unmuteButton)).subscribe();
-
-        DatabaseLoader.closeConnectionIfOpen();
+            return logChannel.createMessage(embed).withComponents(ActionRow.of(banButton, kickButton, unmuteButton));
+        }).then();
     }
 
     public static void logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {

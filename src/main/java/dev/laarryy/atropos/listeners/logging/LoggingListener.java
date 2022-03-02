@@ -110,26 +110,16 @@ public final class LoggingListener {
             .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
     }
 
-    public void onScamMute(MessageCreateEvent event, Punishment punishment) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
-
-        getLogChannel(guild, "modmail").subscribe(textChannel -> {
-            if (textChannel == null) return;
-            LogExecutor.logAutoMute(punishment, textChannel);
-        });
-
+    public Mono<Void> onScamMute(MessageCreateEvent event, Punishment punishment) {
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "modmail"))
+            .flatMap(channel -> LogExecutor.logAutoMute(punishment, channel));
     }
 
-    public void onBlacklistMute(MessageCreateEvent event, Punishment punishment) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
-
-        getLogChannel(guild, "modmail").subscribe(textChannel -> {
-            if (textChannel == null) return;
-            LogExecutor.logAutoMute(punishment, textChannel);
-        });
-
+    public Mono<Void> onBlacklistMute(MessageCreateEvent event, Punishment punishment) {
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "modmail"))
+            .flatMap(channel -> LogExecutor.logAutoMute(punishment, channel));
     }
 
     public void onUnban(Guild guild, String reason, Punishment punishment) {
