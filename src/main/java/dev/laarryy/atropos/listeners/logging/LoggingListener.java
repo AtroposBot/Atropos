@@ -42,7 +42,6 @@ import discord4j.core.object.entity.channel.TextChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 public final class LoggingListener {
     private final Logger logger = LogManager.getLogger(this);
@@ -81,14 +80,10 @@ public final class LoggingListener {
             .flatMap(channel -> LogExecutor.logInsubordination(event, channel, target));
     }
 
-    public void onAttemptedInsubordination(ButtonInteractionEvent event, Member target) {
-        Guild guild = event.getInteraction().getGuild().block();
-        if (guild == null) return;
-
-        getLogChannel(guild, "punishment").subscribe(textChannel -> {
-            if (textChannel == null) return;
-            LogExecutor.logInsubordination(event, textChannel, target);
-        });
+    public Mono<Void> onAttemptedInsubordination(ButtonInteractionEvent event, Member target) {
+        return event.getInteraction().getGuild()
+            .flatMap(guild -> getLogChannel(guild, "punishment"))
+            .flatMap(channel -> LogExecutor.logInsubordination(event, channel, target));
     }
 
     public void onBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment) {

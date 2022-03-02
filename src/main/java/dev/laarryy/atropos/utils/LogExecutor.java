@@ -97,43 +97,30 @@ public final class LogExecutor {
         }).then();
     }
 
-    public static void logInsubordination(ButtonInteractionEvent event, TextChannel logChannel, Member target) {
-        Guild guild = event.getInteraction().getGuild().block();
-        if (guild == null) {
-            return;
-        }
+    public static Mono<Void> logInsubordination(ButtonInteractionEvent event, TextChannel logChannel, Member target) {
+        return event.getInteraction().getGuild().flatMap($ -> {
+            long targetId = target.getId().asLong();
+            String username = target.getUsername() + '#' + target.getDiscriminator();
+            String targetInfo = "`%s`:`%d`:%s".formatted(username, targetId, target.getMention());
 
-        long targetId = target.getId().asLong();
-        String username = target.getUsername() + "#" + target.getDiscriminator();
-        String targetInfo = "`" + username + "`:`" + targetId + "`:<@" + targetId + ">";
+            String mutineerInfo = event.getInteraction().getMember()
+                .map(mutineer -> {
+                    long mutineerId = mutineer.getId().asLong();
+                    String mutineerName = mutineer.getUsername() + '#' + mutineer.getDiscriminator();
+                    return "`%s`:`%d`:%s".formatted(mutineerName, mutineerId, mutineer.getMention());
+                }).orElse("Unknown");
 
-        String mutineerInfo;
-        if (event.getInteraction().getMember().isPresent()) {
-            Member mutineer = event.getInteraction().getMember().get();
-            long mutineerId = mutineer.getId().asLong();
-            String mutineerName = mutineer.getUsername() + "#" + mutineer.getDiscriminator();
-            mutineerInfo = "`" + mutineerName + "`:`" + mutineerId + "`:<@" + mutineerId + ">";
-        } else {
-            mutineerInfo = "Unknown";
-        }
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(event.getCustomId());
-
-        StringBuilder sb = new StringBuilder();
-
-        String commandContent = stringBuffer.toString();
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+            EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getUserWarn() + " Insubordination Alert")
                 .description("A mutineer has attempted to punish someone above them.")
                 .addField("User", mutineerInfo, false)
                 .addField("Target", targetInfo, false)
-                .addField("Command", "`" + commandContent + "`", false)
+                .addField("Command", '`' + event.getCustomId() + '`', false)
                 .timestamp(Instant.now())
                 .build();
 
-        logChannel.createMessage(embed).block();
+            return logChannel.createMessage(embed);
+        }).then();
     }
 
     public static void logBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment, TextChannel logChannel) {
