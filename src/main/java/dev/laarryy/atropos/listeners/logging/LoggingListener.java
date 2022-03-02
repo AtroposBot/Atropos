@@ -52,18 +52,6 @@ public final class LoggingListener {
     public LoggingListener() {
     }
 
-    private static void wait(int ms)
-    {
-        try
-        {
-            Thread.sleep(ms);
-        }
-        catch(InterruptedException ex)
-        {
-            Thread.currentThread().interrupt();
-        }
-    }
-
     private Mono<TextChannel> getLogChannel(Guild guild, String type) {
         Long guildIdSnowflake = guild.getId().asLong();
         DiscordServerProperties serverProperties = cache.get(guildIdSnowflake);
