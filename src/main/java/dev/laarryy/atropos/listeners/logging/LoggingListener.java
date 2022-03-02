@@ -72,28 +72,13 @@ public final class LoggingListener {
             return Mono.empty();
         }
 
-        TextChannel channel;
-        try {
-            channel = guild.getChannelById(Snowflake.of(logChannelSnowflake)).ofType(TextChannel.class).block();
-        } catch (Exception e) {
-            return Mono.empty();
-        }
-
-        if (channel == null) {
-            return Mono.empty();
-        }
-
-        return Mono.just(channel);
+        return guild.getChannelById(Snowflake.of(logChannelSnowflake)).ofType(TextChannel.class);
     }
 
-    public void onAttemptedInsubordination(ChatInputInteractionEvent event, Member target) {
-        Guild guild = event.getInteraction().getGuild().block();
-        if (guild == null) return;
-
-        getLogChannel(guild, "punishment").subscribe(textChannel -> {
-            if (textChannel == null) return;
-            LogExecutor.logInsubordination(event, textChannel, target);
-        });
+    public Mono<Void> onAttemptedInsubordination(ChatInputInteractionEvent event, Member target) {
+        return event.getInteraction().getGuild()
+            .flatMap(guild -> getLogChannel(guild, "punishment"))
+            .flatMap(channel -> LogExecutor.logInsubordination(event, channel, target));
     }
 
     public void onAttemptedInsubordination(ButtonInteractionEvent event, Member target) {

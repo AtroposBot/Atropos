@@ -57,7 +57,6 @@ import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
-import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -70,46 +69,32 @@ public final class LogExecutor {
     private LogExecutor() {
     }
 
-    public static void logInsubordination(ChatInputInteractionEvent event, TextChannel logChannel, Member target) {
-        Guild guild = event.getInteraction().getGuild().block();
-        if (guild == null) {
-            return;
-        }
+    public static Mono<Void> logInsubordination(ChatInputInteractionEvent event, TextChannel logChannel, Member target) {
+        return event.getInteraction().getGuild().flatMap($ -> {
+            long targetId = target.getId().asLong();
+            String username = target.getUsername() + '#' + target.getDiscriminator();
+            String targetInfo = "`%s`:`%d`:%s".formatted(username, targetId, target.getMention());
 
-        long targetId = target.getId().asLong();
-        String username = target.getUsername() + "#" + target.getDiscriminator();
-        String targetInfo = "`" + username + "`:`" + targetId + "`:<@" + targetId + ">";
+            String mutineerInfo = event.getInteraction().getMember()
+                .map(mutineer -> {
+                    long mutineerId = mutineer.getId().asLong();
+                    String mutineerName = mutineer.getUsername() + '#' + mutineer.getDiscriminator();
+                    return "`%s`:`%d`:%s".formatted(mutineerName, mutineerId, mutineer.getMention());
+                }).orElse("Unknown");
 
-        String mutineerInfo;
-        if (event.getInteraction().getMember().isPresent()) {
-            Member mutineer = event.getInteraction().getMember().get();
-            long mutineerId = mutineer.getId().asLong();
-            String mutineerName = mutineer.getUsername() + "#" + mutineer.getDiscriminator();
-            mutineerInfo = "`" + mutineerName + "`:`" + mutineerId + "`:<@" + mutineerId + ">";
-        } else {
-            mutineerInfo = "Unknown";
-        }
-
-        StringBuffer stringBuffer = new StringBuffer();
-        stringBuffer.append(event.getCommandName());
-
-        StringBuilder sb = new StringBuilder();
-
-        Flux.fromIterable(event.getOptions())
-                .subscribe(option -> stringBuffer.append(AuditLogger.generateOptionString(option, sb)));
-
-        String commandContent = stringBuffer.toString();
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getUserWarn() + " Insubordination Alert")
-                .description("A mutineer has attempted to punish someone above them.")
-                .addField("User", mutineerInfo, false)
-                .addField("Target", targetInfo, false)
-                .addField("Command", "`" + commandContent + "`", false)
-                .timestamp(Instant.now())
-                .build();
-
-        logChannel.createMessage(embed).block();
+            return Flux.fromIterable(event.getOptions())
+                .map(AuditLogger::generateOptionString)
+                .reduce(event.getCommandName(), String::concat)
+                .map(commandContent -> EmbedCreateSpec.builder()
+                    .title(EmojiManager.getUserWarn() + " Insubordination Alert")
+                    .description("A mutineer has attempted to punish someone above them.")
+                    .addField("User", mutineerInfo, false)
+                    .addField("Target", targetInfo, false)
+                    .addField("Command", '`' + commandContent + '`', false)
+                    .timestamp(Instant.now())
+                    .build())
+                .flatMap(logChannel::createMessage);
+        }).then();
     }
 
     public static void logInsubordination(ButtonInteractionEvent event, TextChannel logChannel, Member target) {
