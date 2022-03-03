@@ -279,20 +279,12 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(MemberUpdateEvent event) { // Nickname or role updates
-        if (event.getMember().block().equals(event.getGuild().block().getSelfMember().block())) {
-            return Mono.empty();
-        }
-        Guild guild = event.getGuild().block();
-        if (guild == null) return Mono.empty();
-
-        getLogChannel(guild, "member")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logMemberUpdate(event, textChannel);
-                    }
-                })
-                .subscribe();
-        return Mono.empty();
+        return event.getGuild()
+            .flatMap(Guild::getSelfMember)
+            .filterWhen(self -> event.getMember().map(self::equals).map(isSelf -> !isSelf))
+            .flatMap($ -> event.getGuild())
+            .flatMap(guild -> getLogChannel(guild, "member"))
+            .flatMap(channel -> LogExecutor.logMemberUpdate(event, channel));
     }
 
     @EventListener
@@ -312,17 +304,9 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(InviteCreateEvent event) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return Mono.empty();
-
-        getLogChannel(guild, "guild")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logInviteCreate(event, textChannel);
-                    }
-                })
-                .subscribe();
-        return Mono.empty();
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "guild"))
+            .flatMap(channel -> LogExecutor.logInviteCreate(event, channel));
     }
 
     @EventListener

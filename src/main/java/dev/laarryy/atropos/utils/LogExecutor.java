@@ -63,10 +63,15 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static java.util.function.Predicate.not;
 
 public final class LogExecutor {
     private LogExecutor() {
@@ -683,105 +688,92 @@ public final class LogExecutor {
         });
     }
 
-    public static void logMemberUpdate(MemberUpdateEvent event, TextChannel logChannel) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
+    public static Mono<Void> logMemberUpdate(MemberUpdateEvent event, TextChannel logChannel) {
+        return Mono.zip(event.getGuild(), event.getMember(), ($, member) -> {
+            long memberId = member.getId().asLong();
+            String username = member.getUsername() + '#' + member.getDiscriminator();
+            String memberName = "`%s`:`%d`:%s".formatted(username, memberId, member.getMention());
+            String avatarUrl = member.getAvatarUrl();
 
-        if (event.getMember().block() == null) {
-            return;
-        }
-
-        long memberId = event.getMember().block().getId().asLong();
-        String username = event.getMember().block().getUsername() + "#" + event.getMember().block().getDiscriminator();
-        String memberName = "`" + username + "`:" + "`" + memberId + "`:<@" + memberId + ">";
-
-        String memberInfo;
-        if (event.getOld().isPresent()) {
-            if ( event.getOld().get().getNickname().isPresent()
-                    && event.getMember().block().getNickname().isPresent()
-                    && event.getOld().get().getNickname().get().equals(event.getMember().block().getNickname().get())
-                    && event.getOld().get().getRoles().collectList().block().equals(event.getMember().block().getRoles().collectList().block())) {
-                return;
-            }
-            if ( event.getOld().get().getNickname().isEmpty()
-                    && event.getMember().block().getNickname().isEmpty()
-                    && event.getOld().get().getRoles().collectList().block().equals(event.getMember().block().getRoles().collectList().block())) {
-                return;
-            }
-            memberInfo = getMemberDiff(event.getOld().get().asFullMember().block(), event.getMember().block());
-        } else {
-            memberInfo = getMemberInformation(event.getMember().block());
-        }
-
-        String avatarUrl = event.getMember().block().getAvatarUrl();
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getUserIdentification() + " Member Update")
-                .color(Color.MOON_YELLOW)
-                .description(memberInfo)
-                .addField("Member", memberName, false)
-                .thumbnail(avatarUrl)
-                .timestamp(Instant.now())
-                .build();
-
-        logChannel.createMessage(embed).block();
+            return event.getOld()
+                .map(oldMember -> getMemberDiff(oldMember, member))
+                .orElseGet(() -> getMemberInformation(member))
+                .map(memberInfo -> EmbedCreateSpec.builder()
+                    .title(EmojiManager.getUserIdentification() + " Member Update")
+                    .color(Color.MOON_YELLOW)
+                    .description(memberInfo)
+                    .addField("Member", memberName, false)
+                    .thumbnail(avatarUrl)
+                    .timestamp(Instant.now())
+                    .build())
+                .flatMap(logChannel::createMessage);
+        }).flatMap($ -> $).then();
     }
 
-    public static String getMemberInformation(Member member) {
-        List<Role> roles = member.getRoles().collectList().block();
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("```\n");
-        if (member.getNickname().isPresent()) {
-            stringBuilder.append("Nickname: ").append(member.getNickname().get()).append("\n");
-        } else {
-            stringBuilder.append("Username: ").append(member.getUsername()).append("\n");
-        }
-        if (roles != null && !roles.isEmpty()) {
-            for (Role role : roles) {
-                stringBuilder.append("Role: ").append(role.getName()).append(":").append(role.getId().asLong()).append("\n");
+    public static Mono<String> getMemberInformation(Member member) {
+        return member.getRoles().collectList().map(roles -> {
+            final StringJoiner joiner = new StringJoiner("\n");
+            joiner.add("```");
+
+            joiner.add(
+                member.getNickname()
+                    .map("Nickname: "::concat)
+                    .orElse("Username: " + member.getUsername())
+            );
+            for (final Role role : roles) {
+                joiner.add("Role: %s:%d".formatted(role.getName(), role.getId().asLong()));
             }
-        }
-        stringBuilder.append("```");
-        return stringBuilder.toString();
+
+            joiner.add("```");
+            return joiner.toString();
+        });
     }
 
-    public static String getMemberDiff(Member oldMember, Member newMember) {
-        List<Role> oldRoles = oldMember.getRoles().collectList().block();
-        List<Role> newRoles = newMember.getRoles().collectList().block();
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("```diff\n");
-        if (oldMember.getNickname().isPresent() && newMember.getNickname().isPresent()) {
-            if (oldMember.getNickname().get().equals(newMember.getNickname().get())) {
-                stringBuilder.append("--- Nickname: ").append(oldMember.getNickname().get()).append("\n");
-            } else {
-                stringBuilder.append("- Nickname: ").append(oldMember.getNickname().get()).append("\n");
-                stringBuilder.append("+ Nickname: ").append(newMember.getNickname().get()).append("\n");
-            }
-        } else if (oldMember.getNickname().isEmpty() && newMember.getNickname().isPresent()) {
-            stringBuilder.append("+ Nickname: ").append(newMember.getNickname().get()).append("\n");
-        } else if (oldMember.getNickname().isPresent() && newMember.getNickname().isEmpty()) {
-            stringBuilder.append("- Nickname: ").append(oldMember.getNickname().get()).append("\n");
-        } else if (oldMember.getNickname().isEmpty() && newMember.getNickname().isEmpty()) {
-            stringBuilder.append("--- No nickname").append("\n");
-        }
-        if (oldRoles != null && newRoles != null) {
-            if (oldRoles.equals(newRoles)) {
-                stringBuilder.append("--- No role changes").append("\n");
-            } else {
-                for (Role role : oldRoles) {
-                    if (!newRoles.contains(role)) {
-                        stringBuilder.append("- Role: ").append(role.getName()).append(": ").append(role.getId().asLong()).append("\n");
-                    }
+    public static Mono<String> getMemberDiff(Member oldMember, Member newMember) {
+        return oldMember.getRoles().collectList().flatMap(oldRoles ->
+            newMember.getRoles().collectList().map(newRoles -> {
+                final StringJoiner joiner = new StringJoiner("\n");
+                joiner.add("```diff");
+
+                final Optional<String> maybeOldNickname = oldMember.getNickname();
+                final Optional<String> maybeNewNickname = newMember.getNickname();
+                maybeOldNickname.ifPresentOrElse(
+                    oldNickname -> maybeNewNickname.ifPresentOrElse(
+                        newNickname -> {
+                            if (oldNickname.equals(newNickname)) {
+                                joiner.add("--- Nickname: " + oldNickname);
+                            } else {
+                                joiner.add("- Nickname: " + oldNickname);
+                                joiner.add("+ Nickname: " + newNickname);
+                            }
+                        },
+                        () -> joiner.add("- Nickname: " + oldNickname)
+                    ),
+                    () -> maybeNewNickname.ifPresentOrElse(
+                        newNickname -> joiner.add("+ Nickname: " + newNickname),
+                        () -> joiner.add("- No nickname")
+                    )
+                );
+
+                final Set<Role> oldRoleSet = new LinkedHashSet<>(oldRoles);
+                final Set<Role> newRoleSet = new LinkedHashSet<>(newRoles);
+                if (oldRoleSet.equals(newRoleSet)) {
+                    joiner.add("--- No role changes");
+                } else {
+                    oldRoleSet.stream()
+                        .filter(not(newRoleSet::contains))
+                        .map(role -> "- Role: %s: %d".formatted(role.getName(), role.getId().asLong()))
+                        .forEach(joiner::add);
+                    newRoleSet.stream()
+                        .filter(not(oldRoleSet::contains))
+                        .map(role -> "+ Role: %s: %d".formatted(role.getName(), role.getId().asLong()))
+                        .forEach(joiner::add);
                 }
-                for (Role role : newRoles) {
-                    if (!oldRoles.contains(role)) {
-                        stringBuilder.append("+ Role: ").append(role.getName()).append(": ").append(role.getId().asLong()).append("\n");
-                    }
-                }
-            }
-        }
-        stringBuilder.append("```");
-        return stringBuilder.toString();
+
+                joiner.add("```");
+                return joiner.toString();
+            })
+        );
     }
 
     public static void logPresenceUpdate(PresenceUpdateEvent event, TextChannel logChannel) {
@@ -848,31 +840,25 @@ public final class LogExecutor {
         return stringBuilder.toString();
     }
 
-    public static void logInviteCreate(InviteCreateEvent event, TextChannel logChannel) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
-
-        String inviter;
-        if (event.getInviter().isPresent()) {
-            long inviterId = event.getInviter().get().getId().asLong();
-            String username = event.getInviter().get().getUsername() + "#" + event.getInviter().get().getDiscriminator();
-            inviter = "`" + username + "`:`" + inviterId + "`:<@" + inviterId + ">";
-        } else {
-            inviter = "Unknown";
-        }
-
-        long channelId = event.getChannelId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getInvite() + " Server Invite Created")
-                .color(Color.ENDEAVOUR)
-                .addField("Inviter", inviter, false)
-                .addField("Invite Code", "`" + event.getCode() + "`", false)
-                .addField("Channel", channel, false)
-                .build();
-
-        logChannel.createMessage(embed).block();
+    public static Mono<Void> logInviteCreate(InviteCreateEvent event, TextChannel logChannel) {
+        return event.getGuild()
+            .flatMap(guild -> guild.getChannelById(event.getChannelId()))
+            .flatMap(channel -> {
+                String inviter = event.getInviter().map(user -> {
+                    long inviterId = user.getId().asLong();
+                    String username = user.getUsername() + '#' + user.getDiscriminator();
+                    return "`%s`:`%d`:%s".formatted(username, inviterId, user.getMention());
+                }).orElse("Unknown");
+                String channelDescriptor = "`%d`:%s".formatted(channel.getId().asLong(), channel.getMention());
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getInvite() + " Server Invite Created")
+                    .color(Color.ENDEAVOUR)
+                    .addField("Inviter", inviter, false)
+                    .addField("Invite Code", '`' + event.getCode() + '`', false)
+                    .addField("Channel", channelDescriptor, false)
+                    .build();
+                return logChannel.createMessage(embed);
+            }).then();
     }
 
     public static void logNewsCreate(NewsChannelCreateEvent event, TextChannel logChannel) {
