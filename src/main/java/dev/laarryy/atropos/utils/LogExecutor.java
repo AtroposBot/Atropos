@@ -487,8 +487,7 @@ public final class LogExecutor {
         if (guild == null) return;
 
         AuditLogEntry recentDelete = guild.getAuditLog().withActionType(ActionType.MESSAGE_BULK_DELETE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
+                .flatMapIterable(AuditLogPart::getEntries)
                 .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
                 .next()
                 .block();
@@ -861,29 +860,30 @@ public final class LogExecutor {
             }).then();
     }
 
-    public static void logNewsCreate(NewsChannelCreateEvent event, TextChannel logChannel) {
-        AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+    public static Mono<Void> logNewsCreate(NewsChannelCreateEvent event, TextChannel logChannel) {
+        final NewsChannel channel = event.getChannel();
+        return channel.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_CREATE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(newsCreate -> {
+                String responsibleUserId = getAuditResponsibleUser(newsCreate);
+                long channelId = channel.getId().asLong();
+                String name = channel.getName();
+                String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
 
-        String responsibleUserId = getAuditResponsibleUser(channelCreate);
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getNewsChannel() + " News Channel Created")
+                    .color(Color.SEA_GREEN)
+                    .addField("Channel", channelDescriptor, false)
+                    .addField("Created By", responsibleUserId, false)
+                    .timestamp(Instant.now())
+                    .build();
 
-        long channelId = event.getChannel().getId().asLong();
-        String name = event.getChannel().getName();
-        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getNewsChannel() + " News Channel Created")
-                .color(Color.SEA_GREEN)
-                .addField("Channel", channel, false)
-                .addField("Created By", responsibleUserId, false)
-                .timestamp(Instant.now())
-                .build();
-
-        logChannel.createMessage(embed).block();
+                return logChannel.createMessage(embed);
+            }).then();
     }
 
     public static void logNewsDelete(NewsChannelDeleteEvent event, TextChannel logChannel) {
@@ -1201,7 +1201,7 @@ public final class LogExecutor {
     private static String getAuditResponsibleUser(AuditLogEntry aud) {
         String responsibleUserId;
         if (aud == null || aud.getResponsibleUser().isEmpty()
-                || aud.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15)))) {
+                || aud.getId().getTimestamp().isBefore(Instant.now().minus(Duration.ofSeconds(15)))) {
             responsibleUserId = "Unknown";
         } else {
             String username = aud.getResponsibleUser().get().getUsername() + "#" + aud.getResponsibleUser().get().getDiscriminator();
