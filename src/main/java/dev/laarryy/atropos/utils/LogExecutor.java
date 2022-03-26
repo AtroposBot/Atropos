@@ -50,6 +50,7 @@ import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.Role;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.Category;
+import discord4j.core.object.entity.channel.GuildMessageChannel;
 import discord4j.core.object.entity.channel.NewsChannel;
 import discord4j.core.object.entity.channel.StoreChannel;
 import discord4j.core.object.entity.channel.TextChannel;
@@ -602,19 +603,10 @@ public final class LogExecutor {
         }).then();
     }
 
-    private static String getIconUrl(Guild guild) {
-        String guildIconUrl;
-        if (guild.getIconUrl(Image.Format.GIF).isPresent()) {
-            guildIconUrl = guild.getIconUrl(Image.Format.GIF).get();
-        } else if (guild.getIconUrl(Image.Format.PNG).isPresent()) {
-            guildIconUrl = guild.getIconUrl(Image.Format.PNG).get();
-        } else if (guild.getIconUrl(Image.Format.JPEG).isPresent()) {
-            guildIconUrl = guild.getIconUrl(Image.Format.JPEG).get();
-        } else {
-            guildIconUrl = "none";
-        }
-
-        return guildIconUrl;
+    private static Optional<String> getIconUrl(Guild guild) {
+        return guild.getIconUrl(Image.Format.GIF)
+            .or(() -> guild.getIconUrl(Image.Format.PNG))
+            .or(() -> guild.getIconUrl(Image.Format.JPEG));
     }
 
     public static Optional<String> getBadges(Member member) {
@@ -912,55 +904,40 @@ public final class LogExecutor {
             }).then();
     }
 
-    public static void logNewsUpdate(NewsChannelUpdateEvent event, TextChannel logChannel) {
-        if (event.getCurrent().getGuild().block() == null) {
-            return;
-        }
+    public static Mono<Void> logNewsUpdate(NewsChannelUpdateEvent event, TextChannel logChannel) {
+        final GuildMessageChannel currentChannel = event.getCurrent();
+        return currentChannel.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_UPDATE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(newsUpdate -> {
+                String responsibleUserId = getAuditResponsibleUser(newsUpdate);
 
-        AuditLogEntry newsUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_UPDATE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+                long channelId = currentChannel.getId().asLong();
+                String name = currentChannel.getName();
+                String channel = "`%d`:`%s`:%s".formatted(channelId, name, currentChannel.getMention());
 
-        String responsibleUserId = getAuditResponsibleUser(newsUpdate);
+                Mono<String> information = event.getOld()
+                    .flatMap(oldChannel -> event.getNewsChannel()
+                        .map(newsChannel -> getNewsChannelDiff(oldChannel, newsChannel)))
+                    .orElse(Mono.empty());
 
-        long channelId = event.getCurrent().getId().asLong();
-        String name = event.getCurrent().getName();
-        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
-
-        String information;
-        if (event.getOld().isPresent() && event.getNewsChannel().isPresent()) {
-            if (event.getOld().get().getName().equals(event.getCurrent().getName())
-                && event.getOld().get().getCategory().block().equals(event.getNewsChannel().get().getCategory().block().getName())) {
-                information = getNewsChannelDiff(event.getOld().get(), event.getNewsChannel().get());
-            } else {
-                information = getNewsChannelDiff(event.getOld().get(), event.getNewsChannel().get());
-            }
-        } else {
-            information = "none";
-        }
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getNewsChannel() + " News Channel Updated")
-                .addField("Channel", channel, false)
-                .addField("Updated By", responsibleUserId, false)
-                .color(Color.ENDEAVOUR)
-                .timestamp(Instant.now())
-                .footer("Check your server's audit log for more information", "")
-                .build();
-
-        if (!information.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .description(information)
-                    .build();
-        }
-
-        logChannel.createMessage(embed).block();
+                EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getNewsChannel() + " News Channel Updated")
+                    .addField("Channel", channel, false)
+                    .addField("Updated By", responsibleUserId, false)
+                    .color(Color.ENDEAVOUR)
+                    .timestamp(Instant.now())
+                    .footer("Check your server's audit log for more information", "");
+                return information.doOnNext(embed::description).thenReturn(embed);
+            }).map(EmbedCreateSpec.Builder::build)
+            .flatMap(logChannel::createMessage)
+            .then();
     }
 
-    private static String getNewsChannelDiff(NewsChannel oldChannel, NewsChannel newChannel) {
+    private static Mono<String> getNewsChannelDiff(NewsChannel oldChannel, NewsChannel newChannel) {
         return getChannelDiff(oldChannel.getName(), newChannel.getName(), oldChannel.getCategory(), newChannel.getCategory());
     }
 
@@ -1291,27 +1268,24 @@ public final class LogExecutor {
         return getChannelDiff(oldChannel.getName(), newChannel.getName(), oldChannel.getCategory(), newChannel.getCategory());
     }
 
-    private static String getChannelDiff(String name, String name2, Mono<Category> category, Mono<Category> category2) {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("```diff\n");
-        if (name.equals(name2)) {
-            stringBuilder.append("--- Name: ").append(name).append("\n");
-        } else {
-            stringBuilder.append("- Name: ").append(name).append("\n");
-            stringBuilder.append("+ Name: ").append(name2).append("\n");
-        }
-        if (category.block() != null && category2.block() != null && category.block().getName().equals(category2.block().getName())) {
-            stringBuilder.append("--- Category: ").append(category.block().getName()).append("\n");
-        } else {
-            if (category.block() != null) {
-                stringBuilder.append("- Category: ").append(category.block().getName()).append("\n");
+    private static Mono<String> getChannelDiff(String oldName, String newName, Mono<Category> oldCatMono, Mono<Category> newCatMono) {
+        return oldCatMono.zipWith(newCatMono, (oldCategory, newCategory) -> {
+            final StringJoiner joiner = new StringJoiner("\n");
+            joiner.add("```diff");
+            if (oldName.equals(newName)) {
+                joiner.add("--- Name: %s".formatted(oldName));
+            } else {
+                joiner.add("- Name: %s".formatted(oldName));
+                joiner.add("+ Name: %s".formatted(newName));
             }
-            if (category2.block() != null) {
-                stringBuilder.append("+ Category: ").append(category2.block().getName()).append("\n");
+            if (oldCategory.getName().equals(newCategory.getName())) {
+                joiner.add("--- Category: %s".formatted(oldCategory.getName()));
+            } else {
+                joiner.add("- Category: %s".formatted(oldCategory.getName()));
+                joiner.add("+ Category: %s".formatted(newCategory.getName()));
             }
-        }
-        stringBuilder.append("```");
-        return stringBuilder.toString();
+            return joiner.add("```").toString();
+        });
     }
 
     public static void logBan(BanEvent event, TextChannel logChannel) {
