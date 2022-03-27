@@ -367,17 +367,9 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(VoiceChannelUpdateEvent event) {
-        wait(2000);
-        Guild guild = event.getCurrent().getGuild().block();
-        if (guild == null) return Mono.empty();
-        getLogChannel(guild, "guild")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logVoiceUpdate(event, textChannel);
-                    }
-                })
-                .subscribe();
-        return Mono.empty();
+        return event.getCurrent().getGuild()
+            .flatMap(guild -> getLogChannel(guild, "guild"))
+            .flatMap(channel -> LogExecutor.logVoiceUpdate(event, channel));
     }
 
     @EventListener

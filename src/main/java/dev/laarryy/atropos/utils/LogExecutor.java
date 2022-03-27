@@ -1086,56 +1086,40 @@ public final class LogExecutor {
             }).then();
     }
 
-    public static void logVoiceUpdate(VoiceChannelUpdateEvent event, TextChannel logChannel) {
+    public static Mono<Void> logVoiceUpdate(VoiceChannelUpdateEvent event, TextChannel logChannel) {
+        final VoiceChannel channel = event.getCurrent();
+        return channel.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_UPDATE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(voiceUpdate -> {
+                String responsibleUserId = getAuditResponsibleUser(voiceUpdate);
 
-        if (event.getCurrent().getGuild().block() == null) {
-            return;
-        }
+                long channelId = channel.getId().asLong();
+                String name = channel.getName();
+                String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
 
-        AuditLogEntry newsUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_UPDATE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+                Mono<String> information = event.getOld()
+                    .map(oldChannel -> getVoiceChannelDiff(oldChannel, channel))
+                    .orElse(Mono.empty());
 
-        String responsibleUserId = getAuditResponsibleUser(newsUpdate);
+                EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getVoiceChannel() + " Voice Channel Updated")
+                    .addField("Channel", channelDescriptor, false)
+                    .addField("Updated By", responsibleUserId, false)
+                    .color(Color.ENDEAVOUR)
+                    .timestamp(Instant.now())
+                    .footer("Check your server's audit log for more information", "");
 
-        long channelId = event.getCurrent().getId().asLong();
-        String name = event.getCurrent().getName();
-        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
-
-        String information;
-        if (event.getOld().isPresent()) {
-            if (event.getOld().get().getName().equals(event.getCurrent().getName())
-                    && event.getOld().get().getCategory().block().equals(event.getCurrent().getCategory().block().getName())) {
-                information = getVoiceChannelDiff(event.getOld().get(), event.getCurrent());
-            } else {
-                information = getVoiceChannelDiff(event.getOld().get(), event.getCurrent());
-            }
-        } else {
-            information = "none";
-        }
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getVoiceChannel() + " Voice Channel Updated")
-                .addField("Channel", channel, false)
-                .addField("Updated By", responsibleUserId, false)
-                .color(Color.ENDEAVOUR)
-                .timestamp(Instant.now())
-                .footer("Check your server's audit log for more information", "")
-                .build();
-
-        if (!information.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .description(information)
-                    .build();
-        }
-
-        logChannel.createMessage(embed).block();
+                return information.doOnNext(embed::description).thenReturn(embed);
+            }).map(EmbedCreateSpec.Builder::build)
+            .flatMap(logChannel::createMessage)
+            .then();
     }
 
-    private static String getVoiceChannelDiff(VoiceChannel oldChannel, VoiceChannel newChannel) {
+    private static Mono<String> getVoiceChannelDiff(VoiceChannel oldChannel, VoiceChannel newChannel) {
         return getChannelDiff(oldChannel.getName(), newChannel.getName(), oldChannel.getCategory(), newChannel.getCategory());
     }
 
