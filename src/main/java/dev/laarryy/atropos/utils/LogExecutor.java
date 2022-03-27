@@ -1123,29 +1123,31 @@ public final class LogExecutor {
         return getChannelDiff(oldChannel.getName(), newChannel.getName(), oldChannel.getCategory(), newChannel.getCategory());
     }
 
-    public static void logTextCreate(TextChannelCreateEvent event, TextChannel logChannel) {
-        AuditLogEntry channelCreate = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_CREATE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+    public static Mono<Void> logTextCreate(TextChannelCreateEvent event, TextChannel logChannel) {
+        final TextChannel channel = event.getChannel();
+        return channel.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_CREATE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(textCreate -> {
+                String responsibleUserId = getAuditResponsibleUser(textCreate);
 
-        String responsibleUserId = getAuditResponsibleUser(channelCreate);
+                long channelId = channel.getId().asLong();
+                String name = channel.getName();
+                String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
 
-        long channelId = event.getChannel().getId().asLong();
-        String name = event.getChannel().getName();
-        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getTextChannel() + " Text Channel Created")
+                    .color(Color.SEA_GREEN)
+                    .addField("Channel", channelDescriptor, false)
+                    .addField("Created By", responsibleUserId, false)
+                    .timestamp(Instant.now())
+                    .build();
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getTextChannel() + " Text Channel Created")
-                .color(Color.SEA_GREEN)
-                .addField("Channel", channel, false)
-                .addField("Created By", responsibleUserId, false)
-                .timestamp(Instant.now())
-                .build();
-
-        logChannel.createMessage(embed).block();
+                return logChannel.createMessage(embed);
+            }).then();
     }
 
     private static String getAuditResponsibleUser(AuditLogEntry aud) {
