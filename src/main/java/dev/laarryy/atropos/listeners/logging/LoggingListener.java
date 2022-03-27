@@ -332,17 +332,9 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(StoreChannelCreateEvent event) {
-        wait(2000);
-        Guild guild = event.getChannel().getGuild().block();
-        if (guild == null) return Mono.empty();
-        getLogChannel(guild, "guild")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logStoreCreate(event, textChannel);
-                    }
-                })
-                .subscribe();
-        return Mono.empty();
+        return event.getChannel().getGuild()
+            .flatMap(guild -> getLogChannel(guild, "guild"))
+            .flatMap(channel -> LogExecutor.logStoreCreate(event, channel));
     }
 
     @EventListener
