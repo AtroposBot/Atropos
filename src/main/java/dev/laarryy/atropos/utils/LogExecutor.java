@@ -1059,29 +1059,31 @@ public final class LogExecutor {
             }).then();
     }
 
-    public static void logVoiceDelete(VoiceChannelDeleteEvent event, TextChannel logChannel) {
-        AuditLogEntry channelDelete = event.getChannel().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_DELETE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+    public static Mono<Void> logVoiceDelete(VoiceChannelDeleteEvent event, TextChannel logChannel) {
+        final VoiceChannel channel = event.getChannel();
+        return channel.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_DELETE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(voiceDelete -> {
+                String responsibleUserId = getAuditResponsibleUser(voiceDelete);
 
-        String responsibleUserId = getAuditResponsibleUser(channelDelete);
+                long channelId = channel.getId().asLong();
+                String name = channel.getName();
+                String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
 
-        long channelId = event.getChannel().getId().asLong();
-        String name = event.getChannel().getName();
-        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getVoiceChannel() + " Voice Channel Deleted")
+                    .color(Color.JAZZBERRY_JAM)
+                    .addField("Channel", channelDescriptor, false)
+                    .addField("Deleted By", responsibleUserId, false)
+                    .timestamp(Instant.now())
+                    .build();
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getVoiceChannel() + " Voice Channel Deleted")
-                .color(Color.JAZZBERRY_JAM)
-                .addField("Channel", channel, false)
-                .addField("Deleted By", responsibleUserId, false)
-                .timestamp(Instant.now())
-                .build();
-
-        logChannel.createMessage(embed).block();
+                return logChannel.createMessage(embed);
+            }).then();
     }
 
     public static void logVoiceUpdate(VoiceChannelUpdateEvent event, TextChannel logChannel) {
