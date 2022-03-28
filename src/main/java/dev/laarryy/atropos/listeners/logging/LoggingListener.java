@@ -150,18 +150,8 @@ public final class LoggingListener {
                 .subscribe();
     }
 
-    public void onMutedRoleDelete(Guild guild, Long roleId) {
-        if (guild == null) {
-            return;
-        }
-
-        getLogChannel(guild, "guild")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logMutedRoleDelete(roleId, textChannel);
-                    }
-                })
-                .subscribe();
+    public Mono<Void> onMutedRoleDelete(Guild guild, Long roleId) {
+        return getLogChannel(guild, "guild").flatMap(channel -> LogExecutor.logMutedRoleDelete(roleId, channel));
     }
 
     public Mono<Void> onMuteNotApplicable(Guild guild, Member memberToMute) {

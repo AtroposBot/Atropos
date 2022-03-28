@@ -1464,21 +1464,21 @@ public final class LogExecutor {
         DatabaseLoader.closeConnectionIfOpen();
     }
 
-    public static void logMutedRoleDelete(Long roleId, TextChannel logChannel) {
+    public static Mono<Void> logMutedRoleDelete(Long roleId, TextChannel logChannel) {
         String role = "`" + roleId + "`";
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .color(Color.JAZZBERRY_JAM)
-                .title("Muted Role Deleted")
-                .description("Oh no! You've deleted the role that this bot uses to mute people! Worry not - next time " +
-                        "you try to mute someone, the role will be recreated :sparkles: *automatically* :sparkles:. " +
-                        "You could also manually set a role as the muted role, and it will be applied to users who " +
-                        "are muted, using `/settings mutedrole set <role>`")
-                .addField("Role", role, false)
-                .timestamp(Instant.now())
-                .build();
+            .color(Color.JAZZBERRY_JAM)
+            .title("Muted Role Deleted")
+            .description("Oh no! You've deleted the role that this bot uses to mute people! Worry not - next time " +
+                         "you try to mute someone, the role will be recreated :sparkles: *automatically* :sparkles:. " +
+                         "You could also manually set a role as the muted role, and it will be applied to users who " +
+                         "are muted, using `/settings mutedrole set <role>`")
+            .addField("Role", role, false)
+            .timestamp(Instant.now())
+            .build();
 
-        logChannel.createMessage(embed).block();
+        return logChannel.createMessage(embed).then();
     }
 
     public static Mono<Void> logMuteNotApplicable(Member memberToMute, TextChannel logChannel) {
