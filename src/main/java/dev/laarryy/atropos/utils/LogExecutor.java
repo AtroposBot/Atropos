@@ -1317,30 +1317,31 @@ public final class LogExecutor {
 
     }
 
-    public static void logUnban(UnbanEvent event, TextChannel logChannel) {
+    public static Mono<Void> logUnban(UnbanEvent event, TextChannel logChannel) {
+        return event.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.MEMBER_BAN_REMOVE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(userUnban -> {
+                String responsibleUserId = getAuditResponsibleUser(userUnban);
 
-        AuditLogEntry userUnban = event.getGuild().block().getAuditLog().withActionType(ActionType.MEMBER_BAN_REMOVE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+                final User user = event.getUser();
+                long userId = user.getId().asLong();
+                String username = user.getUsername() + '#' + user.getDiscriminator();
+                String userDescriptor = "`%s`:`%d`:%s".formatted(username, userId, user.getMention());
 
-        String responsibleUserId = getAuditResponsibleUser(userUnban);
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getUserBan() + " User Unbanned")
+                    .color(Color.SEA_GREEN)
+                    .addField("User", userDescriptor, false)
+                    .addField("Unbanned By", responsibleUserId, false)
+                    .timestamp(Instant.now())
+                    .build();
 
-        long userId = event.getUser().getId().asLong();
-        String username = event.getUser().getUsername() + "#" + event.getUser().getDiscriminator();
-        String user = "`" + username + "`:`" + userId + "`:<@" + userId + ">";
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getUserBan() + " User Unbanned")
-                .color(Color.SEA_GREEN)
-                .addField("User", user, false)
-                .addField("Unbanned By", responsibleUserId, false)
-                .timestamp(Instant.now())
-                .build();
-
-        logChannel.createMessage(embed).block();
+                return logChannel.createMessage(embed);
+            }).then();
     }
 
     public static void logRoleCreate(RoleCreateEvent event, TextChannel logChannel) {
