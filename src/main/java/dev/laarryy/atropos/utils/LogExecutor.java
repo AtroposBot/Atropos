@@ -1389,109 +1389,95 @@ public final class LogExecutor {
             }).then();
     }
 
-    public static void logRoleUpdate(RoleUpdateEvent event, TextChannel logChannel) {
+    public static Mono<Void> logRoleUpdate(RoleUpdateEvent event, TextChannel logChannel) {
+        final Role role = event.getCurrent();
+        return role.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.ROLE_UPDATE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(roleUpdate -> {
+                String responsibleUser = getAuditResponsibleUser(roleUpdate);
+                Mono<String> roleInfo = Mono.justOrEmpty(event.getOld()).flatMap(oldRole -> getRoleDiff(oldRole, role));
+                long roleId = role.getId().asLong();
+                String roleDescriptor = "`%s`:`%d`:%s".formatted(role.getName(), roleId, role.getMention());
 
-        AuditLogEntry roleUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.ROLE_UPDATE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+                EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getServerRole() + "  Role Updated")
+                    .color(Color.ENDEAVOUR)
+                    .addField("Responsible User", responsibleUser, false)
+                    .addField("Role", roleDescriptor, false)
+                    .footer("Check your server's audit log for more information", "")
+                    .timestamp(Instant.now());
 
-        String responsibleUser = getAuditResponsibleUser(roleUpdate);
-
-        Role oldRole;
-        if (event.getOld().isPresent()) {
-            oldRole = event.getOld().get();
-        } else {
-            oldRole = null;
-        }
-
-        String roleInfo;
-        if (oldRole != null) {
-            roleInfo = getRoleDiff(oldRole, event.getCurrent());
-        } else {
-            roleInfo = "none";
-        }
-
-        long roleId = event.getCurrent().getId().asLong();
-        String name = "`" + event.getCurrent().getName() + "`:`" + roleId + "`:<@&" + roleId + ">";
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getServerRole() + "  Role Updated")
-                .color(Color.ENDEAVOUR)
-                .addField("Responsible User", responsibleUser, false)
-                .addField("Role", name, false)
-                .footer("Check your server's audit log for more information", "")
-                .timestamp(Instant.now())
-                .build();
-
-        if (!roleInfo.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .description(roleInfo)
-                    .build();
-        }
-
-        logChannel.createMessage(embed).block();
-
+                return roleInfo.doOnNext(embed::description).thenReturn(embed);
+            }).map(EmbedCreateSpec.Builder::build)
+            .flatMap(logChannel::createMessage)
+            .then();
     }
 
-    public static String getRoleDiff(Role oldRole, Role newRole) {
-        StringBuilder stringBuilder = new StringBuilder();
-        String roleInfo;
-        stringBuilder.append("```diff\n");
-        if (oldRole.getName().equals(newRole.getName())) {
-            stringBuilder.append("--- Name: ").append(oldRole.getName()).append("\n");
-        } else {
-            stringBuilder.append("- Name: ").append(oldRole.getName()).append("\n");
-            stringBuilder.append("+ Name: ").append(newRole.getName()).append("\n");
-        }
-        if (oldRole.getPosition().block().equals(newRole.getPosition().block())) {
-            stringBuilder.append("--- Position: ").append(oldRole.getPosition().block()).append("\n");
-        } else {
-            stringBuilder.append("- Position: ").append(oldRole.getPosition().block()).append("\n");
-            stringBuilder.append("+ Position: ").append(newRole.getPosition().block()).append("\n");
-        }
-        if (oldRole.getColor().equals(newRole.getColor())) {
-            stringBuilder.append("--- Colour: ").append(Integer.toHexString(oldRole.getColor().getRGB())).append("\n");
-        } else {
-            stringBuilder.append("- Colour: ").append(Integer.toHexString(oldRole.getColor().getRGB())).append("\n");
-            stringBuilder.append("+ Colour: ").append(Integer.toHexString(newRole.getColor().getRGB())).append("\n");
-        }
-        if (oldRole.isMentionable() == newRole.isMentionable()) {
-            if (oldRole.isMentionable()) {
-                stringBuilder.append("--- Mentionable: Yes").append("\n");
-            } else {
-                stringBuilder.append("--- Mentionable: No").append("\n");
-            }
-        } else {
-            if (oldRole.isMentionable()) {
-                stringBuilder.append("- Mentionable: Yes").append("\n");
-                stringBuilder.append("+ Mentionable: No").append("\n");
-            } else {
-                stringBuilder.append("- Mentionable: No").append("\n");
-                stringBuilder.append("+ Mentionable: Yes").append("\n");
-            }
-        }
-        if (oldRole.isHoisted() == newRole.isHoisted()) {
-            if (oldRole.isHoisted()) {
-                stringBuilder.append("--- Hoisted: Yes").append("\n");
-            } else {
-                stringBuilder.append("--- Hoisted: No").append("\n");
-            }
-        } else {
-            if (oldRole.isHoisted()) {
-                stringBuilder.append("- Hoisted: Yes").append("\n");
-                stringBuilder.append("+ Hoisted: No").append("\n");
-            } else {
-                stringBuilder.append("- Hoisted: No").append("\n");
-                stringBuilder.append("+ Hoisted: Yes").append("\n");
+    public static Mono<String> getRoleDiff(Role oldRole, Role newRole) {
+        return Mono.zip(oldRole.getPosition(), newRole.getPosition(), (oldPosition, newPosition) -> {
+            final StringJoiner joiner = new StringJoiner("\n");
 
+            joiner.add("```diff\n");
+            if (oldRole.getName().equals(newRole.getName())) {
+                joiner.add("--- Name: %s".formatted(oldRole.getName()));
+            } else {
+                joiner.add("- Name: %s".formatted(oldRole.getName()));
+                joiner.add("+ Name: %s".formatted(newRole.getName()));
             }
-        }
-        stringBuilder.append("```");
-        roleInfo = stringBuilder.toString();
-        return roleInfo;
+
+            if (oldPosition.equals(newPosition)) {
+                joiner.add("--- Position: %s".formatted(oldPosition));
+            } else {
+                joiner.add("- Position: %s".formatted(oldPosition));
+                joiner.add("+ Position: %s".formatted(newPosition));
+            }
+
+            if (oldRole.getColor().equals(newRole.getColor())) {
+                joiner.add("--- Colour: %s".formatted(Integer.toHexString(oldRole.getColor().getRGB())));
+            } else {
+                joiner.add("- Colour: %s".formatted(Integer.toHexString(oldRole.getColor().getRGB())));
+                joiner.add("+ Colour: %s".formatted(Integer.toHexString(newRole.getColor().getRGB())));
+            }
+
+            if (oldRole.isMentionable() == newRole.isMentionable()) {
+                if (oldRole.isMentionable()) {
+                    joiner.add("--- Mentionable: Yes");
+                } else {
+                    joiner.add("--- Mentionable: No");
+                }
+            } else {
+                if (oldRole.isMentionable()) {
+                    joiner.add("- Mentionable: Yes");
+                    joiner.add("+ Mentionable: No");
+                } else {
+                    joiner.add("- Mentionable: No");
+                    joiner.add("+ Mentionable: Yes");
+                }
+            }
+
+            if (oldRole.isHoisted() == newRole.isHoisted()) {
+                if (oldRole.isHoisted()) {
+                    joiner.add("--- Hoisted: Yes");
+                } else {
+                    joiner.add("--- Hoisted: No");
+                }
+            } else {
+                if (oldRole.isHoisted()) {
+                    joiner.add("- Hoisted: Yes");
+                    joiner.add("+ Hoisted: No");
+                } else {
+                    joiner.add("- Hoisted: No");
+                    joiner.add("+ Hoisted: Yes");
+
+                }
+            }
+
+            return joiner.add("```").toString();
+        });
     }
 
     public static void logPunishmentUnban(TextChannel logChannel, String reason, Punishment punishment) {
