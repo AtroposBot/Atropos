@@ -1481,20 +1481,18 @@ public final class LogExecutor {
         logChannel.createMessage(embed).block();
     }
 
-    public static void logMuteNotApplicable(Member memberToMute, TextChannel logChannel) {
-
-        String memberName = "`" + memberToMute.getUsername() + "`:" + "`" + memberToMute.getId().asLong() + "`:<@" + memberToMute.getId().asLong() + ">";
-
+    public static Mono<Void> logMuteNotApplicable(Member memberToMute, TextChannel logChannel) {
+        String memberName = "`%s`:`%d`:%s".formatted(memberToMute.getUsername(), memberToMute.getId().asLong(), memberToMute.getMention());
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .color(Color.JAZZBERRY_JAM)
-                .title("Muted Role Inapplicable")
-                .description("Muted role could not be applied to the following member, likely because the bot has a lower role than them.")
-                .addField("Member", memberName, false)
-                .timestamp(Instant.now())
-                .build();
+            .color(Color.JAZZBERRY_JAM)
+            .title("Muted Role Inapplicable")
+            .description("Muted role could not be applied to the following member, likely because the bot has a lower role than them.")
+            .addField("Member", memberName, false)
+            .timestamp(Instant.now())
+            .build();
 
-        logChannel.createMessage(embed).block();
+        return logChannel.createMessage(embed).then();
     }
 
     public static Mono<Void> logStopJoinsEnabled(TextChannel logChannel) {

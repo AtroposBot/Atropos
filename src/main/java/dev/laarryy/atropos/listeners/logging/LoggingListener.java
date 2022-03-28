@@ -164,18 +164,8 @@ public final class LoggingListener {
                 .subscribe();
     }
 
-    public void onMuteNotApplicable(Guild guild, Member memberToMute) {
-        if (guild == null) {
-            return;
-        }
-
-        getLogChannel(guild, "punishment")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logMuteNotApplicable(memberToMute, textChannel);
-                    }
-                })
-                .subscribe();
+    public Mono<Void> onMuteNotApplicable(Guild guild, Member memberToMute) {
+        return getLogChannel(guild, "punishment").flatMap(channel -> LogExecutor.logMuteNotApplicable(memberToMute, channel));
     }
 
     public Mono<Void> onStopJoinsEnable(Guild guild) {
