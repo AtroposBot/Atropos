@@ -1363,32 +1363,30 @@ public final class LogExecutor {
             }).then();
     }
 
-    public static void logRoleDelete(RoleDeleteEvent event, TextChannel logChannel) {
-        AuditLogEntry roleDelete = event.getGuild().block().getAuditLog().withActionType(ActionType.ROLE_DELETE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+    public static Mono<Void> logRoleDelete(RoleDeleteEvent event, TextChannel logChannel) {
+        return event.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.ROLE_DELETE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(roleDelete -> {
+                String responsibleUserId = getAuditResponsibleUser(roleDelete);
+                String roleDescriptor = event.getRole().map(role -> {
+                    long roleId = role.getId().asLong();
+                    String roleName = role.getName();
+                    return "`%s`:`%d`:%s".formatted(roleName, roleId, role.getMention());
+                }).orElse("Unknown");
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getServerRole() + " Role Deleted")
+                    .color(Color.JAZZBERRY_JAM)
+                    .addField("User", responsibleUserId, false)
+                    .addField("Role", roleDescriptor, false)
+                    .timestamp(Instant.now())
+                    .build();
 
-        String responsibleUserId = getAuditResponsibleUser(roleDelete);
-        String role;
-        if (event.getRole().isPresent()) {
-            long roleId = event.getRole().get().getId().asLong();
-            String roleName = event.getRole().get().getName();
-            role = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
-        } else {
-            role = "Unknown";
-        }
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getServerRole() + " Role Deleted")
-                .color(Color.JAZZBERRY_JAM)
-                .addField("User", responsibleUserId, false)
-                .addField("Role", role, false)
-                .timestamp(Instant.now())
-                .build();
-
-        logChannel.createMessage(embed).block();
+                return logChannel.createMessage(embed);
+            }).then();
     }
 
     public static void logRoleUpdate(RoleUpdateEvent event, TextChannel logChannel) {
