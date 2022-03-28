@@ -62,9 +62,9 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -423,97 +423,87 @@ public final class LogExecutor {
         }).then();
     }
 
-    public static void logBulkDelete(MessageBulkDeleteEvent event, TextChannel logChannel) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
+    public static Mono<Void> logBulkDelete(MessageBulkDeleteEvent event, TextChannel logChannel) {
+        return event.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.MESSAGE_BULK_DELETE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(bulkDelete -> {
+                final User responsibleUser = bulkDelete.getResponsibleUser().get();
+                long responsibleUserId = responsibleUser.getId().asLong();
+                String username = responsibleUser.getUsername() + '#' + responsibleUser.getDiscriminator();
+                String responsibleUserDescriptor = "`%s`:`%d`:%s".formatted(username, responsibleUserId, responsibleUser.getMention());
 
-        AuditLogEntry recentDelete = guild.getAuditLog().withActionType(ActionType.MESSAGE_BULK_DELETE)
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
-
-        String responsibleUser;
-        if (recentDelete == null || recentDelete.getResponsibleUser().isEmpty()) {
-            responsibleUser = "Unknown";
-        } else {
-            long responsibleUserId = recentDelete.getResponsibleUser().get().getId().asLong();
-            String username = recentDelete.getResponsibleUser().get().getUsername() + "#" + recentDelete.getResponsibleUser().get().getDiscriminator();
-            responsibleUser = "`" + username + "`:" + "`" + responsibleUserId + "`:<@" + responsibleUserId + ">";
-        }
-
-        List<Message> messageList = event.getMessages().stream().toList();
-        List<Snowflake> snowflakes = event.getMessageIds().stream().toList();
-        String messages;
-        DatabaseLoader.openConnectionIfClosed();
-        if (messageList.isEmpty() && snowflakes.isEmpty()) {
-            messages = "Unknown";
-        } else {
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append("```\n");
-            if (!messageList.isEmpty()) {
-                for (Message message : messageList) {
-                    if (!message.getContent().isEmpty()) {
-                        if (message.getContent().length() > 17) {
-                            stringBuilder.append(message.getId().asLong()).append(" | ").append(message.getContent(), 0, 17).append("...\n");
-                        } else {
-                            stringBuilder.append(message.getId().asLong()).append(" | ").append(message.getContent()).append("\n");
+                final Set<Message> messageSet = event.getMessages();
+                final Set<Snowflake> snowflakes = event.getMessageIds();
+                String messages;
+                DatabaseLoader.openConnectionIfClosed();
+                if (messageSet.isEmpty() && snowflakes.isEmpty()) {
+                    messages = "Unknown";
+                } else {
+                    final StringJoiner joiner = new StringJoiner("\n");
+                    joiner.add("```");
+                    if (!messageSet.isEmpty()) {
+                        for (Message message : messageSet) {
+                            if (!message.getContent().isEmpty()) {
+                                if (message.getContent().length() > 17) {
+                                    joiner.add(message.getId().asLong() + " | " + message.getContent().substring(0, 17) + "...");
+                                } else {
+                                    joiner.add(message.getId().asLong() + " | " + message.getContent());
+                                }
+                            } else {
+                                ServerMessage serverMessage = ServerMessage.findFirst("message_id_snowflake = ?", message.getId().asLong());
+                                if (serverMessage != null) {
+                                    if (serverMessage.getContent().length() > 17) {
+                                        joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent().substring(0, 17) + "...");
+                                    } else {
+                                        joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent());
+                                    }
+                                }
+                            }
                         }
                     } else {
-                        ServerMessage serverMessage = ServerMessage.findFirst("message_id_snowflake = ?", message.getId().asLong());
-                        if (serverMessage != null) {
+                        DatabaseLoader.openConnectionIfClosed();
+                        List<ServerMessage> serverMessages = snowflakes.parallelStream()
+                            .map(Snowflake::asLong)
+                            .map(snowflake -> ServerMessage.<ServerMessage>findFirst("message_id_snowflake = ?", snowflake))
+                            .filter(Objects::nonNull)
+                            .toList();
+                        DatabaseLoader.closeConnectionIfOpen();
+                        for (ServerMessage serverMessage : serverMessages) {
                             if (serverMessage.getContent().length() > 17) {
-                                stringBuilder.append(serverMessage.getMessageSnowflake()).append(" | ").append(serverMessage.getContent(), 0, 17).append("...\n");
+                                joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent().substring(0, 17) + "...");
                             } else {
-                                stringBuilder.append(serverMessage.getMessageSnowflake()).append(" | ").append(serverMessage.getContent()).append("\n");
+                                joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent());
                             }
                         }
                     }
+                    joiner.add("```");
+                    messages = joiner.toString();
                 }
-            } else {
-                List<ServerMessage> serverMessages = new ArrayList<>();
-                for (Snowflake snowflake : snowflakes) {
-                    ServerMessage message = ServerMessage.findFirst("message_id_snowflake = ?", snowflake.asLong());
-                    serverMessages.add(message);
+
+                if (messages.length() >= 4000) {
+                    messages = messages.substring(0, 3950) + "...```\n[Content too large, has been limited]";
                 }
-                for (ServerMessage serverMessage : serverMessages) {
-                    if (serverMessage != null) {
-                        if (serverMessage.getContent().length() > 17) {
-                            stringBuilder.append(serverMessage.getMessageSnowflake()).append(" | ").append(serverMessage.getContent(), 0, 17).append("...\n");
-                        } else {
-                            stringBuilder.append(serverMessage.getMessageSnowflake()).append(" | ").append(serverMessage.getContent()).append("\n");
-                        }
-                    }
-                }
-            }
-            stringBuilder.append("```");
-            messages = stringBuilder.toString();
-        }
 
-        if (messages.length() >= 4000) {
-            messages = messages.substring(0, 3950) + "...```\n [Content too large, has been limited]";
-        }
+                final String accumulatedMessages = messages;
+                return event.getChannel().flatMap(channel -> {
+                    String channelDescriptor = "`%d`:%s".formatted(channel.getId().asLong(), channel.getMention());
 
-        long channelId = event.getChannelId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+                    EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                        .title((EmojiManager.getMessageDelete() + ' ').repeat(3) + "Bulk Delete")
+                        .color(Color.JAZZBERRY_JAM)
+                        .description(accumulatedMessages)
+                        .addField("Responsible User", responsibleUserDescriptor, false)
+                        .addField("Channel", channelDescriptor, false)
+                        .timestamp(Instant.now());
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getMessageDelete() + " " + EmojiManager.getMessageDelete() + " " + EmojiManager.getMessageDelete() + " Bulk Delete")
-                .color(Color.JAZZBERRY_JAM)
-                .description(messages)
-                .addField("Responsible User", responsibleUser, false)
-                .addField("Channel", channel, false)
-                .timestamp(Instant.now())
-                .build();
-
-        if (recentDelete.getReason().isPresent()) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Reason", recentDelete.getReason().get(), false)
-                    .build();
-        }
-
-        logChannel.createMessage(embed).block();
-        DatabaseLoader.closeConnectionIfOpen();
+                    bulkDelete.getReason().ifPresent(reason -> embed.addField("Reason", reason, false));
+                    return logChannel.createMessage(embed.build());
+                });
+            }).then();
     }
 
     public static Mono<Void> logMemberJoin(MemberJoinEvent event, TextChannel logChannel) {

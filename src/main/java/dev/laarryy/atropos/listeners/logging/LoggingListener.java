@@ -166,17 +166,9 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(MessageBulkDeleteEvent event) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return Mono.empty();
-
-        getLogChannel(guild, "message")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logBulkDelete(event, textChannel);
-                    }
-                })
-                .subscribe();
-        return Mono.empty();
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "message"))
+            .flatMap(channel -> LogExecutor.logBulkDelete(event, channel));
     }
 
     @EventListener
