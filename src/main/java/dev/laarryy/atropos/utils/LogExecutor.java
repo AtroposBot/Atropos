@@ -1240,7 +1240,7 @@ public final class LogExecutor {
     }
 
     private static Mono<String> getChannelDiff(String oldName, String newName, Mono<Category> oldCatMono, Mono<Category> newCatMono) {
-        return oldCatMono.zipWith(newCatMono, (oldCategory, newCategory) -> {
+        return Mono.zip(oldCatMono, newCatMono, (oldCategory, newCategory) -> {
             final StringJoiner joiner = new StringJoiner("\n");
             joiner.add("```diff");
             if (oldName.equals(newName)) {
