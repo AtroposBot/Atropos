@@ -1509,15 +1509,14 @@ public final class LogExecutor {
         logChannel.createMessage(embed).block();
     }
 
-    public static void logStopJoinsDisabled(TextChannel logChannel) {
+    public static Mono<Void> logStopJoinsDisabled(TextChannel logChannel) {
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .color(Color.MOON_YELLOW)
-                .title(EmojiManager.getUserWarn() + " Anti-Raid Disabled")
-                .description("This server has had anti-raid (the stopjoins feature) disabled.")
-                .timestamp(Instant.now())
-                .build();
+            .color(Color.MOON_YELLOW)
+            .title(EmojiManager.getUserWarn() + " Anti-Raid Disabled")
+            .description("This server has had anti-raid (the stopjoins feature) disabled.")
+            .timestamp(Instant.now())
+            .build();
 
-        logChannel.createMessage(embed).block();
+        return logChannel.createMessage(embed).then();
     }
-
 }

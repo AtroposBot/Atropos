@@ -191,18 +191,8 @@ public final class LoggingListener {
                 .subscribe();
     }
 
-    public void onStopJoinsDisable(Guild guild) {
-        if (guild == null) {
-            return;
-        }
-
-        getLogChannel(guild, "guild")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logStopJoinsDisabled(textChannel);
-                    }
-                })
-                .subscribe();
+    public Mono<Void> onStopJoinsDisable(Guild guild) {
+        return getLogChannel(guild, "guild").flatMap(LogExecutor::logStopJoinsDisabled);
     }
 
     @EventListener
