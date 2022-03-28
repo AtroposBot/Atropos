@@ -1201,50 +1201,41 @@ public final class LogExecutor {
             }).then();
     }
 
-    public static void logTextUpdate(TextChannelUpdateEvent event, TextChannel logChannel) {
-        if (event.getCurrent().getGuild().block() == null) {
-            return;
-        }
+    public static Mono<Void> logTextUpdate(TextChannelUpdateEvent event, TextChannel logChannel) {
+        final GuildMessageChannel channel = event.getCurrent();
+        return channel.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_UPDATE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(textUpdate -> {
+                String responsibleUserId = getAuditResponsibleUser(textUpdate);
 
-        AuditLogEntry newsUpdate = event.getCurrent().getGuild().block().getAuditLog().withActionType(ActionType.CHANNEL_UPDATE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+                long channelId = channel.getId().asLong();
+                String name = channel.getName();
+                String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
 
-        String responsibleUserId = getAuditResponsibleUser(newsUpdate);
+                Mono<String> information = event.getOld()
+                    .flatMap(oldChannel -> event.getTextChannel()
+                        .map(newChannel -> getTextChannelDiff(oldChannel, newChannel)))
+                    .orElse(Mono.empty());
 
-        long channelId = event.getCurrent().getId().asLong();
-        String name = event.getCurrent().getName();
-        String channel = "`" + channelId + "`:`" + name + "`:<#" + channelId + ">";
+                EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getTextChannel() + " Text Channel Updated")
+                    .addField("Channel", channelDescriptor, false)
+                    .addField("Updated By", responsibleUserId, false)
+                    .color(Color.ENDEAVOUR)
+                    .timestamp(Instant.now())
+                    .footer("Check your server's audit log for more information", "");
 
-        String information;
-        if (event.getOld().isPresent() && event.getTextChannel().isPresent()) {
-            information = getTextChannelDiff(event.getOld().get(), event.getTextChannel().get());
-        } else {
-            information = "none";
-        }
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getTextChannel() + " Text Channel Updated")
-                .addField("Channel", channel, false)
-                .addField("Updated By", responsibleUserId, false)
-                .color(Color.ENDEAVOUR)
-                .timestamp(Instant.now())
-                .footer("Check your server's audit log for more information", "")
-                .build();
-
-        if (!information.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .description(information)
-                    .build();
-        }
-
-        logChannel.createMessage(embed).block();
+                return information.doOnNext(embed::description).thenReturn(embed);
+            }).map(EmbedCreateSpec.Builder::build)
+            .flatMap(logChannel::createMessage)
+            .then();
     }
 
-    private static String getTextChannelDiff(TextChannel oldChannel, TextChannel newChannel) {
+    private static Mono<String> getTextChannelDiff(TextChannel oldChannel, TextChannel newChannel) {
         return getChannelDiff(oldChannel.getName(), newChannel.getName(), oldChannel.getCategory(), newChannel.getCategory());
     }
 
