@@ -136,18 +136,8 @@ public final class LoggingListener {
                 .subscribe();
     }
 
-    public void onUnmute(Guild guild, String reason, Punishment punishment) {
-        if (guild == null)  {
-            return;
-        }
-
-        getLogChannel(guild, "punishment")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logPunishmentUnmute(textChannel, reason, punishment);
-                    }
-                })
-                .subscribe();
+    public Mono<Void> onUnmute(Guild guild, String reason, Punishment punishment) {
+        return getLogChannel(guild, "punishment").flatMap(channel -> LogExecutor.logPunishmentUnmute(channel, reason, punishment));
     }
 
     public Mono<Void> onMutedRoleDelete(Guild guild, Long roleId) {

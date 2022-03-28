@@ -1447,21 +1447,21 @@ public final class LogExecutor {
         DatabaseLoader.closeConnectionIfOpen();
     }
 
-    public static void logPunishmentUnmute(TextChannel logChannel, String reason, Punishment punishment) {
+    public static Mono<Void> logPunishmentUnmute(TextChannel logChannel, String reason, Punishment punishment) {
         DatabaseLoader.openConnectionIfClosed();
         DiscordUser punished = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-        long punishedId = punished.getUserIdSnowflake();
-        String punishedName = "`" + punishedId + "`:<@" + punishedId + ">";
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getUserMute() + " User Unmuted")
-                .addField("User", punishedName, false)
-                .addField("Reason", getStringWithLegalLength(reason, 1024), false)
-                .footer("For more information, run /case search id " + punishment.getPunishmentId(), "")
-                .color(Color.SEA_GREEN)
-                .build();
-
-        logChannel.createMessage(embed).block();
         DatabaseLoader.closeConnectionIfOpen();
+        long punishedId = punished.getUserIdSnowflake();
+        String punishedName = "`%d`:<@%1$d>".formatted(punishedId);
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+            .title(EmojiManager.getUserMute() + " User Unmuted")
+            .addField("User", punishedName, false)
+            .addField("Reason", getStringWithLegalLength(reason, 1024), false)
+            .footer("For more information, run /case search id " + punishment.getPunishmentId(), "")
+            .color(Color.SEA_GREEN)
+            .build();
+
+        return logChannel.createMessage(embed).then();
     }
 
     public static Mono<Void> logMutedRoleDelete(Long roleId, TextChannel logChannel) {
