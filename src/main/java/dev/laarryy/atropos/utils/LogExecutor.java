@@ -312,69 +312,51 @@ public final class LogExecutor {
     }
 
     private static String makeEmbedsEntries(List<Embed> embedList) {
-        String embeds;
-        StringBuilder stringBuilder = new StringBuilder();
-        for (Embed e : embedList) {
-            StringBuilder subStringBuilder = new StringBuilder();
-            String embedData;
-            subStringBuilder.append("```\n");
-            if (e.getTitle().isPresent()) {
-                subStringBuilder.append("Title: ").append(e.getTitle().get().replaceAll("```", "\\`")).append("\n");
-            }
-            if (e.getDescription().isPresent()) {
-                subStringBuilder.append("Description: \n").append(e.getDescription().get().replaceAll("`", "")).append("\n");
-            }
-            if (e.getColor().isPresent()) {
-                subStringBuilder.append("Colour: ").append(Integer.toHexString(e.getColor().get().getRGB())).append("\n");
-            }
-            if (e.getImage().isPresent()) {
-                subStringBuilder.append("Image URL: ").append(e.getImage().get().getUrl()).append("\n");
-            }
-            if (e.getThumbnail().isPresent()) {
-                subStringBuilder.append("Thumbnail URL: ").append(e.getThumbnail().get().getUrl()).append("\n");
-            }
-            if (e.getVideo().isPresent()) {
-                subStringBuilder.append("Video URL: ").append(e.getVideo().get().getUrl()).append("\n");
-            }
-            if (e.getAuthor().isPresent()) {
-                if (e.getAuthor().get().getName().isPresent()) {
-                    subStringBuilder.append("Author Name: ").append(e.getAuthor().get().getName()).append("\n");
-                }
-                if (e.getAuthor().get().getUrl().isPresent()) {
-                    subStringBuilder.append("Author URL: ").append(e.getAuthor().get().getUrl().get()).append("\n");
-                }
-                if (e.getAuthor().get().getIconUrl().isPresent()) {
-                    subStringBuilder.append("Author Icon URL: ").append(e.getAuthor().get().getIconUrl()).append("\n");
+        final StringJoiner joiner = new StringJoiner("\n");
+
+        for (Embed embed : embedList) {
+            joiner.add("```");
+            embed.getTitle().ifPresent(title -> joiner.add("Title: %s".formatted(title.replace("```", "\\`"))));
+            embed.getDescription().ifPresent(description -> {
+                joiner.add("Description:");
+                joiner.add(description.replace("`", ""));
+            });
+            embed.getColor().ifPresent(color -> joiner.add("Colour: %x".formatted(color.getRGB())));
+            embed.getImage().ifPresent(image -> joiner.add("Image URL: %s".formatted(image.getUrl())));
+            embed.getThumbnail().ifPresent(thumbnail -> joiner.add("Thumbnail URL: %s".formatted(thumbnail.getUrl())));
+            embed.getVideo().ifPresent(video -> joiner.add("Video URL: %s".formatted(video.getUrl())));
+            embed.getAuthor().ifPresent(author -> {
+                author.getName().ifPresent(name -> joiner.add("Author Name: %s".formatted(name)));
+                author.getUrl().ifPresent(url -> joiner.add("Author URL: %s".formatted(url)));
+                author.getIconUrl().ifPresent(iconUrl -> joiner.add("Author Icon URL: %s".formatted(iconUrl)));
+            });
+
+            List<Embed.Field> fields = embed.getFields();
+            for (int i = 0, fieldsSize = fields.size(); i < fieldsSize; ++i) {
+                final Embed.Field field = fields.get(i);
+                joiner.add("Field: %d".formatted(i + 1));
+                joiner.add("->Name: %s".formatted(field.getName().replace("```", "\\`")));
+                joiner.add("->Content: %s".formatted(field.getValue().replace("```", "\\`")));
+                if (field.isInline()) {
+                    joiner.add("->Inline: Yes");
+                } else {
+                    joiner.add("->Inline: No");
                 }
             }
-            if (!e.getFields().isEmpty()) {
-                List<Embed.Field> fieldList = e.getFields();
-                for (Embed.Field field : fieldList) {
-                    subStringBuilder.append("Field: ").append(fieldList.indexOf(field) + 1).append("\n");
-                    subStringBuilder.append("->Name: ").append(field.getName().replaceAll("```", "\\`")).append("\n");
-                    subStringBuilder.append("->Content: ").append(field.getValue().replaceAll("```", "\\`")).append("\n");
-                    if (field.isInline()) {
-                        subStringBuilder.append("->Inline: Yes").append("\n");
-                    } else {
-                        subStringBuilder.append("->Inline: No").append("\n");
-                    }
-                }
-            }
-            if (e.getFooter().isPresent()) {
-                subStringBuilder.append("Footer: ").append(e.getFooter().get().getText()).append("\n");
-                if (e.getFooter().get().getIconUrl().isPresent()) {
-                    subStringBuilder.append("Footer URL: ").append(e.getFooter().get().getIconUrl().get()).append("\n");
-                }
-            }
-            if (e.getTimestamp().isPresent()) {
-                subStringBuilder.append("Epoch Timestamp: ").append(e.getTimestamp().get().toEpochMilli()).append("\n");
-            }
-            subStringBuilder.append("```\n");
-            embedData = subStringBuilder.toString();
-            stringBuilder.append(embedData);
+
+            embed.getFooter().ifPresent(footer -> {
+                joiner.add("Footer: %s".formatted(footer.getText()));
+                footer.getIconUrl().ifPresent(iconUrl -> joiner.add("Footer URL: %s".formatted(iconUrl)));
+            });
+
+            embed.getTimestamp()
+                .map(Instant::toEpochMilli)
+                .ifPresent(timestamp -> joiner.add("Epoch Timestamp: %d".formatted(timestamp)));
+
+            joiner.add("```");
         }
-        embeds = stringBuilder.toString();
-        return embeds;
+
+        return joiner.toString();
     }
 
     public static void logMessageUpdate(MessageUpdateEvent event, TextChannel logChannel) {
