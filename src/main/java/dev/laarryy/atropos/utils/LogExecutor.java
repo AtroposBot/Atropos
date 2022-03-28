@@ -359,78 +359,68 @@ public final class LogExecutor {
         return joiner.toString();
     }
 
-    public static void logMessageUpdate(MessageUpdateEvent event, TextChannel logChannel) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
-
-        String title = EmojiManager.getMessageEdit() + " Message Edit";
-        String oldContent;
-        String newContent;
-        if (event.isContentChanged()) {
-            if (event.getOld().isPresent()) {
-                oldContent = getStringWithLegalLength(event.getOld().get().getContent(), 1000);
-            } else {
-                DatabaseLoader.openConnectionIfClosed();
-                ServerMessage serverMessage = ServerMessage
-                        .findFirst("message_id_snowflake = ? and server_id_snowflake = ?",
-                                event.getMessageId().asLong(), guild.getId().asLong());
-                if (serverMessage != null) {
-                    oldContent = getStringWithLegalLength(serverMessage.getContent(), 1000);
-                } else {
+    public static Mono<Void> logMessageUpdate(MessageUpdateEvent event, TextChannel logChannel) {
+        return Mono.zip(event.getGuild(), event.getMessage(), (guild, message) -> {
+            String title = EmojiManager.getMessageEdit() + " Message Edit";
+            String oldContent;
+            String newContent;
+            if (!event.isContentChanged()) {
+                if (!event.isEmbedsChanged()) {
                     oldContent = "Unknown";
+                    newContent = "Unknown";
+                } else {
+                    oldContent = event.getOld()
+                        .map(Message::getEmbeds)
+                        .filter(not(List::isEmpty))
+                        .map(LogExecutor::makeEmbedsEntries)
+                        .orElse("Unknown embed(s)");
+
+                    final List<Embed> currentEmbeds = event.getCurrentEmbeds();
+                    newContent = makeEmbedsEntries(currentEmbeds.isEmpty() ? message.getEmbeds() : currentEmbeds);
                 }
-            }
-            if (event.getCurrentContent().isPresent()) {
-                newContent = getStringWithLegalLength(event.getCurrentContent().get(), 1000);
             } else {
-                newContent = getStringWithLegalLength(event.getMessage().block().getContent(), 1000);
+                oldContent = event.getOld()
+                    .map(oldMessage -> getStringWithLegalLength(oldMessage.getContent(), 1000))
+                    .orElseGet(() -> {
+                        DatabaseLoader.openConnectionIfClosed();
+                        ServerMessage serverMessage =
+                            ServerMessage.findFirst(
+                                "message_id_snowflake = ? and server_id_snowflake = ?",
+                                event.getMessageId().asLong(), guild.getId().asLong()
+                            );
+                        DatabaseLoader.closeConnectionIfOpen();
+                        if (serverMessage != null) {
+                            return getStringWithLegalLength(serverMessage.getContent(), 1000);
+                        } else {
+                            return "Unknown";
+                        }
+                    });
+
+                newContent = getStringWithLegalLength(event.getCurrentContent().orElse(message.getContent()), 1000);
             }
-        } else if (event.isEmbedsChanged()) {
-            if (event.getOld().isPresent() && !event.getOld().get().getEmbeds().isEmpty()) {
-                oldContent = makeEmbedsEntries(event.getOld().get().getEmbeds());
-            } else {
-                oldContent = "Unknown embed(s)";
-            }
-            if (!event.getCurrentEmbeds().isEmpty()) {
-                newContent = makeEmbedsEntries(event.getCurrentEmbeds());
-            } else {
-                newContent = makeEmbedsEntries(event.getMessage().block().getEmbeds());
-            }
-        } else {
-            oldContent = "Unknown";
-            newContent = "Unknown";
-        }
 
-        long userId;
-        String user;
-        if (event.getMessage().block().getAuthor().isPresent()) {
-            userId = event.getMessage().block().getAuthor().get().getId().asLong();
-            String username = event.getMessage().block().getAuthor().get().getUsername();
-            user = "`" + username + "`:" +"`" + userId + "`:<@" + userId + ">";
-        } else if (event.getOld().isPresent() && event.getOld().get().getAuthor().isPresent()) {
-            userId = event.getOld().get().getAuthor().get().getId().asLong();
-            String username = event.getOld().get().getAuthor().get().getUsername();
-            user = "`" + username + "`:" + "`" + userId + "`:<@" + userId + ">";
-        } else {
-            user = "Unknown";
-        }
+            String userDescriptor = message.getAuthor()
+                .or(() -> event.getOld().flatMap(Message::getAuthor))
+                .map(author -> "`%s`:`%d`:%s".formatted(author.getUsername(), author.getId().asLong(), author.getMention()))
+                .orElse("Unknown");
 
-        long channelId = event.getChannelId().asLong();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+            return event.getChannel().flatMap(channel -> {
+                String channelDescriptor = "`%d`:%s".formatted(event.getChannelId().asLong(), channel.getMention());
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(title)
-                .color(Color.MOON_YELLOW)
-                .addField("ID", "`" + event.getMessage().block().getId().asString() + "`", false)
-                .addField("User", user, false)
-                .addField("Channel", channel, false)
-                .addField("Old", oldContent, false)
-                .addField("New", newContent, false)
-                .timestamp(Instant.now())
-                .build();
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(title)
+                    .color(Color.MOON_YELLOW)
+                    .addField("ID", '`' + message.getId().asString() + '`', false)
+                    .addField("User", userDescriptor, false)
+                    .addField("Channel", channelDescriptor, false)
+                    .addField("Old", oldContent, false)
+                    .addField("New", newContent, false)
+                    .timestamp(Instant.now())
+                    .build();
 
-        logChannel.createMessage(embed).block();
-        DatabaseLoader.closeConnectionIfOpen();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static void logBulkDelete(MessageBulkDeleteEvent event, TextChannel logChannel) {
@@ -1222,7 +1212,7 @@ public final class LogExecutor {
                 String reason = userBan.getReason().orElse("No reason provided.");
 
                 Optional<String> caseId = userBan.getResponsibleUser()
-                    .filter(responsibleUser -> !responsibleUser.equals(self))
+                    .filter(not(self::equals))
                     .filter($ -> !reason.equalsIgnoreCase("Mass API banned by staff."))
                     .map(responsibleUser -> {
                         DatabaseLoader.openConnectionIfClosed();

@@ -38,6 +38,7 @@ import discord4j.core.event.domain.role.RoleDeleteEvent;
 import discord4j.core.event.domain.role.RoleUpdateEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.TextChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -155,27 +156,12 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(MessageUpdateEvent event) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return Mono.empty();
-
-        try {
-            event.getMessage().block();
-        } catch (Exception e) {
-            return Mono.empty();
-        }
-
-        if (event.getMessage().block().getAuthor().isPresent() && event.getMessage().block().getAuthor().get().isBot()) {
-            return Mono.empty();
-        }
-
-        getLogChannel(guild, "message")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logMessageUpdate(event, textChannel);
-                    }
-                })
-                .subscribe();
-        return Mono.empty();
+        return event.getMessage()
+            .map(Message::getAuthor)
+            .filter(author -> !(author.isPresent() && author.get().isBot()))    // ignore bot messages
+            .flatMap($ -> event.getGuild())
+            .flatMap(guild -> getLogChannel(guild, "message"))
+            .flatMap(channel -> LogExecutor.logMessageUpdate(event, channel));
     }
 
     @EventListener
