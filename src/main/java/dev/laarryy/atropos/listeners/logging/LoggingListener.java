@@ -409,19 +409,9 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(RoleCreateEvent event) {
-        wait(2000);
-        Guild guild = event.getGuild().block();
-        if (guild == null) return Mono.empty();
-
-        getLogChannel(guild, "guild")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logRoleCreate(event, textChannel);
-                    }
-                })
-                .subscribe();
-
-        return Mono.empty();
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "guild"))
+            .flatMap(channel -> LogExecutor.logRoleCreate(event, channel));
     }
 
     @EventListener

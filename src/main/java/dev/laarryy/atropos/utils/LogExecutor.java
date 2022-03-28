@@ -1337,28 +1337,30 @@ public final class LogExecutor {
             }).then();
     }
 
-    public static void logRoleCreate(RoleCreateEvent event, TextChannel logChannel) {
-        AuditLogEntry roleCreate = event.getGuild().block().getAuditLog().withActionType(ActionType.ROLE_CREATE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .next()
-                .block();
+    public static Mono<Void> logRoleCreate(RoleCreateEvent event, TextChannel logChannel) {
+        return event.getGuild()
+            .map(Guild::getAuditLog)
+            .flatMapMany(auditLog -> auditLog.withActionType(ActionType.ROLE_CREATE))
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .next()
+            .flatMap(roleCreate -> {
+                String responsibleUserId = getAuditResponsibleUser(roleCreate);
 
-        String responsibleUserId = getAuditResponsibleUser(roleCreate);
+                final Role role = event.getRole();
+                long roleId = role.getId().asLong();
+                String roleName = role.getName();
+                String roleDescriptor = "`%s`:`%d`:%s".formatted(roleName, roleId, role.getMention());
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getServerRole() + " Role Created")
+                    .color(Color.ENDEAVOUR)
+                    .addField("User", responsibleUserId, false)
+                    .addField("Role", roleDescriptor, false)
+                    .timestamp(Instant.now())
+                    .build();
 
-        long roleId = event.getRole().getId().asLong();
-        String roleName = event.getRole().getName();
-        String role = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getServerRole() + " Role Created")
-                .color(Color.ENDEAVOUR)
-                .addField("User", responsibleUserId, false)
-                .addField("Role", role, false)
-                .timestamp(Instant.now())
-                .build();
-
-        logChannel.createMessage(embed).block();
+                return logChannel.createMessage(embed);
+            }).then();
     }
 
     public static void logRoleDelete(RoleDeleteEvent event, TextChannel logChannel) {
