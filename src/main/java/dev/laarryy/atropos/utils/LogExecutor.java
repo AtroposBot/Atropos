@@ -717,68 +717,65 @@ public final class LogExecutor {
         );
     }
 
-    public static void logPresenceUpdate(PresenceUpdateEvent event, TextChannel logChannel) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) return;
+    public static Mono<Void> logPresenceUpdate(PresenceUpdateEvent event, TextChannel logChannel) {
+        return event.getOldUser().map(oldUser -> event.getGuild()
+            .flatMap($ -> event.getMember())
+            .flatMap(member -> {
+                long memberId = member.getId().asLong();
+                String username = member.getUsername() + '#' + member.getDiscriminator();
+                String memberName = "`%s`:`%d`:%s".formatted(username, memberId, member.getMention());
 
-        if (event.getMember().block() == null) {
-            return;
-        }
+                String presenceDiffInfo;
+                if (
+                    oldUser.getDiscriminator().equals(member.getDiscriminator())
+                    && oldUser.getUsername().equals(member.getUsername())
+                    && oldUser.getAvatarUrl().equals(member.getAvatarUrl())
+                ) {
+                    return Mono.empty();
+                } else {
+                    presenceDiffInfo = getPresenceDiff(oldUser, member);
+                }
 
-        if (event.getOldUser().isEmpty()) {
-            return;
-        }
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getUserIdentification() + " Member Update")
+                    .color(Color.MOON_YELLOW)
+                    .description(presenceDiffInfo)
+                    .addField("Member", memberName, false)
+                    .thumbnail(member.getAvatarUrl())
+                    .timestamp(Instant.now())
+                    .build();
 
-        long memberId = event.getMember().block().getId().asLong();
-        String username = event.getMember().block().getUsername() + "#" + event.getMember().block().getDiscriminator();
-        String memberName = "`" + username + "`:" + "`" + memberId + "`:<@" + memberId + ">";
-
-        String presenceDiffInfo;
-        User oldUser = event.getOldUser().get();
-        User newUser = event.getUser().block();
-        if (oldUser.getDiscriminator().equals(newUser.getDiscriminator())
-                && oldUser.getUsername().equals(newUser.getUsername())
-                && oldUser.getAvatarUrl().equals(newUser.getAvatarUrl())) {
-            return;
-        } else {
-            presenceDiffInfo = getPresenceDiff(oldUser, newUser);
-        }
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getUserIdentification() + " Member Update")
-                .color(Color.MOON_YELLOW)
-                .description(presenceDiffInfo)
-                .addField("Member", memberName, false)
-                .thumbnail(event.getMember().block().getAvatarUrl())
-                .timestamp(Instant.now())
-                .build();
-
-        logChannel.createMessage(embed).block();
+                return logChannel.createMessage(embed);
+            }).then())
+            .orElse(Mono.empty());
     }
 
     public static String getPresenceDiff(User oldUser, User newUser) {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("```diff\n");
+        final StringJoiner joiner = new StringJoiner("\n");
+
+        joiner.add("```diff");
         if (oldUser.getUsername().equals(newUser.getUsername())) {
-                stringBuilder.append("--- Username: ").append(oldUser.getUsername()).append("\n");
+            joiner.add("--- Username: %s".formatted(oldUser.getUsername()));
         } else {
-            stringBuilder.append("- Username: ").append(oldUser.getUsername()).append("\n");
-            stringBuilder.append("+ Username: ").append(newUser.getUsername()).append("\n");
+            joiner.add("- Username: %s".formatted(oldUser.getUsername()));
+            joiner.add("+ Username: %s".formatted(newUser.getUsername()));
         }
+
         if (oldUser.getDiscriminator().equals(newUser.getDiscriminator())) {
-            stringBuilder.append("--- Discriminator: #").append(oldUser.getDiscriminator()).append("\n");
+            joiner.add("--- Discriminator: #%s".formatted(oldUser.getDiscriminator()));
         } else {
-            stringBuilder.append("- Discriminator: #").append(oldUser.getDiscriminator()).append("\n");
-            stringBuilder.append("+ Discriminator: #").append(newUser.getDiscriminator()).append("\n");
+            joiner.add("- Discriminator: #%s".formatted(oldUser.getDiscriminator()));
+            joiner.add("+ Discriminator: #%s".formatted(newUser.getDiscriminator()));
         }
+
         if (oldUser.getAvatarUrl().equals(newUser.getAvatarUrl())) {
-            stringBuilder.append("--- Avatar URL: ").append(oldUser.getAvatarUrl()).append("\n");
+            joiner.add("--- Avatar URL: %s".formatted(oldUser.getAvatarUrl()));
         } else {
-            stringBuilder.append("- Avatar URL: ").append(oldUser.getAvatarUrl()).append("\n");
-            stringBuilder.append("+ Avatar URL: ").append(newUser.getAvatarUrl()).append("\n");
+            joiner.add("- Avatar URL: %s".formatted(oldUser.getAvatarUrl()));
+            joiner.add("+ Avatar URL: %s".formatted(newUser.getAvatarUrl()));
         }
-        stringBuilder.append("```");
-        return stringBuilder.toString();
+
+        return joiner.add("```").toString();
     }
 
     public static Mono<Void> logInviteCreate(InviteCreateEvent event, TextChannel logChannel) {

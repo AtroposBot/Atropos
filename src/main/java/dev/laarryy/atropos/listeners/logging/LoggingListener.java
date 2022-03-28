@@ -222,17 +222,9 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(PresenceUpdateEvent event) { // Username, discrim, avatar changes
-        Guild guild = event.getGuild().block();
-        if (guild == null) return Mono.empty();
-
-        getLogChannel(guild, "member")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logPresenceUpdate(event, textChannel);
-                    }
-                })
-                .subscribe();
-        return Mono.empty();
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "member"))
+            .flatMap(channel -> LogExecutor.logPresenceUpdate(event, channel));
     }
 
     @EventListener
