@@ -1165,7 +1165,7 @@ public final class LogExecutor {
 
     private static String getAuditTargetUser(AuditLogEntry aud) {
         String responsibleUserId;
-        if (aud == null || aud.getTargetId().isEmpty() || aud.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15)))) {
+        if (aud == null || aud.getTargetId().isEmpty() || aud.getId().getTimestamp().isBefore(Instant.now().minus(Duration.ofSeconds(15)))) {
             responsibleUserId = "Unknown";
         } else {
             String id = aud.getTargetId().get().asString();
