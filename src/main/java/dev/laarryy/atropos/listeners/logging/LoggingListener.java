@@ -395,19 +395,9 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(BanEvent event) {
-        wait(2000);
-        Guild guild = event.getGuild().block();
-        if (guild == null) return Mono.empty();
-
-        getLogChannel(guild, "guild")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logBan(event, textChannel);
-                    }
-                })
-                .subscribe();
-
-        return Mono.empty();
+        return event.getGuild()
+            .flatMap(guild -> getLogChannel(guild, "guild"))
+            .flatMap(channel -> LogExecutor.logBan(event, channel));
     }
 
     @EventListener

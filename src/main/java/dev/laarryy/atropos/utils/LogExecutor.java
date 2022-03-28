@@ -1259,62 +1259,55 @@ public final class LogExecutor {
         });
     }
 
-    public static void logBan(BanEvent event, TextChannel logChannel) {
-        AuditLogEntry userBan = event.getGuild().block().getAuditLog().withActionType(ActionType.MEMBER_BAN_ADD)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .filter(auditLogEntry -> auditLogEntry.getTargetId().isPresent())
-                .next()
-                .block();
+    public static Mono<Void> logBan(BanEvent event, TextChannel logChannel) {
+        return event.getGuild().flatMap(guild -> guild.getAuditLog().withActionType(ActionType.MEMBER_BAN_ADD)
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .filter(entry -> entry.getTargetId().isPresent())
+            .next()
+            .zipWith(event.getClient().getSelf())
+            .flatMap(tuple -> {
+                final AuditLogEntry userBan = tuple.getT1();
+                final User self = tuple.getT2();
 
-        String responsibleUserId = getAuditResponsibleUser(userBan);
-        long targetUserId = event.getUser().getId().asLong();
-        String reason;
-        if (userBan.getReason().isPresent()) {
-            reason = userBan.getReason().get();
-        } else {
-            reason = "No reason provided.";
-        }
+                String responsibleUserId = getAuditResponsibleUser(userBan);
+                long targetUserId = event.getUser().getId().asLong();
+                String reason = userBan.getReason().orElse("No reason provided.");
 
-        String caseId;
-        if (!userBan.getResponsibleUser().equals(ClientManager.getManager().getClient().getSelf().block()) && !reason.equalsIgnoreCase("Mass API banned by staff.")) {
-            DatabaseLoader.openConnectionIfClosed();
-            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getGuild().block().getId().asLong());
-            DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", userBan.getResponsibleUser().get().getId().asLong());
-            DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", userBan.getTargetId().get().asLong());
-            Punishment punishment = Punishment.create("user_id_punished", punished.getUserId(),
-                    "user_id_punisher", punisher.getUserId(),
-                    "server_id", discordServer.getServerId(),
-                    "punishment_type", "ban",
-                    "punishment_date", Instant.now().toEpochMilli(),
-                    "punishment_message", reason);
-            punishment.save();
-            punishment.refresh();
-            caseId = String.valueOf(punishment.getPunishmentId());
-        } else {
-            caseId = "none";
-        }
+                Optional<String> caseId = userBan.getResponsibleUser()
+                    .filter(responsibleUser -> !responsibleUser.equals(self))
+                    .filter($ -> !reason.equalsIgnoreCase("Mass API banned by staff."))
+                    .map(responsibleUser -> {
+                        DatabaseLoader.openConnectionIfClosed();
+                        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", responsibleUser.getId().asLong());
+                        DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", userBan.getTargetId().get().asLong());
+                        Punishment punishment = Punishment.create(
+                            "user_id_punished", punished.getUserId(),
+                            "user_id_punisher", punisher.getUserId(),
+                            "server_id", discordServer.getServerId(),
+                            "punishment_type", "ban",
+                            "punishment_date", Instant.now().toEpochMilli(),
+                            "punishment_message", reason
+                        );
+                        punishment.save();
+                        punishment.refresh();
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return String.valueOf(punishment.getPunishmentId());
+                    });
 
+                EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getUserBan() + " User Banned")
+                    .color(Color.JAZZBERRY_JAM)
+                    .addField("Punished User", String.valueOf(targetUserId), false)
+                    .addField("Punishing User", responsibleUserId, false)
+                    .addField("Reason", reason, false)
+                    .timestamp(Instant.now());
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getUserBan() + " User Banned")
-                .color(Color.JAZZBERRY_JAM)
-                .addField("Punished User", String.valueOf(targetUserId), false)
-                .addField("Punishing User", responsibleUserId, false)
-                .addField("Reason", reason, false)
-                .timestamp(Instant.now())
-                .build();
-
-        if (!caseId.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Case ID", "#" + caseId, false)
-                    .build();
-        }
-
-        logChannel.createMessage(embed).block();
-        DatabaseLoader.closeConnectionIfOpen();
-
+                caseId.ifPresent(s -> embed.addField("Case ID", '#' + s, false));
+                return logChannel.createMessage(embed.build());
+            }).then()
+        );
     }
 
     public static Mono<Void> logUnban(UnbanEvent event, TextChannel logChannel) {
