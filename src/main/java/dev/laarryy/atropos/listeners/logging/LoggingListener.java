@@ -122,18 +122,8 @@ public final class LoggingListener {
             .flatMap(channel -> LogExecutor.logAutoMute(punishment, channel));
     }
 
-    public void onUnban(Guild guild, String reason, Punishment punishment) {
-        if (guild == null)  {
-            return;
-        }
-
-        getLogChannel(guild, "punishment")
-                .doOnSuccess(textChannel -> {
-                    if (textChannel != null) {
-                        LogExecutor.logPunishmentUnban(textChannel, reason, punishment);
-                    }
-                })
-                .subscribe();
+    public Mono<Void> onUnban(Guild guild, String reason, Punishment punishment) {
+        return getLogChannel(guild, "punishment").flatMap(channel -> LogExecutor.logPunishmentUnban(channel, reason, punishment));
     }
 
     public Mono<Void> onUnmute(Guild guild, String reason, Punishment punishment) {
