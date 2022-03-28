@@ -1,7 +1,6 @@
 package dev.laarryy.atropos.utils;
 
 import dev.laarryy.atropos.config.EmojiManager;
-import dev.laarryy.atropos.managers.ClientManager;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.ServerBlacklist;
 import dev.laarryy.atropos.models.guilds.ServerMessage;
@@ -214,123 +213,92 @@ public final class LogExecutor {
         }).then();
     }
 
-    public static void logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
-        Guild guild = event.getGuild().block();
-        if (guild == null) {
-            return;
-        }
-        AuditLogEntry recentDelete = guild.getAuditLog().withActionType(ActionType.MESSAGE_DELETE)
-                .map(AuditLogPart::getEntries)
-                .flatMap(Flux::fromIterable)
-                .filter(auditLogEntry -> auditLogEntry.getResponsibleUser().isPresent())
-                .filter(auditLogEntry -> auditLogEntry.getTargetId().isPresent())
-                .next()
-                .block();
+    public static Mono<Void> logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
+        return event.getGuild().flatMap(guild -> guild.getAuditLog().withActionType(ActionType.MESSAGE_DELETE)
+            .flatMapIterable(AuditLogPart::getEntries)
+            .filter(entry -> entry.getResponsibleUser().isPresent())
+            .filter(entry -> entry.getTargetId().isPresent())
+            .next()
+            .flatMap(recentDelete -> {
+                final Optional<Message> message = event.getMessage();
 
-        String responsibleUserId;
-        if (recentDelete == null
-                || recentDelete.getResponsibleUser().isEmpty()
-                || !recentDelete.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15)))
-        ) {
-            responsibleUserId = "Unknown";
-        } else {
-            String id = recentDelete.getResponsibleUser().get().getId().asString();
-            String username = recentDelete.getResponsibleUser().get().getUsername() + "#" + recentDelete.getResponsibleUser().get().getDiscriminator();
-            responsibleUserId = "`" + username + "`:`" + id + "`:<@" + id + ">";
-        }
+                String responsibleUserDescriptor = recentDelete.getResponsibleUser()
+                    .filter($ -> recentDelete.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15))))
+                    .map(responsibleUser -> {
+                        long id = responsibleUser.getId().asLong();
+                        String username = responsibleUser.getUsername() + '#' + responsibleUser.getDiscriminator();
+                        return "`%s`:`%d`:%s".formatted(username, id, responsibleUser.getMention());
+                    }).orElse("Unknown");
 
-        String senderId;
-        if (event.getMessage().isPresent() && event.getMessage().get().getAuthor().isPresent()) {
-            String id = event.getMessage().get().getAuthor().get().getId().asString();
-            String username = event.getMessage().get().getAuthor().get().getUsername() + "#" + event.getMessage().get().getAuthor().get().getDiscriminator();
-            senderId = "`" + username + "`:" + "`" + id + "`:<@" + id + ">";
-        } else {
-            DatabaseLoader.openConnectionIfClosed();
-            ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
-            if (serverMessage != null) {
-                long id = serverMessage.getUserSnowflake();
-                String username = guild.getMemberById(Snowflake.of(id)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(id)).block().getDiscriminator();
-                senderId = "`" + username + "`:" + "`" + id + "`:<@" + id + ">";
-            } else {
-                senderId = "Unknown";
-            }
-        }
+                Mono<String> senderDescriptorMono = message.flatMap(Message::getAuthor).map(author -> {
+                    long id = author.getId().asLong();
+                    String username = author.getUsername() + '#' + author.getDiscriminator();
+                    return Mono.just("`%s`:`%d`:%s".formatted(username, id, author.getMention()));
+                }).orElseGet(() -> {
+                    DatabaseLoader.openConnectionIfClosed();
+                    ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
+                    DatabaseLoader.closeConnectionIfOpen();
+                    if (serverMessage != null) {
+                        long id = serverMessage.getUserSnowflake();
+                        return guild.getMemberById(Snowflake.of(id)).map(author -> {
+                            String username = author.getUsername() + '#' + author.getDiscriminator();
+                            return "`%s`:`%d`:%s".formatted(username, id, author.getMention());
+                        });
+                    } else {
+                        return Mono.just("Unknown");
+                    }
+                });
 
-        String content;
-        if (event.getMessage().isPresent()) {
-            if (event.getMessage().get().getContent().isEmpty()) {
-                content = "none";
-            } else {
-                String string = event.getMessage().get().getContent();
-                content = getStringWithLegalLength(string, 4055);
-            }
-        } else {
-            DatabaseLoader.openConnectionIfClosed();
-            ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
-            if (serverMessage != null) {
-                content = getStringWithLegalLength(serverMessage.getContent(), 3055);
-            } else {
-                content = "Unknown";
-            }
-        }
-
-        String embeds;
-        if (event.getMessage().isPresent() && !event.getMessage().get().getEmbeds().isEmpty()) {
-            List<Embed> embedList = event.getMessage().get().getEmbeds();
-            String embedString = makeEmbedsEntries(embedList);
-            embeds = getStringWithLegalLength(embedString, 1024);
-        } else {
-            embeds = "none";
-        }
-
-        String attachmentURLs;
-        if (event.getMessage().isPresent() && !event.getMessage().get().getAttachments().isEmpty()) {
-            StringBuilder stringBuilder = new StringBuilder();
-            List<Attachment> attachmentList = event.getMessage().get().getAttachments();
-            for (Attachment a : attachmentList) {
-                if (attachmentList.indexOf(a) == attachmentList.size() - 1) {
-                    stringBuilder.append(a.getUrl());
+                Optional<String> content;
+                if (message.isPresent()) {
+                    if (message.get().getContent().isEmpty()) {
+                        content = Optional.empty();
+                    } else {
+                        String string = message.get().getContent();
+                        content = Optional.of(getStringWithLegalLength(string, 4055));
+                    }
                 } else {
-                    stringBuilder.append(a.getUrl()).append("\n");
+                    DatabaseLoader.openConnectionIfClosed();
+                    ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
+                    DatabaseLoader.closeConnectionIfOpen();
+                    if (serverMessage != null) {
+                        content = Optional.of(getStringWithLegalLength(serverMessage.getContent(), 3055));
+                    } else {
+                        content = Optional.of("Unknown");
+                    }
                 }
-            }
-            attachmentURLs = stringBuilder.toString();
-        } else {
-            attachmentURLs = "none";
-        }
 
-        String channelId = event.getChannelId().asString();
-        String channel = "`" + channelId + "`:<#" + channelId + ">";
+                Optional<String> embeds = message
+                    .map(Message::getEmbeds)
+                    .map(LogExecutor::makeEmbedsEntries)
+                    .map(embedEntries -> getStringWithLegalLength(embedEntries, 1024));
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .color(Color.JAZZBERRY_JAM)
-                .title(EmojiManager.getMessageDelete() + " Message Deleted")
-                .addField("Sent By", senderId, false)
-                .addField("Deleted By", responsibleUserId, false)
-                .addField("Channel", channel, false)
-                .timestamp(Instant.now())
-                .build();
+                Optional<String> attachmentURLs = message
+                    .stream()
+                    .map(Message::getAttachments)
+                    .flatMap(List::stream)
+                    .map(Attachment::getUrl)
+                    .reduce("%s%n%s"::formatted);
 
-        if (!content.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .description("**Content:**\n" + content)
-                    .build();
-        }
+                return Mono.zip(event.getChannel(), senderDescriptorMono, (channel, senderDescriptor) -> {
+                    String channelDescriptor = "`%d`:%s".formatted(channel.getId().asLong(), channel.getMention());
 
-        if (!attachmentURLs.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Attachments", attachmentURLs, false)
-                    .build();
-        }
+                    EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                        .color(Color.JAZZBERRY_JAM)
+                        .title(EmojiManager.getMessageDelete() + " Message Deleted")
+                        .addField("Sent By", senderDescriptor, false)
+                        .addField("Deleted By", responsibleUserDescriptor, false)
+                        .addField("Channel", channelDescriptor, false)
+                        .timestamp(Instant.now());
 
-        if (!embeds.equals("none")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Embeds", embeds, false)
-                    .build();
-        }
+                    content.ifPresent(s -> embed.description("**Content:**%n%s".formatted(s)));
+                    attachmentURLs.ifPresent(s -> embed.addField("Attachments", s, false));
+                    embeds.ifPresent(s -> embed.addField("Embeds", s, false));
 
-        logChannel.createMessage(embed).block();
-        DatabaseLoader.closeConnectionIfOpen();
+                    return logChannel.createMessage(embed.build());
+                }).flatMap($ -> $);
+            }).then()
+        );
     }
 
     private static String getStringWithLegalLength(String string, int length) {
