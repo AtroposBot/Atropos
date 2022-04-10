@@ -87,10 +87,9 @@ public class AntiSpamListener {
             "discordcdn\\.com"
     );
 
-    private final List<Pattern> officialLinks = Flux.fromIterable(officialLinkStrings)
+    private final List<Pattern> officialLinks = officialLinkStrings.stream()
             .map(officialLinkString -> Pattern.compile("(.*\\.)?" + officialLinkString))
-            .collectList()
-            .block();
+            .toList();
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
@@ -113,8 +112,7 @@ public class AntiSpamListener {
         int histInt = joinHistory.get(guildId);
 
         if (joinsToAntiraid > 0 && histInt >= joinsToAntiraid) {
-            enableAntiraid(event);
-            return Mono.empty();
+            return enableAntiraid(event);
         }
         return Mono.empty();
     }
@@ -195,19 +193,12 @@ public class AntiSpamListener {
             String domain = url.getProtocol() + "://" + rootHost + "/";
             Matcher matcher = SCAM_URL.matcher(domain);
 
-            Boolean legitLink = Flux.just(officialLinks)
-                    .any(link -> {
-                        logger.info(link);
-                        for (Pattern oneLink : link) {
-                            if (oneLink.matcher(rootHost).matches()) {
-                                return true;
-                            }
-                        }
-                        return false;
-                    })
-                    .block();
+            boolean legitLink = officialLinks.stream()
+                .peek(logger::info)
+                .map(link -> link.matcher(rootHost))
+                .anyMatch(Matcher::matches);
 
-            if (legitLink != null && legitLink) {
+            if (legitLink) {
                 continue;
             }
 
@@ -220,15 +211,17 @@ public class AntiSpamListener {
         return null;
     }
 
-    private void enableAntiraid(MemberJoinEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordServerProperties properties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getGuildId().asLong());
-        properties.setStopJoins(true);
-        properties.save();
-        properties.refresh();
-        loggingListener.onStopJoinsEnable(event.getGuild().block());
-        propertiesCache.invalidate(event.getGuildId().asLong());
-
+    private Mono<Void> enableAntiraid(MemberJoinEvent event) {
+        return event.getGuild().flatMap(guild -> {
+            DatabaseLoader.openConnectionIfClosed();
+            DiscordServerProperties properties = DiscordServerProperties.findFirst("server_id_snowflake = ?", event.getGuildId().asLong());
+            properties.setStopJoins(true);
+            properties.save();
+            properties.refresh();
+            loggingListener.onStopJoinsEnable(guild);
+            propertiesCache.invalidate(event.getGuildId().asLong());
+            return Mono.empty();
+        });
     }
 
     private void muteUserForScam(MessageCreateEvent event, String match) {
