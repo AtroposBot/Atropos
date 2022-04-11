@@ -20,11 +20,11 @@ import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.MalformedURLException;
@@ -151,34 +151,30 @@ public class AntiSpamListener {
             pingHistory.put(pair, pingInt + userMentions);
         }
 
+        Mono<Void> tempIdk = Mono.empty();
         if (properties.getAntiScam()) {
             try {
                 String match = checkMessageForScam(event.getMessage().getContent());
                 if (match != null) {
-                    DatabaseLoader.openConnectionIfClosed();
-                    muteUserForScam(event, match);
-                    DatabaseLoader.closeConnectionIfOpen();
+                    tempIdk = muteUserForScam(event, match);
                 }
             } catch (MalformedURLException ignored) {
             }
         }
 
         if (warnsToMute > 0 && warnInt >= warnsToMute) {
-            muteUserForSpam(event);
             warnHistory.invalidate(pair);
-            return Mono.empty();
+            return tempIdk.then(muteUserForSpam(event));
         }
 
         if (pingsToWarn > 0 && pingInt == pingsToWarn) {
-            warnUserForSpam(event);
             warnHistory.put(pair, warnInt + 1);
-            return Mono.empty();
+            return tempIdk.then(warnUserForSpam(event));
         }
 
         if (messagesToWarn > 0 && histInt == messagesToWarn) {
-            warnUserForSpam(event);
             warnHistory.put(pair, warnInt + 1);
-            return Mono.empty();
+            return tempIdk.then(warnUserForSpam(event));
         }
 
         return Mono.empty();
@@ -218,172 +214,152 @@ public class AntiSpamListener {
             properties.setStopJoins(true);
             properties.save();
             properties.refresh();
-            loggingListener.onStopJoinsEnable(guild);
-            propertiesCache.invalidate(event.getGuildId().asLong());
-            return Mono.empty();
-        });
+            return loggingListener.onStopJoinsEnable(guild);
+        }).doOnNext($ -> propertiesCache.invalidate(event.getGuildId().asLong()));
     }
 
-    private void muteUserForScam(MessageCreateEvent event, String match) {
-        DatabaseLoader.openConnectionIfClosed();
+    private Mono<Void> muteUserForScam(MessageCreateEvent event, String match) {
+        return Mono.justOrEmpty(event.getMember()).flatMap(punishedMember -> event.getGuild()
+            .filterWhen($ -> permissionChecker.checkIsAdministrator(punishedMember).map(isAdmin -> !isAdmin))
+            .filterWhen(guild -> guild.getSelfMember().flatMap(self ->
+                punishmentManager.onlyCheckIfPunisherHasHighestRole(self, punishedMember, guild)
+            )).zipWhen(Guild::getSelfMember, (guild, self) -> {
+                String punishmentMessage = "ANTI-SCAM: Muted automatically for sending suspicious link: `" + match + "`. If you're not a bot, worry not - a moderator will review this action.";
 
-        Guild guild = event.getGuild().block();
-        Member punishedMember = event.getMember().get();
-        Member self = guild.getSelfMember().block();
+                DatabaseLoader.openConnectionIfClosed();
+                long userIdSnowflake = punishedMember.getId().asLong();
+                DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());
+                DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
+                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
-        if (permissionChecker.checkIsAdministrator(guild, punishedMember)
-                || !punishmentManager.onlyCheckIfPunisherHasHighestRole(self, punishedMember, guild)) {
-            return;
-        }
+                DatabaseLoader.openConnectionIfClosed();
+                Punishment punishment = Punishment.create(
+                    "user_id_punished", discordUser.getUserId(),
+                    "name_punished", punishedMember.getUsername(),
+                    "discrim_punished", punishedMember.getDiscriminator(),
+                    "user_id_punisher", bot.getUserId(),
+                    "name_punisher", self.getUsername(),
+                    "discrim_punisher", self.getDiscriminator(),
+                    "server_id", discordServer.getServerId(),
+                    "punishment_type", "mute",
+                    "punishment_date", Instant.now().toEpochMilli(),
+                    "punishment_message", punishmentMessage,
+                    "did_dm", false,
+                    "end_date_passed", false,
+                    "automatic", true,
+                    "permanent", true,
+                    "punishment_end_reason", "Punishment not ended.");
+                punishment.save();
+                punishment.refresh();
+                DatabaseLoader.closeConnectionIfOpen();
 
-        String punishmentMessage = "ANTI-SCAM: Muted automatically for sending suspicious link: `" + match + "`. If you're not a bot, worry not - a moderator will review this action.";
-
-        long userIdSnowflake = event.getMember().get().getId().asLong();
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());
-        DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-
-        punishmentManager.discordMuteUser(guild, userIdSnowflake);
-
-        DatabaseLoader.openConnectionIfClosed();
-        Punishment punishment = Punishment.create(
-                "user_id_punished", discordUser.getUserId(),
-                "name_punished", punishedMember.getUsername(),
-                "discrim_punished", punishedMember.getDiscriminator(),
-                "user_id_punisher", bot.getUserId(),
-                "name_punisher", self.getUsername(),
-                "discrim_punisher", self.getDiscriminator(),
-                "server_id", discordServer.getServerId(),
-                "punishment_type", "mute",
-                "punishment_date", Instant.now().toEpochMilli(),
-                "punishment_message", punishmentMessage,
-                "did_dm", false,
-                "end_date_passed", false,
-                "automatic", true,
-                "permanent", true,
-                "punishment_end_reason", "Punishment not ended.");
-        punishment.save();
-        punishment.refresh();
-
-        event.getMessage().delete("ANTI-SCAM: Message contained suspicious link, user muted. Punishment ID: " + punishment.getPunishmentId()).block();
-
-        Notifier.notifyPunished(guild, punishment, punishmentMessage);
-        loggingListener.onPunishment(event, punishment);
-        loggingListener.onScamMute(event, punishment);
-
-        DatabaseLoader.closeConnectionIfOpen();
+                return event.getMessage().delete("ANTI-SCAM: Message contained suspicious link, user muted. Punishment ID: " + punishment.getPunishmentId())
+                    .then(Mono.fromRunnable(() -> Notifier.notifyPunished(guild, punishment, punishmentMessage)))
+                    .then(punishmentManager.discordMuteUser(guild, userIdSnowflake))
+                    .then(loggingListener.onPunishment(event, punishment))
+                    .then(loggingListener.onScamMute(event, punishment));
+            })).flatMap($ -> $);
     }
 
-    private void muteUserForSpam(MessageCreateEvent event) {
+    private Mono<Void> muteUserForSpam(MessageCreateEvent event) {
+        return Mono.justOrEmpty(event.getMember()).flatMap(punishedMember -> event.getGuild()
+            .filterWhen($ -> permissionChecker.checkIsAdministrator(punishedMember).map(isAdmin -> !isAdmin))
+            .filterWhen(guild -> guild.getSelfMember().flatMap(self ->
+                punishmentManager.onlyCheckIfPunisherHasHighestRole(self, punishedMember, guild)
+            )).zipWhen(Guild::getSelfMember, (guild, self) -> {
+                String punishmentMessage = "ANTI-SPAM: Muted for two hours for severe spam.";
 
-        Guild guild = event.getGuild().block();
-        Member punishedMember = event.getMember().get();
-        Member self = guild.getSelfMember().block();
+                long userIdSnowflake = punishedMember.getId().asLong();
 
-        if (permissionChecker.checkIsAdministrator(guild, punishedMember)
-                || !punishmentManager.onlyCheckIfPunisherHasHighestRole(self, punishedMember, guild)) {
-            return;
-        }
+                DatabaseLoader.openConnectionIfClosed();
+                DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());
+                DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
+                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
-        String punishmentMessage = "ANTI-SPAM: Muted for two hours for severe spam.";
+                Punishment punishment = Punishment.create("user_id_punished", discordUser.getUserId(),
+                    "user_id_punished", discordUser.getUserId(),
+                    "name_punished", punishedMember.getUsername(),
+                    "discrim_punished", punishedMember.getDiscriminator(),
+                    "user_id_punisher", bot.getUserId(),
+                    "name_punisher", self.getUsername(),
+                    "discrim_punisher", self.getDiscriminator(),
+                    "server_id", discordServer.getServerId(),
+                    "punishment_date", Instant.now().toEpochMilli(),
+                    "punishment_end_date", Instant.now().plus(2, ChronoUnit.HOURS).toEpochMilli(),
+                    "punishment_message", punishmentMessage,
+                    "did_dm", false,
+                    "end_date_passed", false,
+                    "permanent", false,
+                    "automatic", true,
+                    "punishment_end_reason", "Punishment not ended.");
+                punishment.save();
+                punishment.refresh();
+                DatabaseLoader.closeConnectionIfOpen();
 
-        long userIdSnowflake = event.getMember().get().getId().asLong();
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getMessageDelete() + " Muted for Spam")
+                    .description(punishmentMessage)
+                    .color(Color.JAZZBERRY_JAM)
+                    .footer("This incident has been recorded with case number " + punishment.getPunishmentId(), "")
+                    .build();
 
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());
-        DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-
-        punishmentManager.discordMuteUser(guild, userIdSnowflake);
-
-        Punishment punishment = Punishment.create("user_id_punished", discordUser.getUserId(),
-                "user_id_punished", discordUser.getUserId(),
-                "name_punished", punishedMember.getUsername(),
-                "discrim_punished", punishedMember.getDiscriminator(),
-                "user_id_punisher", bot.getUserId(),
-                "name_punisher", self.getUsername(),
-                "discrim_punisher", self.getDiscriminator(),
-                "server_id", discordServer.getServerId(),
-                "punishment_date", Instant.now().toEpochMilli(),
-                "punishment_end_date", Instant.now().plus(2, ChronoUnit.HOURS).toEpochMilli(),
-                "punishment_message", punishmentMessage,
-                "did_dm", false,
-                "end_date_passed", false,
-                "permanent", false,
-                "automatic", true,
-                "punishment_end_reason", "Punishment not ended.");
-        punishment.save();
-        punishment.refresh();
-
-        event.getMessage().delete("ANTI-SPAM: Message was sent far too fast, user muted. Punishment ID: " + punishment.getPunishmentId()).block();
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getMessageDelete() + " Muted for Spam")
-                .description(punishmentMessage)
-                .color(Color.JAZZBERRY_JAM)
-                .footer("This incident has been recorded with case number " + punishment.getPunishmentId(), "")
-                .build();
-
-        event.getMessage().getChannel().block().createMessage(embed).block();
-
-        loggingListener.onPunishment(event, punishment);
-        DatabaseLoader.closeConnectionIfOpen();
+                final Message message = event.getMessage();
+                return message.delete("ANTI-SPAM: Message was sent far too fast, user muted. Punishment ID: " + punishment.getPunishmentId())
+                    .then(message.getChannel())
+                    .flatMap(channel -> channel.createMessage(embed))
+                    .then(punishmentManager.discordMuteUser(guild, userIdSnowflake))
+                    .then(loggingListener.onPunishment(event, punishment));
+            })).flatMap($ -> $);
     }
 
-    private void warnUserForSpam(MessageCreateEvent event) {
-        Guild guild = event.getGuild().block();
-        Member punishedMember = event.getMember().get();
-        Member self = guild.getSelfMember().block();
+    private Mono<Void> warnUserForSpam(MessageCreateEvent event) {
+        return Mono.justOrEmpty(event.getMember()).flatMap(punishedMember -> event.getGuild()
+            .filterWhen($ -> permissionChecker.checkIsAdministrator(punishedMember).map(isAdmin -> !isAdmin))
+            .filterWhen(guild -> guild.getSelfMember().flatMap(self ->
+                punishmentManager.onlyCheckIfPunisherHasHighestRole(self, punishedMember, guild)
+            )).zipWhen(Guild::getSelfMember, (guild, self) -> event.getMessage().getChannel().flatMap(channel -> {
+                DatabaseLoader.openConnectionIfClosed();
+                DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());
+                DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", self.getId().asLong());
+                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
-        if (permissionChecker.checkIsAdministrator(guild, punishedMember)
-                || !punishmentManager.onlyCheckIfPunisherHasHighestRole(self, punishedMember, guild)) {
-            return;
-        }
+                String reason = "ANTI-SPAM: Do not send messages so quickly. Your most recent message `"
+                                + event.getMessage().getContent().replaceAll("`", "") +
+                                "` in the channel " + channel.getMention() + " was sent too quickly after the messages preceding it.";
 
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", punishedMember.getId().asLong());
-        DiscordUser bot = DiscordUser.findFirst("user_id_snowflake = ?", event.getClient().getSelfId().asLong());
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                if (reason.length() > 300) {
+                    reason = "ANTI-SPAM: Do not send messages so quickly. Your most recent message `[Too large to log]` " +
+                             "in the channel " + channel.getMention() + " was sent too quickly after the messages preceding it.";
+                }
 
-        String reason = "ANTI-SPAM: Do not send messages so quickly. Your most recent message `"
-                + event.getMessage().getContent().replaceAll("`", "") +
-                "` in the channel <#" + event.getMessage().getChannel().block().getId().asLong()
-                + "> was sent too quickly after the messages preceding it.";
+                Punishment punishment = Punishment.create("user_id_punished", discordUser.getUserId(),
+                    "user_id_punished", discordUser.getUserId(),
+                    "name_punished", punishedMember.getUsername(),
+                    "discrim_punished", punishedMember.getDiscriminator(),
+                    "user_id_punisher", bot.getUserId(),
+                    "name_punisher", self.getUsername(),
+                    "discrim_punisher", self.getDiscriminator(),
+                    "server_id", discordServer.getServerId(),
+                    "punishment_type", "warn",
+                    "punishment_date", Instant.now().toEpochMilli(),
+                    "punishment_message", reason,
+                    "did_dm", false,
+                    "end_date_passed", false,
+                    "permanent", true,
+                    "punishment_end_reason", "No reason provided.");
+                punishment.save();
+                punishment.refresh();
+                DatabaseLoader.closeConnectionIfOpen();
 
-        if (reason.length() > 300) {
-            reason = "ANTI-SPAM: Do not send messages so quickly. Your most recent message `[Too large to log]` " +
-                    "in the channel <#" + event.getMessage().getChannel().block().getId().asLong()
-                    + "> was sent too quickly after the messages preceding it.";
-        }
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getMessageDelete() + " Warning: Do Not Spam")
+                    .description(punishedMember.getMention() + ", you have been warned for spam, please stop. Further spam will be punished more harshly.")
+                    .color(Color.JAZZBERRY_JAM)
+                    .footer("This incident has been recorded with case number " + punishment.getPunishmentId(), "")
+                    .build();
 
-        Punishment punishment = Punishment.create("user_id_punished", discordUser.getUserId(),
-                "user_id_punished", discordUser.getUserId(),
-                "name_punished", punishedMember.getUsername(),
-                "discrim_punished", punishedMember.getDiscriminator(),
-                "user_id_punisher", bot.getUserId(),
-                "name_punisher", self.getUsername(),
-                "discrim_punisher", self.getDiscriminator(),
-                "server_id", discordServer.getServerId(),
-                "punishment_type", "warn",
-                "punishment_date", Instant.now().toEpochMilli(),
-                "punishment_message", reason,
-                "did_dm", false,
-                "end_date_passed", false,
-                "permanent", true,
-                "punishment_end_reason", "No reason provided.");
-        punishment.save();
-        punishment.refresh();
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getMessageDelete() + " Warning: Do Not Spam")
-                .description(event.getMember().get().getMention() + ", you have been warned for spam, please stop. Further spam will be punished more harshly.")
-                .color(Color.JAZZBERRY_JAM)
-                .footer("This incident has been recorded with case number " + punishment.getPunishmentId(), "")
-                .build();
-
-        event.getMessage().getChannel().block().createMessage(embed).block();
-
-        loggingListener.onPunishment(event, punishment);
-        DatabaseLoader.closeConnectionIfOpen();
+                return channel.createMessage(embed)
+                    .then(loggingListener.onPunishment(event, punishment));
+            }))).flatMap($ -> $);
     }
 }
