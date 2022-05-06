@@ -2,6 +2,7 @@ package dev.laarryy.atropos.commands.raid;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.atropos.commands.Command;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
 import dev.laarryy.atropos.managers.LoggingListenerManager;
 import dev.laarryy.atropos.managers.PropertiesCacheManager;
@@ -29,107 +30,68 @@ public class StopJoinsCommand implements Command {
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
     private final Logger logger = LogManager.getLogger(this);
 
-
-    private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
-            .name("stopjoins")
-            .description("Anti-Raid: Prevents any user from joining this guild")
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("enable")
-                    .description("Enables this function")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .build())
-            .addOption(ApplicationCommandOptionData.builder()
-                    .name("disable")
-                    .description("Disables this function")
-                    .type(ApplicationCommandOption.Type.SUB_COMMAND.getValue())
-                    .required(false)
-                    .build())
-            .defaultPermission(true)
-            .build();
+    private final ApplicationCommandRequest request = ApplicationCommandRequest.builder().name("stopjoins").description("Anti-Raid: Prevents any user from joining this guild").addOption(ApplicationCommandOptionData.builder().name("enable").description("Enables this function").type(ApplicationCommandOption.Type.SUB_COMMAND.getValue()).required(false).build()).addOption(ApplicationCommandOptionData.builder().name("disable").description("Disables this function").type(ApplicationCommandOption.Type.SUB_COMMAND.getValue()).required(false).build()).defaultPermission(true).build();
 
     public ApplicationCommandRequest getRequest() {
         return this.request;
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!CommandChecks.commandChecks(event, request.name())) {
-            return Mono.empty();
-        }
-        Guild guild = event.getInteraction().getGuild().block();
+        return Mono.from(CommandChecks.commandChecks(event, request.name())).flatMap(aBoolean -> {
+            if (!aBoolean) {
+                return Mono.error(new NoPermissionsException("No Permission"));
+            }
+            return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+                DatabaseLoader.openConnectionIfClosed();
+                DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
 
-        event.deferReply().block();
+                if (event.getOption("enable").isPresent()) {
+                    if (serverProperties.getStopJoins()) {
+                        EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Already Enabled").description("Already kicking all new joins").color(Color.RUBY).timestamp(Instant.now()).build();
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return Notifier.sendResultsEmbed(event, embed);
+                    }
 
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
+                    serverProperties.setStopJoins(true);
+                    serverProperties.save();
+                    serverProperties.refresh();
 
-        if (event.getOption("enable").isPresent()) {
+                    cache.invalidate(guild.getId().asLong());
 
-            if (serverProperties.getStopJoins()) {
-                EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                        .title("Already Enabled")
-                        .description("Already kicking all new joins")
-                        .color(Color.RUBY)
-                        .timestamp(Instant.now())
-                        .build();
+                    return Mono.from(loggingListener.onStopJoinsEnable(guild)).flatMap(a -> {
+                        EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Success").description("Enabled the prevention of all joins.").color(Color.ENDEAVOUR).timestamp(Instant.now()).build();
 
-                Notifier.replyDeferredInteraction(event, embed);
+                        AuditLogger.addCommandToDB(event, true);
+                        DatabaseLoader.closeConnectionIfOpen();
+
+                        return Notifier.sendResultsEmbed(event, embed);
+                    });
+                }
+
+                if (event.getOption("disable").isPresent()) {
+                    if (!serverProperties.getStopJoins()) {
+                        EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Already Disabled").description("Already not kicking all new joins.").color(Color.RUBY).timestamp(Instant.now()).build();
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return Notifier.sendResultsEmbed(event, embed);
+                    }
+
+                    serverProperties.setStopJoins(false);
+                    serverProperties.save();
+                    serverProperties.refresh();
+                    cache.invalidate(guild.getId().asLong());
+                    return Mono.from(loggingListener.onStopJoinsDisable(guild)).flatMap(a -> {
+                        EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Success").description("Disabled the prevention of all joins.").color(Color.ENDEAVOUR).timestamp(Instant.now()).build();
+
+                        AuditLogger.addCommandToDB(event, true);
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return Notifier.sendResultsEmbed(event, embed);
+                    });
+
+                }
+
                 DatabaseLoader.closeConnectionIfOpen();
                 return Mono.empty();
-            }
-            serverProperties.setStopJoins(true);
-            serverProperties.save();
-            serverProperties.refresh();
-
-            cache.invalidate(guild.getId().asLong());
-
-            loggingListener.onStopJoinsEnable(guild);
-
-            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                    .title("Success")
-                    .description("Enabled the prevention of all joins.")
-                    .color(Color.ENDEAVOUR)
-                    .timestamp(Instant.now())
-                    .build();
-
-            AuditLogger.addCommandToDB(event, true);
-            Notifier.replyDeferredInteraction(event, embed);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        }
-
-        if (event.getOption("disable").isPresent()) {
-            if (!serverProperties.getStopJoins()) {
-                EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                        .title("Already Disabled")
-                        .description("Already not kicking all new joins.")
-                        .color(Color.RUBY)
-                        .timestamp(Instant.now())
-                        .build();
-
-                Notifier.replyDeferredInteraction(event, embed);
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.empty();
-            }
-            serverProperties.setStopJoins(false);
-            serverProperties.save();
-            serverProperties.refresh();
-            cache.invalidate(guild.getId().asLong());
-            loggingListener.onStopJoinsDisable(guild);
-            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                    .title("Success")
-                    .description("Disabled the prevention of all joins.")
-                    .color(Color.ENDEAVOUR)
-                    .timestamp(Instant.now())
-                    .build();
-
-            AuditLogger.addCommandToDB(event, true);
-            Notifier.replyDeferredInteraction(event, embed);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        }
-
-        DatabaseLoader.closeConnectionIfOpen();
-        return Mono.empty();
+            });
+        });
     }
 }
