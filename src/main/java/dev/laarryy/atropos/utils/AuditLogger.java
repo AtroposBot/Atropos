@@ -82,6 +82,10 @@ public final class AuditLogger {
         commandUse.save();
     }
 
+    public static String generateOptionString(ApplicationCommandInteractionOption option) {
+        return generateOptionString(option, new StringBuilder());
+    }
+
     public static String generateOptionString(ApplicationCommandInteractionOption option, StringBuilder sb) {
 
         if (option.getValue().isEmpty()) {
