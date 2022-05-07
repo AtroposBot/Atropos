@@ -20,6 +20,7 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.User;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
@@ -27,6 +28,7 @@ import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -38,6 +40,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class AuditCommand implements Command {
@@ -175,42 +178,44 @@ public class AuditCommand implements Command {
 
     private Mono<Void> recentAudits(ChatInputInteractionEvent event) {
 
-        DatabaseLoader.openConnectionIfClosed();
+        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+            DatabaseLoader.openConnectionIfClosed();
 
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
-        Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
-        long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
+            Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
+            long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
 
-        LazyList<CommandUse> commandUseLazyList = CommandUse.where("server_id = ? and date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
+            LazyList<CommandUse> commandUseLazyList = CommandUse.where("server_id = ? and date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
 
-        if (commandUseLazyList.isEmpty()) {
-            EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
-                    .color(Color.ENDEAVOUR)
-                    .title("Recent Commands")
-                    .description("Nothing found in the past 10 days.")
-                    .footer("Run some commands and try again!", "")
-                    .timestamp(Instant.now())
-                    .build();
+            if (commandUseLazyList.isEmpty()) {
+                EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                        .color(Color.ENDEAVOUR)
+                        .title("Recent Commands")
+                        .description("Nothing found in the past 10 days.")
+                        .footer("Run some commands and try again!", "")
+                        .timestamp(Instant.now())
+                        .build();
 
-            AuditLogger.addCommandToDB(event, true);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Notifier.sendResultsEmbed(event, resultEmbed);
-        }
+                AuditLogger.addCommandToDB(event, true);
+                DatabaseLoader.closeConnectionIfOpen();
+                return Notifier.sendResultsEmbed(event, resultEmbed);
+            }
 
-        String results = createFormattedAuditTable(commandUseLazyList, event);
+            return createFormattedAuditTable(commandUseLazyList, guild).flatMap(results -> {
+                EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                        .color(Color.ENDEAVOUR)
+                        .title("Recent Commands")
+                        .description(results)
+                        .footer("For detailed information, run /audit id <id>", "")
+                        .timestamp(Instant.now())
+                        .build();
 
-        EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
-                .color(Color.ENDEAVOUR)
-                .title("Recent Commands")
-                .description(results)
-                .footer("For detailed information, run /audit id <id>", "")
-                .timestamp(Instant.now())
-                .build();
-
-        AuditLogger.addCommandToDB(event, true);
-        DatabaseLoader.closeConnectionIfOpen();
-        return Notifier.sendResultsEmbed(event, resultEmbed);
+                AuditLogger.addCommandToDB(event, true);
+                DatabaseLoader.closeConnectionIfOpen();
+                return Notifier.sendResultsEmbed(event, resultEmbed);
+            });
+        });
     }
 
     private Mono<Void> searchAuditByUser(ChatInputInteractionEvent event) {
@@ -228,96 +233,101 @@ public class AuditCommand implements Command {
 
             userIdSnowflake = Long.parseLong(snowflakeString);
         } else if (event.getOption("user").get().getOption("mention").isPresent()) {
-
-            userIdSnowflake = event.getOption("user").get().getOption("mention").get().getValue().get().asUser().block().getId().asLong();
-
+            return event.getOption("user").get().getOption("mention").get().getValue().get().asUser().flatMap(user ->
+                    handleUserSearch(event, user.getId().asLong()));
         } else {
             userIdSnowflake = 0L;
         }
-
-        long guildId = event.getInteraction().getGuildId().get().asLong();
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
-
-        if (discordUser == null) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new NoUserException("No User"));
-        }
-
-        if (discordServer == null) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new NullServerException("Null Server"));
-        }
-
-        int userId = discordUser.getUserId();
-        int serverId = discordServer.getServerId();
-
-        Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
-        long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
-
-        LazyList<CommandUse> commandUsesLazyList = CommandUse.find("command_user_id = ? and server_id = ? and date > ?", userId, serverId, tenDaysAgoStamp).limit(30).orderBy("id desc");
-
-        if (commandUsesLazyList.isEmpty()) {
-            AuditLogger.addCommandToDB(event, true);
-            return Mono.error(new NoResultsException("No Results"));
-        }
-
-        String results = createFormattedAuditTable(commandUsesLazyList, event);
-
-        AuditLogger.addCommandToDB(event, true);
-
-        EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
-                .color(Color.ENDEAVOUR)
-                .title("Results")
-                .description(results)
-                .footer("For detailed information, run /audit id <id>", "")
-                .timestamp(Instant.now())
-                .build();
-
-        AuditLogger.addCommandToDB(event, true);
-        DatabaseLoader.closeConnectionIfOpen();
-        return Notifier.sendResultsEmbed(event, resultEmbed);
+        return handleUserSearch(event, userIdSnowflake);
     }
 
-    private String createFormattedAuditTable(LazyList<CommandUse> commandUseLazyList, ChatInputInteractionEvent event) {
+    private Mono<Void> handleUserSearch(ChatInputInteractionEvent event, Long userIdSnowflake) {
+
+        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+            long guildId = event.getInteraction().getGuildId().get().asLong();
+            DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
+
+            if (discordUser == null) {
+                AuditLogger.addCommandToDB(event, false);
+                return Mono.error(new NoUserException("No User"));
+            }
+
+            if (discordServer == null) {
+                AuditLogger.addCommandToDB(event, false);
+                return Mono.error(new NullServerException("Null Server"));
+            }
+
+            int userId = discordUser.getUserId();
+            int serverId = discordServer.getServerId();
+
+            Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
+            long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
+
+            LazyList<CommandUse> commandUsesLazyList = CommandUse.find("command_user_id = ? and server_id = ? and date > ?", userId, serverId, tenDaysAgoStamp).limit(30).orderBy("id desc");
+
+            if (commandUsesLazyList.isEmpty()) {
+                AuditLogger.addCommandToDB(event, true);
+                return Mono.error(new NoResultsException("No Results"));
+            }
+
+            return Mono.from(createFormattedAuditTable(commandUsesLazyList, guild)).flatMap(results -> {
+                AuditLogger.addCommandToDB(event, true);
+
+                EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                        .color(Color.ENDEAVOUR)
+                        .title("Results")
+                        .description(results)
+                        .footer("For detailed information, run /audit id <id>", "")
+                        .timestamp(Instant.now())
+                        .build();
+
+                AuditLogger.addCommandToDB(event, true);
+                DatabaseLoader.closeConnectionIfOpen();
+                return Notifier.sendResultsEmbed(event, resultEmbed);
+            });
+        });
+    }
+
+    private Mono<String> createFormattedAuditTable(LazyList<CommandUse> commandUseLazyList, Guild guild) {
         List<String> rows = new ArrayList<>();
         rows.add("```");
         rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", "ID", "Date", "User", "Preview"));
         rows.add("---------------------------------------------------------\n");
-        for (CommandUse c : commandUseLazyList) {
-            if (c == null) {
-                continue;
+
+        Mono<Void> populateTable = Flux.fromIterable(commandUseLazyList)
+                .filter(Objects::nonNull)
+                .flatMap(c -> {
+                    DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
+                    String userId = discordUser.getUserIdSnowflake().toString();
+                    return Mono.from(guild.getClient().getUserById(Snowflake.of(userId)))
+                            .flatMap(member -> {
+                                String username = member.getTag();
+                                if (username.length() > 15) {
+                                    username = username.substring(0, 12) + "...";
+                                }
+                                String auditId = c.getInteger("id").toString();
+                                Instant date = Instant.ofEpochMilli(c.getDate());
+                                String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
+                                String preview;
+                                if (c.getCommandContents().length() > 7) {
+                                    preview = c.getCommandContents().substring(0, 7) + "...";
+                                } else preview = c.getCommandContents();
+
+                                rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
+                                return Mono.empty();
+                            });
+                }).then();
+
+        return Mono.from(populateTable).flatMap(unused -> {
+            rows.add("```");
+
+            StringBuffer stringBuffer = new StringBuffer();
+            for (String row : rows) {
+                stringBuffer.append(row);
             }
-            DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
-            String userId = discordUser.getUserIdSnowflake().toString();
-            Guild guild = event.getInteraction().getGuild().block();
-            String username;
-            try {
-                username = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
-            } catch (Exception e) {
-                username = userId;
-            }
-            if (username.length() > 15) {
-                username = username.substring(0, 12) + "...";
-            }
-            String auditId = c.getInteger("id").toString();
-            Instant date = Instant.ofEpochMilli(c.getDate());
-            String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
-            String preview;
-            if (c.getCommandContents().length() > 7) {
-                preview = c.getCommandContents().substring(0, 7) + "...";
-            } else preview = c.getCommandContents();
 
-            rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
-
-        }
-
-        rows.add("```");
-
-        StringBuffer stringBuffer = new StringBuffer();
-        for (String row : rows) {
-            stringBuffer.append(row);
-        }
-        return stringBuffer.toString();
+            return Mono.just(stringBuffer.toString());
+        });
     }
 }

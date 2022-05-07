@@ -20,6 +20,7 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.entity.Guild;
+import discord4j.core.object.entity.User;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
@@ -29,6 +30,7 @@ import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -36,6 +38,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 public class CaseCommand implements Command {
@@ -217,73 +220,87 @@ public class CaseCommand implements Command {
     }
 
     private Mono<Void> deletePunishment(ChatInputInteractionEvent event) {
-        Guild guild = event.getInteraction().getGuild().block();
+        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+            if (event.getOption("delete").get().getOption("id").isEmpty()) {
+                return Mono.error(new MalformedInputException("Malformed Input"));
+            }
 
-        if (event.getOption("delete").get().getOption("id").isEmpty()) {
-            return Mono.error(new MalformedInputException("Malformed Input"));
-        }
+            Long id = event.getOption("delete").get().getOption("id").get().getValue().get().asLong();
 
-        Long id = event.getOption("delete").get().getOption("id").get().getValue().get().asLong();
+            DatabaseLoader.openConnectionIfClosed();
 
-        DatabaseLoader.openConnectionIfClosed();
+            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+            if (discordServer == null) {
+                DatabaseLoader.closeConnectionIfOpen();
+                return Mono.error(new NullServerException("Null Server"));
+            }
 
-        if (discordServer == null) {
+            Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", id, discordServer.getServerId());
+
+            if (punishment == null) {
+                DatabaseLoader.closeConnectionIfOpen();
+                return Mono.error(new NotFoundException("404 Not Found"));
+            }
+
+            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getMessageDelete() + " Case #" + punishment.getPunishmentId() + " Deleted")
+                    .timestamp(Instant.now())
+                    .build();
+
+            punishment.delete();
             DatabaseLoader.closeConnectionIfOpen();
-            return Mono.error(new NullServerException("Null Server"));
-        }
-
-        Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", id, discordServer.getServerId());
-
-        if (punishment == null) {
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.error(new NotFoundException("404 Not Found"));
-        }
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(EmojiManager.getMessageDelete() + " Case #" + punishment.getPunishmentId() + " Deleted")
-                .timestamp(Instant.now())
-                .build();
-
-        punishment.delete();
-        DatabaseLoader.closeConnectionIfOpen();
-        return Notifier.sendResultsEmbed(event, embed);
+            return Notifier.sendResultsEmbed(event, embed);
+        });
     }
 
     private Mono<Void> recentCases(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
-        Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
-        long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
+        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+            Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
+            long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
 
-        LazyList<Punishment> punishmentLazyList;
-        if (event.getOption("search").get().getOption("recent").get().getOption("type").isEmpty()) {
-            punishmentLazyList = Punishment.where("server_id = ? and punishment_date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
-        } else {
-            String type = event.getOption("search").get().getOption("recent").get().getOption("type").get().getValue().get().asString();
-            punishmentLazyList = Punishment.where("server_id = ? and punishment_type = ? and punishment_date > ?", discordServer.getServerId(), type, tenDaysAgoStamp).limit(25).orderBy("id desc");
-        }
+            LazyList<Punishment> punishmentLazyList;
+            if (event.getOption("search").get().getOption("recent").get().getOption("type").isEmpty()) {
+                punishmentLazyList = Punishment.where("server_id = ? and punishment_date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
+            } else {
+                String type = event.getOption("search").get().getOption("recent").get().getOption("type").get().getValue().get().asString();
+                punishmentLazyList = Punishment.where("server_id = ? and punishment_type = ? and punishment_date > ?", discordServer.getServerId(), type, tenDaysAgoStamp).limit(25).orderBy("id desc");
+            }
 
-        String results;
-        if (punishmentLazyList == null || punishmentLazyList.isEmpty()) {
-            results = "Nothing found in the past 10 days";
-        } else {
-            results = createFormattedRecentPunishmentsTable(punishmentLazyList, event);
-        }
+            String results;
+            if (punishmentLazyList == null || punishmentLazyList.isEmpty()) {
+                results = "Nothing found in the past 10 days";
+            } else {
+                return Mono.from(createFormattedRecentPunishmentsTable(punishmentLazyList, guild)).flatMap(populatedResults -> {
+                    EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                            .color(Color.ENDEAVOUR)
+                            .title("Recent Cases")
+                            .description(populatedResults)
+                            .footer("For detailed information, run /case search id <id>", "")
+                            .timestamp(Instant.now())
+                            .build();
 
-        EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
-                .color(Color.ENDEAVOUR)
-                .title("Recent Cases")
-                .description(results)
-                .footer("For detailed information, run /case search id <id>", "")
-                .timestamp(Instant.now())
-                .build();
+                    AuditLogger.addCommandToDB(event, true);
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return Notifier.sendResultsEmbed(event, resultEmbed);
+                });
+            }
 
-        AuditLogger.addCommandToDB(event, true);
-        DatabaseLoader.closeConnectionIfOpen();
-        return Notifier.sendResultsEmbed(event, resultEmbed);
+            EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                    .color(Color.ENDEAVOUR)
+                    .title("Recent Cases")
+                    .description(results)
+                    .footer("For detailed information, run /case search id <id>", "")
+                    .timestamp(Instant.now())
+                    .build();
+
+            AuditLogger.addCommandToDB(event, true);
+            DatabaseLoader.closeConnectionIfOpen();
+            return Notifier.sendResultsEmbed(event, resultEmbed);
+        });
     }
 
     private Mono<Void> searchForCase(ChatInputInteractionEvent event) {
@@ -458,29 +475,39 @@ public class CaseCommand implements Command {
 
     private Mono<Void> searchPunishments(ChatInputInteractionEvent event) {
 
-        long userIdSnowflake;
-        if (event.getOption("search").get().getOption("user").isPresent()
-                && event.getOption("search").get().getOption("user").get().getOption("snowflake").isPresent()
-                && event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().isPresent()) {
+        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+            long userIdSnowflake;
+            if (event.getOption("search").get().getOption("user").isPresent()
+                    && event.getOption("search").get().getOption("user").get().getOption("snowflake").isPresent()
+                    && event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().isPresent()) {
 
-            String snowflakeString = event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().get().asString();
+                String snowflakeString = event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().get().asString();
 
-            if (!snowflakePattern.matcher(snowflakeString).matches()) {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new MalformedInputException("Malformed Input"));
+                if (!snowflakePattern.matcher(snowflakeString).matches()) {
+                    AuditLogger.addCommandToDB(event, false);
+                    return Mono.error(new MalformedInputException("Malformed Input"));
+                }
+
+                userIdSnowflake = Long.parseLong(snowflakeString);
+            } else if (event.getOption("search").get().getOption("user").isPresent()
+                    && event.getOption("search").get().getOption("user").get().getOption("mention").isPresent()
+                    && event.getOption("search").get().getOption("user").get().getOption("mention").get().getValue().isPresent()) {
+
+                return Mono.from(event.getOption("search").get().getOption("user").get().getOption("mention").get().getValue().get().asUser()).flatMap(user -> {
+                    Long userMentionSnowflake = user.getId().asLong();
+                    return handleUserResults(userMentionSnowflake, event, guild);
+                });
+
+            } else {
+                userIdSnowflake = 0L;
             }
 
-            userIdSnowflake = Long.parseLong(snowflakeString);
-        } else if (event.getOption("search").get().getOption("user").isPresent()
-                && event.getOption("search").get().getOption("user").get().getOption("mention").isPresent()
-                && event.getOption("search").get().getOption("user").get().getOption("mention").get().getValue().isPresent()) {
+            return handleUserResults(userIdSnowflake, event, guild);
+        });
+    }
 
-            userIdSnowflake = event.getOption("search").get().getOption("user").get().getOption("mention").get().getValue().get().asUser().block().getId().asLong();
 
-        } else {
-            userIdSnowflake = 0L;
-        }
-
+    private Mono<Void> handleUserResults(Long userIdSnowflake, ChatInputInteractionEvent event, Guild guild) {
         DatabaseLoader.openConnectionIfClosed();
 
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
@@ -507,7 +534,20 @@ public class CaseCommand implements Command {
         if (punishmentLazyList == null || punishmentLazyList.isEmpty()) {
             results = "No results found for user.";
         } else {
-            results = createFormattedPunishmentsTable(punishmentLazyList, event);
+            return Mono.from(createFormattedPunishmentsTable(punishmentLazyList, guild)).flatMap(populatedResults -> {
+                EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                        .color(Color.ENDEAVOUR)
+                        .title("Results for User: " + userIdSnowflake)
+                        .description(populatedResults)
+                        .footer("For detailed information, run /case search id <id>", "")
+                        .timestamp(Instant.now())
+                        .build();
+
+                AuditLogger.addCommandToDB(event, true);
+
+                DatabaseLoader.closeConnectionIfOpen();
+                return Notifier.sendResultsEmbed(event, resultEmbed);
+            });
         }
 
         EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
@@ -519,7 +559,6 @@ public class CaseCommand implements Command {
                 .build();
 
         AuditLogger.addCommandToDB(event, true);
-
 
         DatabaseLoader.closeConnectionIfOpen();
         return Notifier.sendResultsEmbed(event, resultEmbed);
@@ -573,65 +612,70 @@ public class CaseCommand implements Command {
         }
     }
 
-    private String createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList, ChatInputInteractionEvent event) {
-        Guild guild = event.getInteraction().getGuild().block();
+    private Mono<String> createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList, Guild guild) {
         List<String> rows = new ArrayList<>();
         rows.add("```");
         rows.add(String.format("| %-6s | %-8s | %-30s |\n", "ID", "Type", "Mod"));
         rows.add("------------------------------------------------------\n");
 
-        for (Punishment p : punishmentLazyList) {
-            if (p == null) {
-                continue;
+        Mono<Void> populateTable = Flux.fromIterable(punishmentLazyList)
+                .filter(Objects::nonNull)
+                .flatMap(p -> {
+                    DiscordUser punishingUser = DiscordUser.findFirst("id = ?", p.getPunishingUserId());
+                    int id = p.getPunishmentId();
+
+                    return guild.getMemberById(Snowflake.of(punishingUser.getUserIdSnowflake())).flatMap(member -> {
+                        String punisher = getUsernameDefaultID(punishingUser, member, 30);
+
+                        String type = p.getPunishmentType();
+                        rows.add(String.format("| %-6s | %-8s | %-30s |\n", id, type, punisher));
+                        return Mono.empty();
+                    });
+                }).then();
+
+        return Mono.from(populateTable).flatMap(unused -> {
+            rows.add("```");
+
+            StringBuilder stringBuffer = new StringBuilder();
+            for (String row : rows) {
+                stringBuffer.append(row);
             }
-            int id = p.getPunishmentId();
 
-            DiscordUser punishingUser = DiscordUser.findFirst("id = ?", p.getPunishingUserId());
-            String punisher = getUsernameDefaultID(punishingUser, guild, 30);
-
-            String type = p.getPunishmentType();
-            rows.add(String.format("| %-6s | %-8s | %-30s |\n", id, type, punisher));
-        }
-
-        rows.add("```");
-
-        StringBuilder stringBuffer = new StringBuilder();
-        for (String row : rows) {
-            stringBuffer.append(row);
-        }
-
-        return stringBuffer.toString();
+            return Mono.just(stringBuffer.toString());
+        });
     }
 
-    private String createFormattedRecentPunishmentsTable(LazyList<Punishment> punishmentLazyList, ChatInputInteractionEvent event) {
-        Guild guild = event.getInteraction().getGuild().block();
+    private Mono<String> createFormattedRecentPunishmentsTable(LazyList<Punishment> punishmentLazyList, Guild guild) {
         List<String> rows = new ArrayList<>();
         rows.add("```");
         rows.add(String.format("| %-6s | %-8s | %-30s |\n", "ID", "Type", "Punished User"));
         rows.add("------------------------------------------------------\n");
 
-        for (Punishment p : punishmentLazyList) {
-            if (p == null) {
-                continue;
+        Mono<Void> populateTable = Flux.fromIterable(punishmentLazyList)
+                .filter(Objects::nonNull)
+                .flatMap(p -> {
+                    DiscordUser punishedUser = DiscordUser.findFirst("id = ?", p.getPunishedUserId());
+                    int id = p.getPunishmentId();
+
+                    return guild.getMemberById(Snowflake.of(punishedUser.getUserIdSnowflake())).flatMap(member -> {
+                        String punished = getUsernameDefaultID(punishedUser, member, 30);
+
+                        String type = p.getPunishmentType();
+                        rows.add(String.format("| %-6s | %-8s | %-30s |\n", id, type, punished));
+                        return Mono.empty();
+                    });
+                }).then();
+
+        return Mono.from(populateTable).flatMap(unused -> {
+            rows.add("```");
+
+            StringBuilder stringBuffer = new StringBuilder();
+            for (String row : rows) {
+                stringBuffer.append(row);
             }
 
-            DiscordUser punishedUser = DiscordUser.findFirst("id = ?", p.getPunishedUserId());
-            int id = p.getPunishmentId();
-
-            String punished = getUsernameDefaultID(punishedUser, guild, 30);
-
-            String type = p.getPunishmentType();
-            rows.add(String.format("| %-6s | %-8s | %-30s |\n", id, type, punished));
-        }
-
-        rows.add("```");
-
-        StringBuilder stringBuffer = new StringBuilder();
-        for (String row : rows) {
-            stringBuffer.append(row);
-        }
-
-        return stringBuffer.toString();
+            return Mono.just(stringBuffer.toString());
+        });
     }
 
     private String getStringOfLegalLength(String reason, int length) {
@@ -644,11 +688,11 @@ public class CaseCommand implements Command {
         return result;
     }
 
-    private String getUsernameDefaultID(DiscordUser user, Guild guild, int allowedLength) {
-        Long userId = user.getUserIdSnowflake();
+    private String getUsernameDefaultID(DiscordUser discordUser, User user, int allowedLength) {
+        Long userId = discordUser.getUserIdSnowflake();
         String usernameOrId;
         try {
-            usernameOrId = guild.getMemberById(Snowflake.of(userId)).block().getUsername() + "#" + guild.getMemberById(Snowflake.of(userId)).block().getDiscriminator();
+            usernameOrId = user.getTag();
         } catch (Exception ignored) {
             usernameOrId = userId.toString();
         }
