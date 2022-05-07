@@ -2,6 +2,11 @@ package dev.laarryy.atropos.commands.search;
 
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.EmojiManager;
+import dev.laarryy.atropos.exceptions.MalformedInputException;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
+import dev.laarryy.atropos.exceptions.NoUserException;
+import dev.laarryy.atropos.exceptions.NotFoundException;
+import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.users.DiscordUser;
 import dev.laarryy.atropos.models.users.Punishment;
@@ -170,50 +175,52 @@ public class CaseCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
+
         if (event.getOption("delete").isPresent()) {
-            if (!CommandChecks.commandChecks(event, "casedelete")) {
-                return Mono.empty();
-            }
-            Mono.just(event).subscribe(this::deletePunishment);
-            return Mono.empty();
+            return Mono.from(CommandChecks.commandChecks(event, "casedelete")).flatMap(aBoolean -> {
+                if (!aBoolean) {
+                    return Mono.error(new NoPermissionsException("No Permission"));
+                }
+                return Mono.just(event).flatMap(this::deletePunishment);
+            });
         }
 
         if (event.getOption("update").isPresent()) {
-            if (!CommandChecks.commandChecks(event, "caseupdate")) {
-                return Mono.empty();
-            }
-            Mono.just(event).subscribe(this::updatePunishment);
-            return Mono.empty();
+            return Mono.from(CommandChecks.commandChecks(event, "caseupdate")).flatMap(aBoolean -> {
+                if (!aBoolean) {
+                    return Mono.error(new NoPermissionsException("No Permission"));
+                }
+                return Mono.just(event).flatMap(this::updatePunishment);
+            });
+        }
+        if (event.getOption("search").isPresent()) {
+            return Mono.from(CommandChecks.commandChecks(event, "casesearch")).flatMap(aBoolean -> {
+                if (!aBoolean) {
+                    return Mono.error(new NoPermissionsException("No Permission"));
+                }
+                if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("user").isPresent()) {
+                    return Mono.just(event).flatMap(this::searchPunishments);
+                }
+
+                if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("id").isPresent()) {
+                    return Mono.just(event).flatMap(this::searchForCase);
+                }
+
+                if (event.getOption("search").get().getOption("recent").isPresent()) {
+                    return Mono.just(event).flatMap(this::recentCases);
+                }
+                return Mono.error(new MalformedInputException("Malformed Input"));
+            });
         }
 
-        if (!CommandChecks.commandChecks(event, "casesearch")) {
-            return Mono.empty();
-        }
-
-        if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("user").isPresent()) {
-            Mono.just(event).subscribe(this::searchPunishments);
-            return Mono.empty();
-        }
-
-        if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("id").isPresent()) {
-            Mono.just(event).subscribe(this::searchForCase);
-            return Mono.empty();
-        }
-
-        if (event.getOption("search").get().getOption("recent").isPresent()) {
-            Mono.just(event).subscribe(this::recentCases);
-            return Mono.empty();
-        }
-
-        return Mono.empty();
+        return Mono.error(new MalformedInputException("Malformed Input"));
     }
 
-    private void deletePunishment(ChatInputInteractionEvent event) {
+    private Mono<Void> deletePunishment(ChatInputInteractionEvent event) {
         Guild guild = event.getInteraction().getGuild().block();
 
         if (event.getOption("delete").get().getOption("id").isEmpty()) {
-            Notifier.notifyCommandUserOfError(event, "malformedInput");
-            return;
+            return Mono.error(new MalformedInputException("Malformed Input"));
         }
 
         Long id = event.getOption("delete").get().getOption("id").get().getValue().get().asLong();
@@ -223,37 +230,29 @@ public class CaseCommand implements Command {
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
         if (discordServer == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
             DatabaseLoader.closeConnectionIfOpen();
-            return;
+            return Mono.error(new NullServerException("Null Server"));
         }
 
         Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", id, discordServer.getServerId());
 
         if (punishment == null) {
-            Notifier.notifyCommandUserOfError(event, "404");
             DatabaseLoader.closeConnectionIfOpen();
-            return;
+            return Mono.error(new NotFoundException("404 Not Found"));
         }
-
-        event.deferReply().block();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(EmojiManager.getMessageDelete() + " Case #" + punishment.getPunishmentId() + " Deleted")
                 .timestamp(Instant.now())
                 .build();
 
-        Notifier.replyDeferredInteraction(event, embed);
-
         punishment.delete();
-
         DatabaseLoader.closeConnectionIfOpen();
+        return Notifier.sendResultsEmbed(event, embed);
     }
 
-    private void recentCases(ChatInputInteractionEvent event) {
+    private Mono<Void> recentCases(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
-
-        event.deferReply().block();
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
         Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
@@ -282,18 +281,16 @@ public class CaseCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        Notifier.replyDeferredInteraction(event, resultEmbed);
-
         AuditLogger.addCommandToDB(event, true);
         DatabaseLoader.closeConnectionIfOpen();
+        return Notifier.sendResultsEmbed(event, resultEmbed);
     }
 
-    private void searchForCase(ChatInputInteractionEvent event) {
+    private Mono<Void> searchForCase(ChatInputInteractionEvent event) {
 
         if (event.getOption("search").get().getOption("id").isEmpty() || event.getOption("search").get().getOption("id").get().getOption("caseid").isEmpty()) {
-            Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
-            return;
+            return Mono.error(new MalformedInputException("Malformed Input"));
         }
 
         DatabaseLoader.openConnectionIfClosed();
@@ -302,21 +299,17 @@ public class CaseCommand implements Command {
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
         if (discordServer == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
-            return;
+            return Mono.error(new NullServerException("Null Server"));
         }
 
         int serverId = discordServer.getServerId();
         Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", caseInt, serverId);
 
         if (punishment == null) {
-            Notifier.notifyCommandUserOfError(event, "404");
             AuditLogger.addCommandToDB(event, false);
-            return;
+            return Mono.error(new NotFoundException("404 Not Found"));
         }
-
-        event.deferReply().block();
 
         DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
         DiscordUser punisher = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
@@ -328,9 +321,8 @@ public class CaseCommand implements Command {
             punishmentEnderUser = null;
         }
         if (discordUser == null || punisher == null) {
-            Notifier.notifyCommandUserOfError(event, "noUser");
             AuditLogger.addCommandToDB(event, false);
-            return;
+            return Mono.error(new NoUserException("No User"));
         }
 
         Long userSnowflake = discordUser.getUserIdSnowflake();
@@ -423,9 +415,9 @@ public class CaseCommand implements Command {
         }
 
         if (punishment.getPunishingUserName() == null || punishment.getPunishingUserDiscrim() == null) {
-            moderator = "`" + punisherSnowflake + "`:" +"<@" + punisherSnowflake + ">";
+            moderator = "`" + punisherSnowflake + "`:" + "<@" + punisherSnowflake + ">";
         } else {
-            moderator = "`" + punisherSnowflake + "`:" +"<@" + punisherSnowflake + ">:`"
+            moderator = "`" + punisherSnowflake + "`:" + "<@" + punisherSnowflake + ">:`"
                     + punishment.getPunishingUserName() + "#" + punishment.getPunishingUserDiscrim() + "`";
         }
 
@@ -458,13 +450,13 @@ public class CaseCommand implements Command {
                     .build();
         }
 
-        Notifier.replyDeferredInteraction(event, embed);
-
         AuditLogger.addCommandToDB(event, true);
         DatabaseLoader.closeConnectionIfOpen();
+        return Notifier.sendResultsEmbed(event, embed);
+
     }
 
-    private void searchPunishments(ChatInputInteractionEvent event) {
+    private Mono<Void> searchPunishments(ChatInputInteractionEvent event) {
 
         long userIdSnowflake;
         if (event.getOption("search").get().getOption("user").isPresent()
@@ -474,9 +466,8 @@ public class CaseCommand implements Command {
             String snowflakeString = event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().get().asString();
 
             if (!snowflakePattern.matcher(snowflakeString).matches()) {
-                Notifier.notifyCommandUserOfError(event, "malformedInput");
                 AuditLogger.addCommandToDB(event, false);
-                return;
+                return Mono.error(new MalformedInputException("Malformed Input"));
             }
 
             userIdSnowflake = Long.parseLong(snowflakeString);
@@ -495,9 +486,8 @@ public class CaseCommand implements Command {
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
 
         if (discordUser == null) {
-            Notifier.notifyCommandUserOfError(event, "noUser");
             AuditLogger.addCommandToDB(event, false);
-            return;
+            return Mono.error(new NoUserException("No User"));
         }
 
         int userId = discordUser.getUserId();
@@ -505,12 +495,9 @@ public class CaseCommand implements Command {
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
 
         if (discordServer == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
-            return;
+            return Mono.error(new NullServerException("Null Server"));
         }
-
-        event.deferReply().block();
 
         int serverId = discordServer.getServerId();
 
@@ -533,11 +520,12 @@ public class CaseCommand implements Command {
 
         AuditLogger.addCommandToDB(event, true);
 
-        Notifier.replyDeferredInteraction(event, resultEmbed);
+
         DatabaseLoader.closeConnectionIfOpen();
+        return Notifier.sendResultsEmbed(event, resultEmbed);
     }
 
-    private void updatePunishment(ChatInputInteractionEvent event) {
+    private Mono<Void> updatePunishment(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
         if (event.getOption("update").get().getOption("id").isPresent()
@@ -552,18 +540,14 @@ public class CaseCommand implements Command {
                     && event.getOption("update").get().getOption("reason").get().getValue().isPresent()) {
                 newReason = event.getOption("update").get().getOption("reason").get().getValue().get().asString();
             } else {
-                Notifier.notifyCommandUserOfError(event, "malformedInput");
                 AuditLogger.addCommandToDB(event, false);
-                return;
+                return Mono.error(new MalformedInputException("Malformed Input"));
             }
 
             if (punishment == null) {
-                Notifier.notifyCommandUserOfError(event, "404");
                 AuditLogger.addCommandToDB(event, false);
-                return;
+                return Mono.error(new NotFoundException("404 Not Found"));
             }
-
-            event.deferReply().block();
 
             EmbedCreateSpec spec = EmbedCreateSpec.builder()
                     .title("Punishment Updated")
@@ -582,9 +566,11 @@ public class CaseCommand implements Command {
             }
             punishment.save();
             AuditLogger.addCommandToDB(event, true);
-            Notifier.replyDeferredInteraction(event, spec);
+            return Notifier.sendResultsEmbed(event, spec);
+        } else {
+            DatabaseLoader.closeConnectionIfOpen();
+            return Mono.error(new MalformedInputException("Malformed Input"));
         }
-        DatabaseLoader.closeConnectionIfOpen();
     }
 
     private String createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList, ChatInputInteractionEvent event) {
@@ -610,7 +596,7 @@ public class CaseCommand implements Command {
         rows.add("```");
 
         StringBuilder stringBuffer = new StringBuilder();
-        for (String row: rows) {
+        for (String row : rows) {
             stringBuffer.append(row);
         }
 
@@ -641,7 +627,7 @@ public class CaseCommand implements Command {
         rows.add("```");
 
         StringBuilder stringBuffer = new StringBuilder();
-        for (String row: rows) {
+        for (String row : rows) {
             stringBuffer.append(row);
         }
 
