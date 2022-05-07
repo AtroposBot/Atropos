@@ -1,6 +1,12 @@
 package dev.laarryy.atropos.commands.search;
 
 import dev.laarryy.atropos.commands.Command;
+import dev.laarryy.atropos.exceptions.MalformedInputException;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
+import dev.laarryy.atropos.exceptions.NoResultsException;
+import dev.laarryy.atropos.exceptions.NoUserException;
+import dev.laarryy.atropos.exceptions.NotFoundException;
+import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.models.guilds.CommandUse;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.users.DiscordUser;
@@ -86,67 +92,60 @@ public class AuditCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        if (!CommandChecks.commandChecks(event, request.name())) {
-            return Mono.empty();
-        }
+        return Mono.from(CommandChecks.commandChecks(event, request.name())).flatMap(aBoolean -> {
+            if (!aBoolean) {
+                return Mono.error(new NoPermissionsException("No Permission"));
+            }
 
-        if (event.getOption("user").isPresent()) {
-            Mono.just(event).subscribe(this::searchAuditByUser);
-            return Mono.empty();
-        }
+            if (event.getOption("user").isPresent()) {
+                return Mono.just(event).flatMap(this::searchAuditByUser).then();
+            }
 
-        if (event.getOption("recent").isPresent()) {
-            Mono.just(event).subscribe(this::recentAudits);
-            return Mono.empty();
-        }
+            if (event.getOption("recent").isPresent()) {
+                return Mono.just(event).flatMap(this::recentAudits).then();
+            }
 
-        if (event.getOption("id").isPresent()) {
-            Mono.just(event).subscribe(this::searchAuditById);
-        }
-
-        return Mono.empty();
+            if (event.getOption("id").isPresent()) {
+                return Mono.just(event).flatMap(this::searchAuditById).then();
+            }
+            return Mono.error(new NotFoundException("404 Not Found"));
+        });
     }
 
-    private void searchAuditById(ChatInputInteractionEvent event) {
+    private Mono<Void> searchAuditById(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
         if (event.getOption("id").get().getOption("number").isEmpty() || event.getOption("id").get().getOption("number").get().getValue().isEmpty()) {
-            Notifier.notifyCommandUserOfError(event, "malformedInput");
             AuditLogger.addCommandToDB(event, false);
             DatabaseLoader.closeConnectionIfOpen();
-            return;
+            return Mono.error(new MalformedInputException("Malformed Input"));
         }
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
         int auditInt = (int) event.getOption("id").get().getOption("number").get().getValue().get().asLong();
 
         if (discordServer == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
             DatabaseLoader.closeConnectionIfOpen();
-            return;
+            return Mono.error(new NullServerException("Null Server"));
         }
 
         int serverId = discordServer.getServerId();
         CommandUse commandUse = CommandUse.findFirst("id = ? and server_id = ?", auditInt, serverId);
 
         if (commandUse == null) {
-            Notifier.notifyCommandUserOfError(event, "404");
             AuditLogger.addCommandToDB(event, false);
             DatabaseLoader.closeConnectionIfOpen();
-            return;
+            return Mono.error(new NotFoundException("404 Not Found"));
         }
 
         DiscordUser discordUser = DiscordUser.findFirst("id = ?", commandUse.getUserId());
 
         if (discordUser == null) {
-            Notifier.notifyCommandUserOfError(event, "noUser");
             AuditLogger.addCommandToDB(event, false);
             DatabaseLoader.closeConnectionIfOpen();
-            return;
+            return Mono.error(new NoUserException("No User"));
         }
-
-        event.deferReply().block();
 
         String succeeded;
         if (commandUse.getSucceeded()) {
@@ -169,14 +168,12 @@ public class AuditCommand implements Command {
                 .addField("Result", succeeded, false)
                 .build();
 
-        Notifier.replyDeferredInteraction(event, embed);
-
         DatabaseLoader.closeConnectionIfOpen();
+
+        return Notifier.sendResultsEmbed(event, embed);
     }
 
-    private void recentAudits(ChatInputInteractionEvent event) {
-
-        event.deferReply().block();
+    private Mono<Void> recentAudits(ChatInputInteractionEvent event) {
 
         DatabaseLoader.openConnectionIfClosed();
 
@@ -195,10 +192,10 @@ public class AuditCommand implements Command {
                     .footer("Run some commands and try again!", "")
                     .timestamp(Instant.now())
                     .build();
-            Notifier.replyDeferredInteraction(event, resultEmbed);
+
             AuditLogger.addCommandToDB(event, true);
             DatabaseLoader.closeConnectionIfOpen();
-            return;
+            return Notifier.sendResultsEmbed(event, resultEmbed);
         }
 
         String results = createFormattedAuditTable(commandUseLazyList, event);
@@ -210,11 +207,13 @@ public class AuditCommand implements Command {
                 .footer("For detailed information, run /audit id <id>", "")
                 .timestamp(Instant.now())
                 .build();
-        Notifier.replyDeferredInteraction(event, resultEmbed);
+
         AuditLogger.addCommandToDB(event, true);
+        DatabaseLoader.closeConnectionIfOpen();
+        return Notifier.sendResultsEmbed(event, resultEmbed);
     }
 
-    private void searchAuditByUser(ChatInputInteractionEvent event) {
+    private Mono<Void> searchAuditByUser(ChatInputInteractionEvent event) {
 
         DatabaseLoader.openConnectionIfClosed();
         long userIdSnowflake;
@@ -223,9 +222,8 @@ public class AuditCommand implements Command {
             Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
 
             if (!snowflakePattern.matcher(snowflakeString).matches()) {
-                Notifier.notifyCommandUserOfError(event, "malformedInput");
                 AuditLogger.addCommandToDB(event, false);
-                return;
+                return Mono.error(new MalformedInputException("Malformed Input"));
             }
 
             userIdSnowflake = Long.parseLong(snowflakeString);
@@ -242,18 +240,14 @@ public class AuditCommand implements Command {
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
 
         if (discordUser == null) {
-            Notifier.notifyCommandUserOfError(event, "noUser");
             AuditLogger.addCommandToDB(event, false);
-            return;
+            return Mono.error(new NoUserException("No User"));
         }
 
         if (discordServer == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
             AuditLogger.addCommandToDB(event, false);
-            return;
+            return Mono.error(new NullServerException("Null Server"));
         }
-
-        event.deferReply().block();
 
         int userId = discordUser.getUserId();
         int serverId = discordServer.getServerId();
@@ -264,9 +258,8 @@ public class AuditCommand implements Command {
         LazyList<CommandUse> commandUsesLazyList = CommandUse.find("command_user_id = ? and server_id = ? and date > ?", userId, serverId, tenDaysAgoStamp).limit(30).orderBy("id desc");
 
         if (commandUsesLazyList.isEmpty()) {
-            Notifier.notifyCommandUserOfError(event, "noResults");
             AuditLogger.addCommandToDB(event, true);
-            return;
+            return Mono.error(new NoResultsException("No Results"));
         }
 
         String results = createFormattedAuditTable(commandUsesLazyList, event);
@@ -280,8 +273,10 @@ public class AuditCommand implements Command {
                 .footer("For detailed information, run /audit id <id>", "")
                 .timestamp(Instant.now())
                 .build();
-        Notifier.replyDeferredInteraction(event, resultEmbed);
+
         AuditLogger.addCommandToDB(event, true);
+        DatabaseLoader.closeConnectionIfOpen();
+        return Notifier.sendResultsEmbed(event, resultEmbed);
     }
 
     private String createFormattedAuditTable(LazyList<CommandUse> commandUseLazyList, ChatInputInteractionEvent event) {
