@@ -20,6 +20,7 @@ import dev.laarryy.atropos.exceptions.NoUserException;
 import dev.laarryy.atropos.exceptions.NotFoundException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.exceptions.TooManyEntriesException;
+import dev.laarryy.atropos.exceptions.TryAgainException;
 import dev.laarryy.atropos.exceptions.UserNotMutedExcception;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -229,7 +230,16 @@ public class ErrorHandler {
             return Mono.from(
                             event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
-                                    .addEmbed(userNotMutedEmbed().asRequest())
+                                    .addEmbed(cannotSendModmail().asRequest())
+                                    .build()))
+                    .then();
+        }
+
+        if (error instanceof TryAgainException) {
+            return Mono.from(
+                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+                                    .builder()
+                                    .addEmbed(tryAgainEmbed().asRequest())
                                     .build()))
                     .then();
         }
@@ -510,6 +520,16 @@ public class ErrorHandler {
                 .description("This guild does not yet have a ModMail channel set up - please contact its staff directly.")
                 .color(Color.JAZZBERRY_JAM)
                 .footer("And maybe mention this to them, eh?", "")
+                .build();
+    }
+
+    private static EmbedCreateSpec tryAgainEmbed() {
+        return EmbedCreateSpec.builder()
+                .title("Please Try Again")
+                .description("This command caused an internal update that required short-circuiting the command. " +
+                        "Please try again.")
+                .color(Color.JAZZBERRY_JAM)
+                .footer("If this error persists, please contact the developer", "")
                 .build();
     }
 

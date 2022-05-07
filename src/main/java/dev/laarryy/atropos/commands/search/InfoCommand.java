@@ -2,6 +2,12 @@ package dev.laarryy.atropos.commands.search;
 
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.EmojiManager;
+import dev.laarryy.atropos.exceptions.MalformedInputException;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
+import dev.laarryy.atropos.exceptions.NoUserException;
+import dev.laarryy.atropos.exceptions.NotFoundException;
+import dev.laarryy.atropos.exceptions.NullServerException;
+import dev.laarryy.atropos.exceptions.TryAgainException;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.models.joins.ServerUser;
@@ -79,29 +85,28 @@ public class InfoCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        if (!CommandChecks.commandChecks(event, request.name())) {
-            return Mono.empty();
-        }
+        return Mono.from(CommandChecks.commandChecks(event, request.name())).flatMap(aBoolean -> {
+            if (!aBoolean) {
+                return Mono.error(new NoPermissionsException("No Permission"));
+            }
 
-        if (event.getOption("server").isPresent()) {
-            sendServerInfo(event);
-            return Mono.empty();
-        }
+            if (event.getOption("server").isPresent()) {
+                return sendServerInfo(event);
+            }
 
-        if (event.getOption("user").isPresent()) {
-            sendUserInfo(event);
-            return Mono.empty();
-        }
+            if (event.getOption("user").isPresent()) {
+                return sendUserInfo(event);
+            }
 
-        if (event.getOption("bot").isPresent()) {
-            sendBotInfo(event);
-            return Mono.empty();
-        }
+            if (event.getOption("bot").isPresent()) {
+                return sendBotInfo(event);
+            }
 
-        return Mono.empty();
+            return Mono.error(new MalformedInputException("Malformed Input"));
+        });
     }
 
-    private void sendBotInfo(ChatInputInteractionEvent event) {
+    private Mono<Void> sendBotInfo(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
         Guild guild = event.getInteraction().getGuild().block();
         Member selfMember = guild.getSelfMember().block();
@@ -109,15 +114,12 @@ public class InfoCommand implements Command {
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
 
         if (discordUser == null) {
-            Notifier.notifyCommandUserOfError(event, "noUser");
-            return;
+            return Mono.error(new NoUserException("No User"));
         }
 
         if (discordServer == null) {
-            Notifier.notifyCommandUserOfError(event, "nullServer");
+            return Mono.error(new NullServerException("Null Server"));
         }
-
-        event.deferReply().block();
 
         ServerUser serverUser = ServerUser.findFirst("user_id = ? and server_id = ?", discordUser.getUserId(), discordServer.getServerId());
 
@@ -138,8 +140,8 @@ public class InfoCommand implements Command {
 
         String botInfo = EmojiManager.getDeveloperBadge() + " **My Information**\n" +
                 "First Joined: " + TimestampMaker.getTimestampFromEpochSecond(
-                        Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(),
-                        TimestampMaker.TimestampType.LONG_DATETIME) + "\n" +
+                Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(),
+                TimestampMaker.TimestampType.LONG_DATETIME) + "\n" +
                 "Infractions Handled Here: `" + punishmentsSize + "`\n\n" +
                 "**[Usage Guide](https://atropos.laarryy.dev)**\n" +
                 "**[Discord Server](https://discord.gg/zaUMT7rBsR)**";
@@ -153,16 +155,14 @@ public class InfoCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        Notifier.replyDeferredInteraction(event, embed);
-
         DatabaseLoader.closeConnectionIfOpen();
+        return Notifier.sendResultsEmbed(event, embed);
     }
 
-    private void sendUserInfo(ChatInputInteractionEvent event) {
+    private Mono<Void> sendUserInfo(ChatInputInteractionEvent event) {
 
         if (event.getOption("user").get().getOption("snowflake").isEmpty() && event.getOption("user").get().getOption("mention").isEmpty()) {
-            Notifier.notifyCommandUserOfError(event, "malformedInput");
-            return;
+            return Mono.error(new MalformedInputException("Malformed Input"));
         }
 
         User user;
@@ -171,80 +171,77 @@ public class InfoCommand implements Command {
             user = event.getOption("user").get().getOption("mention").get().getValue().get().asUser().block();
             userIdSnowflake = user.getId();
         } else {
-            Notifier.notifyCommandUserOfError(event, "404");
-            return;
+            return Mono.error(new NotFoundException("404 Not Found"));
         }
 
-        event.deferReply().block();
+        return Mono.from(event.getInteraction().getGuild()).flatMap(guild ->
+                Mono.from(guild.getMemberById(userIdSnowflake)).flatMap(member -> {
+                    if (member == null) {
+                        StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
+                                .append("Profile: ").append(user.getMention()).append("\n")
+                                .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
+                        field1Content.append("Created: ")
+                                .append(TimestampMaker.getTimestampFromEpochSecond(
+                                        userIdSnowflake.getTimestamp().getEpochSecond(),
+                                        TimestampMaker.TimestampType.RELATIVE)).append("\n");
 
-        Guild guild = event.getInteraction().getGuild().block();
 
-        Member member;
-        try {
-            member = guild.getMemberById(userIdSnowflake).block();
-        } catch (Exception e) {
-            member = null;
-        }
+                        return sendUserInfoEmbed(event, user, field1Content);
+                    }
 
-        if (member == null) {
-            StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
-                    .append("Profile: ").append(user.getMention()).append("\n")
-                    .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
-            field1Content.append("Created: ")
-                    .append(TimestampMaker.getTimestampFromEpochSecond(
-                            userIdSnowflake.getTimestamp().getEpochSecond(),
-                            TimestampMaker.TimestampType.RELATIVE)).append("\n");
+                    DatabaseLoader.openConnectionIfClosed();
+                    DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake.asLong());
+                    DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
-            sendUserInfoEmbed(event, user, field1Content);
-            return;
-        }
+                    //todo: test this>
+                    if (discordUser == null) {
+                        return Mono.from(addServerToDB.addUserToDatabase(member, guild)).then(Mono.error(new TryAgainException("Try Again")));
+                    }
 
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake.asLong());
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                    discordUser.refresh();
 
-        if (discordUser == null) {
-            addServerToDB.addUserToDatabase(guild.getMemberById(userIdSnowflake).block(), guild);
-            discordUser.refresh();
-        }
 
-        ServerUser serverUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId());
+                    ServerUser serverUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId());
 
-        Member selfMember = guild.getSelfMember().block();
-        DiscordUser discordSelfUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
-        ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
-        if (serverSelfUser == null) {
-            addServerToDB.addUserToDatabase(selfMember, guild);
-        }
-        serverSelfUser.refresh();
-        Instant discordJoin = Instant.ofEpochMilli(serverUser.getDate());
-        Instant discordBotJoin = Instant.ofEpochMilli(serverSelfUser.getDate());
+                    Member selfMember = guild.getSelfMember().block();
+                    DiscordUser discordSelfUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
+                    ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
 
-        String joinTimestamp;
+                    if (serverSelfUser == null) {
+                        return addServerToDB.addUserToDatabase(selfMember, guild).then(Mono.error(new TryAgainException("Try Again")));
+                    }
 
-        if (Duration.between(discordBotJoin, discordJoin).toMinutes() < 30) {
-            joinTimestamp = "Unknown";
-        } else {
-            joinTimestamp = TimestampMaker.getTimestampFromEpochSecond(Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(), TimestampMaker.TimestampType.RELATIVE);
-        }
+                    serverSelfUser.refresh();
+                    Instant discordJoin = Instant.ofEpochMilli(serverUser.getDate());
+                    Instant discordBotJoin = Instant.ofEpochMilli(serverSelfUser.getDate());
 
-        StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
-                .append("Profile: ").append(user.getMention()).append("\n")
-                .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
-        if (member != null && !LogExecutor.getBadges(member).equals("none")) {
-            field1Content.append("Badges: ").append(LogExecutor.getBadges(member)).append("\n");
-        }
-                field1Content.append("Created: ")
-                        .append(TimestampMaker.getTimestampFromEpochSecond(
-                                userIdSnowflake.getTimestamp().getEpochSecond(),
-                                TimestampMaker.TimestampType.RELATIVE)).append("\n")
-                        .append("First Joined: ").append(joinTimestamp);
+                    String joinTimestamp;
 
-        sendUserInfoEmbed(event, user, field1Content);
-        DatabaseLoader.closeConnectionIfOpen();
+                    if (Duration.between(discordBotJoin, discordJoin).toMinutes() < 30) {
+                        joinTimestamp = "Unknown";
+                    } else {
+                        joinTimestamp = TimestampMaker.getTimestampFromEpochSecond(Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(), TimestampMaker.TimestampType.RELATIVE);
+                    }
+
+                    StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
+                            .append("Profile: ").append(user.getMention()).append("\n")
+                            .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
+                    if (!LogExecutor.getBadges(member).get().equals("none")) {
+                        field1Content.append("Badges: ").append(LogExecutor.getBadges(member)).append("\n");
+                    }
+                    field1Content.append("Created: ")
+                            .append(TimestampMaker.getTimestampFromEpochSecond(
+                                    userIdSnowflake.getTimestamp().getEpochSecond(),
+                                    TimestampMaker.TimestampType.RELATIVE)).append("\n")
+                            .append("First Joined: ").append(joinTimestamp);
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return sendUserInfoEmbed(event, user, field1Content);
+                }));
+
+
     }
 
-    private void sendUserInfoEmbed(ChatInputInteractionEvent event, User user, StringBuilder field1Content) {
+    private Mono<Void> sendUserInfoEmbed(ChatInputInteractionEvent event, User user, StringBuilder field1Content) {
 
         String username = user.getUsername() + "#" + user.getDiscriminator();
         String eventUser = event.getInteraction().getUser().getUsername() + "#" + event.getInteraction().getUser().getDiscriminator();
@@ -256,15 +253,14 @@ public class InfoCommand implements Command {
                 .color(Color.ENDEAVOUR)
                 .description(field1Content.toString())
                 .thumbnail(avatarUrl)
-                .footer("Requested by "+ eventUser, event.getInteraction().getUser().getAvatarUrl())
+                .footer("Requested by " + eventUser, event.getInteraction().getUser().getAvatarUrl())
                 .timestamp(Instant.now())
                 .build();
 
-        Notifier.replyDeferredInteraction(event, embed);
-
+        return Notifier.sendResultsEmbed(event, embed);
     }
 
-    private void sendServerInfo(ChatInputInteractionEvent event) {
+    private Mono<Void> sendServerInfo(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
         event.deferReply().block();
@@ -402,9 +398,7 @@ public class InfoCommand implements Command {
                 .addField("\u200B", field3Content, false)
                 .footer("Requested by " + username, requester.getAvatarUrl())
                 .build();
-
-        Notifier.replyDeferredInteraction(event, embedCreateSpec);
-
         DatabaseLoader.closeConnectionIfOpen();
+        return Notifier.sendResultsEmbed(event, embedCreateSpec);
     }
 }
