@@ -1,5 +1,6 @@
 package dev.laarryy.atropos.commands.settings;
 
+import dev.laarryy.atropos.exceptions.MalformedInputException;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
@@ -22,44 +23,43 @@ public class ModMailSettings {
     private final AddServerToDB addServerToDB = new AddServerToDB();
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        event.deferReply().block();
 
-        Guild guild = event.getInteraction().getGuild().block();
-        TextChannel messageChannel = event.getInteraction().getChannel().ofType(TextChannel.class).block();
+        return event.getInteraction().getGuild().flatMap(guild -> {
+            return event.getInteraction().getChannel().ofType(TextChannel.class).flatMap(messageChannel -> {
+                DatabaseLoader.openConnectionIfClosed();
+                DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+                if (event.getOption("modmail").get().getOption("set").isPresent()) {
+                    discordServerProperties.setModMailChannelSnowflake(messageChannel.getId().asLong());
+                    discordServerProperties.save();
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("Success")
+                            .color(Color.SEA_GREEN)
+                            .description("Set ModMail destination channel!")
+                            .timestamp(Instant.now())
+                            .build();
 
-        if (event.getOption("modmail").get().getOption("set").isPresent()) {
-            discordServerProperties.setModMailChannelSnowflake(messageChannel.getId().asLong());
-            discordServerProperties.save();
-            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                    .title("Success")
-                    .color(Color.SEA_GREEN)
-                    .description("Set ModMail destination channel!")
-                    .timestamp(Instant.now())
-                    .build();
-            Notifier.replyDeferredInteraction(event, embed);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        }
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return Notifier.sendResultsEmbed(event, embed);
+                }
 
-        if (event.getOption("modmail").get().getOption("unset").isPresent()) {
-            discordServerProperties.setModMailChannelSnowflake(null);
-            discordServerProperties.save();
-            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                    .title("Success")
-                    .color(Color.SEA_GREEN)
-                    .description("Unset ModMail destination channel!")
-                    .timestamp(Instant.now())
-                    .build();
-            Notifier.replyDeferredInteraction(event, embed);
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        }
+                if (event.getOption("modmail").get().getOption("unset").isPresent()) {
+                    discordServerProperties.setModMailChannelSnowflake(null);
+                    discordServerProperties.save();
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("Success")
+                            .color(Color.SEA_GREEN)
+                            .description("Unset ModMail destination channel!")
+                            .timestamp(Instant.now())
+                            .build();
 
-        Notifier.notifyCommandUserOfError(event, "malformedInput");
-        DatabaseLoader.closeConnectionIfOpen();
-        return Mono.empty();
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return Notifier.sendResultsEmbed(event, embed);
+                }
+
+                DatabaseLoader.closeConnectionIfOpen();
+                return Mono.error(new MalformedInputException("Malformed Input"));
+            });
+        });
     }
 }
