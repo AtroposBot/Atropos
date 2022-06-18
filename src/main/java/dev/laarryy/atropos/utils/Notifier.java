@@ -34,31 +34,31 @@ public final class Notifier {
 
         return Mono.from(event.getInteractionResponse().deleteInitialResponse())
                 .thenReturn(event.getInteractionResponse().createFollowupMessage(
-                                MultipartRequest.ofRequest(WebhookExecuteRequest
-                                        .builder()
-                                        .addEmbed(embed.asRequest())
-                                        .build())))
+                        MultipartRequest.ofRequest(WebhookExecuteRequest
+                                .builder()
+                                .addEmbed(embed.asRequest())
+                                .build())))
                 .then();
     }
 
-    private static void replyDeferredInteraction(ButtonInteractionEvent event, EmbedCreateSpec embed) {
-        event.getInteractionResponse().editInitialResponse(
+    private static Mono<Void> replyDeferredInteraction(ButtonInteractionEvent event, EmbedCreateSpec embed) {
+        return event.getInteractionResponse().editInitialResponse(
                 WebhookMessageEditRequest
                         .builder()
                         .addEmbed(embed.asRequest())
-                        .build()).subscribe();
+                        .build()).then();
     }
 
-    public static void notifyPunisherForcebanComplete(ChatInputInteractionEvent event, String idInput) {
-        replyDeferredInteraction(event, forceBanCompleteEmbed(idInput));
+    public static Mono<Void> notifyPunisherForcebanComplete(ChatInputInteractionEvent event, String idInput) {
+        return replyDeferredInteraction(event, forceBanCompleteEmbed(idInput)).then();
     }
 
-    public static void notifyPunisher(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
+    public static Mono<Void> notifyPunisher(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
 
         if (punishment.getPunishmentType().equals("note")) {
-            event.deferReply().withEphemeral(true).block();
+            return event.deferReply().withEphemeral(true);
         } else {
-            event.deferReply().block();
+            return event.deferReply();
         }
 
         String punishmentEnd;
@@ -75,15 +75,25 @@ public final class Notifier {
         String caseId = String.valueOf(punishment.getPunishmentId());
 
         switch (punishment.getPunishmentType()) {
-            case "warn" -> replyDeferredInteraction(event, warnEmbed(userName, punishmentReason, caseId));
-            case "kick" -> replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
-            case "ban" -> replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
-            case "mute" -> replyDeferredInteraction(event, muteEmbed(userName, punishmentEnd, punishmentReason, caseId));
-            case "note" -> replyDeferredInteraction(event, noteEmbed(userName, punishmentReason, caseId));
+            case "warn" -> {
+                return replyDeferredInteraction(event, warnEmbed(userName, punishmentReason, caseId));
+            }
+            case "kick" -> {
+                return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
+            }
+            case "ban" -> {
+                return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
+            }
+            case "mute" -> {
+                return replyDeferredInteraction(event, muteEmbed(userName, punishmentEnd, punishmentReason, caseId));
+            }
+            case "note" -> {
+                return replyDeferredInteraction(event, noteEmbed(userName, punishmentReason, caseId));
+            }
         }
     }
 
-    public static void notifyPunisherOfBan(ButtonInteractionEvent event, Punishment punishment, String punishmentReason) {
+    public static Mono<Void> notifyPunisherOfBan(ButtonInteractionEvent event, Punishment punishment, String punishmentReason) {
 
         String punishmentEnd;
         DatabaseLoader.openConnectionIfClosed();
@@ -99,12 +109,13 @@ public final class Notifier {
         }
 
         String caseId = String.valueOf(punishment.getPunishmentId());
-
-        replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
         DatabaseLoader.closeConnectionIfOpen();
+
+        return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
+
     }
 
-    public static void notifyPunisherOfKick(ButtonInteractionEvent event, Punishment punishment, String punishmentReason) {
+    public static Mono<Void> notifyPunisherOfKick(ButtonInteractionEvent event, Punishment punishment, String punishmentReason) {
 
         String punishmentEnd;
         DatabaseLoader.openConnectionIfClosed();
@@ -120,17 +131,17 @@ public final class Notifier {
         }
 
         String caseId = String.valueOf(punishment.getPunishmentId());
-
-        replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
         DatabaseLoader.closeConnectionIfOpen();
+
+        return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
     }
 
-    public static void notifyPunished(Guild guild, Punishment punishment, String punishmentReason) {
+    public static Mono<Void> notifyPunished(Guild guild, Punishment punishment, String punishmentReason) {
         DatabaseLoader.openConnectionIfClosed();
 
         if (punishment.getPunishmentType().equals("note")) {
             // Never notify of cases
-            return;
+            return Mono.empty();
         }
 
         DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
@@ -160,27 +171,24 @@ public final class Notifier {
                 .timestamp(Instant.now())
                 .build();
 
-        try {
-            PrivateChannel privateChannel = punishedUser.getPrivateChannel().block();
-            privateChannel.createMessage(embed).block();
-        } catch (Exception ignored) {
-        }
-
         punishment.setDMed(true);
         punishment.save();
         DatabaseLoader.closeConnectionIfOpen();
+
+        return punishedUser.getPrivateChannel().flatMap(privateChannel -> privateChannel.createMessage(embed).then());
+
     }
 
-    public static void notifyModOfUnban(ChatInputInteractionEvent event, String reason, long userId) {
-        replyDeferredInteraction(event, unbanEmbed(userId, reason));
+    public static Mono<Void> notifyModOfUnban(ChatInputInteractionEvent event, String reason, long userId) {
+        return replyDeferredInteraction(event, unbanEmbed(userId, reason));
     }
 
-    public static void notifyModOfUnmute(ChatInputInteractionEvent event, String username, String reason) {
-        replyDeferredInteraction(event, unmuteEmbed(username, reason));
+    public static Mono<Void> notifyModOfUnmute(ChatInputInteractionEvent event, String username, String reason) {
+        return replyDeferredInteraction(event, unmuteEmbed(username, reason));
     }
 
-    public static void notifyModOfUnmute(ButtonInteractionEvent event, String username, String reason) {
-        replyDeferredInteraction(event, unmuteEmbed(username, reason));
+    public static Mono<Void> notifyModOfUnmute(ButtonInteractionEvent event, String username, String reason) {
+        return replyDeferredInteraction(event, unmuteEmbed(username, reason));
     }
 
     private static EmbedCreateSpec warnEmbed(String userName, String reason, String caseId) {

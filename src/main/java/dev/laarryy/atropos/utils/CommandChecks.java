@@ -31,7 +31,7 @@ public class CommandChecks {
                 });
     }
 
-    public static Mono<Boolean> commandChecks(ButtonInteractionEvent event, String requestName) throws NullServerException, NoPermissionsException {
+    public static Mono<Boolean> commandChecks(ButtonInteractionEvent event, String requestName) {
 
         return Mono.from(event.getInteraction().getGuild())
                 .flatMap(guild -> {
