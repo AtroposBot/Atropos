@@ -29,66 +29,54 @@ public class MemberJoinListener {
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
-        if (event.getGuild().block() == null) {
-            return Mono.empty();
-        }
-        Guild guild = event.getGuild().block();
 
-        DiscordServerProperties discordServerProperties = cache.get(guild.getId().asLong());
-
-        if (discordServerProperties.getStopJoins()) {
-            Member member = event.getMember();
-            try {
-                PrivateChannel privateChannel = member.getPrivateChannel().block();
-                privateChannel.createMessage("You have been kicked from " + guild.getName() + " at this time, as a part of anti-raid measures. If you aren't a spam-bot, please try again later!").block();
-            } catch (Exception ignored) {
+        return event.getGuild().flatMap(guild -> {
+            if (guild == null) {
+                return Mono.empty();
             }
 
-            punishmentManager.discordKickUser(guild, member.getId().asLong(), "Automatically kicked as part of anti-raid measures");
-            return Mono.empty();
-        }
+            DiscordServerProperties discordServerProperties = cache.get(guild.getId().asLong());
 
-        addServerToDB.addUserToDatabase(event.getMember(), event.getGuild().block());
+            if (discordServerProperties.getStopJoins()) {
+                Member member = event.getMember();
 
-        // Apply evaded mutes
+                return member.getPrivateChannel().flatMap(privateChannel -> privateChannel.createMessage("You have been kicked from " + guild.getName() + " at this time, as a part of anti-raid measures. If you aren't a spam-bot, please try again later!")
+                        .onErrorResume(e -> Mono.empty())
+                        .then(punishmentManager.discordKickUser(guild, member.getId().asLong(), "Automatically kicked as part of anti-raid measures")));
+            }
 
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getMember().getId().asLong());
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+            return addServerToDB.addUserToDatabase(event.getMember(), guild).flatMap(unused -> {
+                // Apply evaded mutes
 
-        if (user != null) {
-            LazyList<Punishment> activePunishments = Punishment.find("user_id_punished = ? and end_date_passed = ? and server_id = ?",
-                    user.getUserId(), false, discordServer.getServerId());
-            if (!activePunishments.isEmpty()) {
-                for (Punishment activePunishment : activePunishments) {
-                    if (activePunishment != null) {
-                        logger.info("Punishment Evader!");
-                        logger.info(activePunishment.getPunishmentType());
-                        if (activePunishment.getPunishmentType().equals("mute")) {
-                            logger.info("Mute Evader!");
-                            punishmentManager.discordMuteUser(event.getGuild().block(), event.getMember().getId().asLong());
-                        } else {
-                            DatabaseLoader.openConnectionIfClosed();
-                            activePunishment.setEnded(true);
-                            activePunishment.save();
+                DatabaseLoader.openConnectionIfClosed();
+                DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getMember().getId().asLong());
+                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+
+                if (user != null) {
+                    LazyList<Punishment> activePunishments = Punishment.find("user_id_punished = ? and end_date_passed = ? and server_id = ?",
+                            user.getUserId(), false, discordServer.getServerId());
+                    if (!activePunishments.isEmpty()) {
+                        for (Punishment activePunishment : activePunishments) {
+                            if (activePunishment != null) {
+                                logger.info("Punishment Evader!");
+                                logger.info(activePunishment.getPunishmentType());
+                                if (activePunishment.getPunishmentType().equals("mute")) {
+                                    logger.info("Mute Evader!");
+                                    return punishmentManager.discordMuteUser(guild, event.getMember().getId().asLong());
+                                } else {
+                                    DatabaseLoader.openConnectionIfClosed();
+                                    activePunishment.setEnded(true);
+                                    activePunishment.save();
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        // Add Early Adopter Role - quick n dirty because I'll remove at release
+                DatabaseLoader.closeConnectionIfOpen();
 
-        if (event.getGuild().block().getId().asString().equals("931389256180580433")) {
-            Member member = event.getMember();
-            for (Guild botGuild : event.getClient().getGuilds().collectList().block()) {
-                if (botGuild.getOwner().block().equals(member)) {
-                    member.addRole(Snowflake.of("931389913503506502")).block();
-                }
-            }
-        }
-        DatabaseLoader.closeConnectionIfOpen();
-
-        return Mono.empty();
+                return Mono.empty();
+            });
+        });
     }
 }

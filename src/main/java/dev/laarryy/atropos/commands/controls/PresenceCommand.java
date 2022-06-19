@@ -130,9 +130,7 @@ public class PresenceCommand implements Command {
                     };
 
 
-                    client.updatePresence(ClientPresence.of(status, clientActivity)).block();
-
-                    return event.reply("Done.");
+                    return client.updatePresence(ClientPresence.of(status, clientActivity)).then(event.reply("Done"));
                 }).then();
     }
 }

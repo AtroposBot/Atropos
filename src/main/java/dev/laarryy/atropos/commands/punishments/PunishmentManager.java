@@ -56,15 +56,17 @@ public class PunishmentManager {
 
     public Mono<Void> doPunishment(ApplicationCommandRequest request, ChatInputInteractionEvent event) {
 
-        // Make sure this is done in a guild or else stop right here.
 
-        if (event.getInteraction().getGuild().block() == null || event.getInteraction().getMember().isEmpty()) {
-            event.reply("This must be done in a guild.").withEphemeral(true).subscribe();
-            return Mono.empty();
-        }
 
         return Mono.from(event.getInteraction().getGuild())
                 .flatMap(guild -> {
+
+                    // Make sure this is done in a guild or else stop right here.
+
+                    if (guild == null || event.getInteraction().getMember().isEmpty()) {
+                        return event.reply("This must be done in a guild.").withEphemeral(true);
+                    }
+
                     Member member = event.getInteraction().getMember().get();
                     User user = event.getInteraction().getUser();
                     Long punishingUserIdSnowflake = member.getId().asLong();

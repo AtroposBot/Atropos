@@ -2,6 +2,8 @@ package dev.laarryy.atropos.managers;
 
 import dev.laarryy.atropos.listeners.EventListener;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
+import dev.laarryy.atropos.storage.DatabaseLoader;
+import dev.laarryy.atropos.utils.ErrorHandler;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.Event;
 import org.apache.logging.log4j.LogManager;
@@ -20,7 +22,7 @@ import java.util.Set;
 public class ListenerManager {
     private final Logger logger = LogManager.getLogger(this);
 
-    public Mono<Void> registerListeners(GatewayDiscordClient client) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    public Mono<Void> registerListeners(GatewayDiscordClient client) {
         // Register event listeners
         Reflections reflections2 = new Reflections("dev.laarryy.atropos.listeners",
                 new MethodAnnotationsScanner());
@@ -53,11 +55,9 @@ public class ListenerManager {
                                         .flatMap(event -> {
                                 try {
                                     Mono<Void> voidMono = Mono.from((Mono<Void>) listenerMethod.invoke(listener, event))
-                                            .onErrorResume(e -> {
-                                                logger.error(e.getMessage());
-                                                logger.error("Error in Listener: ", e);
-                                                return Mono.empty();
-                                            });
+                                            .doFirst(DatabaseLoader::openConnectionIfClosed)
+                                            .doFinally(signalType -> DatabaseLoader.closeConnectionIfOpen())
+                                            .onErrorResume(e -> ErrorHandler.handleListenerError(e, event));
                                     //.log()
                                     //.doFinally(signalType -> logger.info("Done Listener"));
                                     return voidMono;

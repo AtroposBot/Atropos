@@ -9,34 +9,33 @@ public class MessageUpdateListener {
     @EventListener
     public Mono<Void> on(MessageUpdateEvent event) {
 
-        if (event.getGuild().block() == null) {
-            return Mono.empty();
-        }
+        return event.getGuild().flatMap(guild -> {
+            if (guild == null || event.getGuildId().isEmpty()) {
+                return Mono.empty();
+            }
 
-        try {
-            event.getMessage().block();
-        } catch (Exception e) {
-            return Mono.empty();
-        }
+            return event.getMessage().flatMap(message -> {
 
-        if (event.getMessage().block().getAuthor().isPresent() && event.getMessage().block().getAuthor().get().isBot()) {
-            return Mono.empty();
-        }
+                if (message.getAuthor().isPresent() && message.getAuthor().get().isBot()) {
+                    return Mono.empty();
+                }
 
-        DatabaseLoader.openConnectionIfClosed();
-        long guildId = event.getGuildId().get().asLong();
-        long snowflakeId = event.getMessageId().asLong();
+                DatabaseLoader.openConnectionIfClosed();
+                long guildId = event.getGuildId().get().asLong();
+                long snowflakeId = event.getMessageId().asLong();
 
-        ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guildId, snowflakeId);
+                ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guildId, snowflakeId);
 
-        if (serverMessage == null) {
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        } else {
-            serverMessage.setContent(event.getMessage().block().getContent());
-            serverMessage.save();
-        }
-        DatabaseLoader.closeConnectionIfOpen();
-        return Mono.empty();
+                if (serverMessage == null) {
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return Mono.empty();
+                } else {
+                    serverMessage.setContent(message.getContent());
+                    serverMessage.save();
+                }
+                DatabaseLoader.closeConnectionIfOpen();
+                return Mono.empty();
+            });
+        });
     }
 }

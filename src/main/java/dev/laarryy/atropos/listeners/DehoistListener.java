@@ -24,65 +24,78 @@ public class DehoistListener {
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
-        if (event.getGuild().block() == null) {
+
+        return event.getGuild().flatMap(guild -> {
+            if (guild == null) {
+                return Mono.empty();
+            }
+
+            if (event.getMember().isBot()) {
+                return Mono.empty();
+            }
+
+            DiscordServerProperties properties = cache.get(event.getGuildId().asLong());
+
+            if (properties.getDehoist()) {
+                return dehoist(event.getMember());
+            }
+
             return Mono.empty();
-        }
-
-        if (event.getMember().isBot()) {
-            return Mono.empty();
-        }
-
-        DiscordServerProperties properties = cache.get(event.getGuildId().asLong());
-
-        if (properties.getDehoist()) {
-            dehoist(event.getMember());
-        }
-
-        return Mono.empty();
+        });
     }
 
     @EventListener
     public Mono<Void> on(MemberUpdateEvent event) {
-        if (event.getGuild().onErrorReturn(null).block() == null) {
-            return Mono.empty();
-        }
 
-        if (event.getMember().block().isBot()) {
-            return Mono.empty();
-        }
+        return event.getGuild().flatMap(guild -> {
+            if (guild == null) {
+                return Mono.empty();
+            }
 
-        DiscordServerProperties properties = cache.get(event.getGuildId().asLong());
+            return event.getMember().flatMap(member -> {
+                if (member.isBot()) {
+                    return Mono.empty();
+                }
 
-        if (properties.getDehoist()) {
-            dehoist(event.getMember().block());
-        }
-        return Mono.empty();
+                DiscordServerProperties properties = cache.get(event.getGuildId().asLong());
+
+                if (properties.getDehoist()) {
+                    return dehoist(member);
+                }
+                return Mono.empty();
+            });
+        });
     }
 
     @EventListener
     public Mono<Void> on(PresenceUpdateEvent event) {
-        if (event.getGuild().block() == null) {
-            return Mono.empty();
-        }
 
-        if (event.getMember().block().isBot()) {
-            return Mono.empty();
-        }
+        return event.getGuild().flatMap(guild -> {
+            if (guild == null) {
+                return Mono.empty();
+            }
 
-        DiscordServerProperties properties = cache.get(event.getGuildId().asLong());
+            return event.getMember().flatMap(member -> {
+                if (member.isBot()) {
+                    return Mono.empty();
+                }
 
-        if (properties.getDehoist()) {
-            dehoist(event.getMember().block());
-        }
-        return Mono.empty();
+                DiscordServerProperties properties = cache.get(event.getGuildId().asLong());
+
+                if (properties.getDehoist()) {
+                    return dehoist(member);
+                }
+                return Mono.empty();
+            });
+        });
     }
 
-    private void dehoist(Member member) {
+    private Mono<Void> dehoist(Member member) {
         String newName = checkAndDehoist(member.getDisplayName());
         if (newName.equals(member.getDisplayName())) {
-            return;
+            return Mono.empty();
         } else {
-            member.edit(GuildMemberEditSpec.builder().nickname(newName).build()).subscribe();
+            return member.edit(GuildMemberEditSpec.builder().nickname(newName).build()).then();
         }
     }
 
@@ -91,7 +104,6 @@ public class DehoistListener {
         while (hoistChars.contains(newName.substring(0,1))) {
             newName = name.substring(1);
         }
-
         return newName;
     }
 }

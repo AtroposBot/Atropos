@@ -49,6 +49,14 @@ public final class Notifier {
                         .build()).then();
     }
 
+    private static Mono<Void> replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
+        return event.getInteractionResponse().editInitialResponse(
+                WebhookMessageEditRequest
+                        .builder()
+                        .addEmbed(embed.asRequest())
+                        .build()).then();
+    }
+
     public static Mono<Void> notifyPunisherForcebanComplete(ChatInputInteractionEvent event, String idInput) {
         return replyDeferredInteraction(event, forceBanCompleteEmbed(idInput)).then();
     }

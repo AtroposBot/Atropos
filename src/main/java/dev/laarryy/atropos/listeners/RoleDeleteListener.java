@@ -19,36 +19,39 @@ public class RoleDeleteListener {
 
     @EventListener
     public Mono<Void> on(RoleDeleteEvent event) {
-        if (event.getGuild().block() == null) {
-            return Mono.empty();
-        }
 
-        DatabaseLoader.openConnectionIfClosed();
-        Guild guild = event.getGuild().block();
-        Long roleId = event.getRoleId().asLong();
+        return event.getGuild().flatMap(guild -> {
+            if (guild == null) {
+                return Mono.empty();
+            }
 
-        DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
+            DatabaseLoader.openConnectionIfClosed();
+            Long roleId = event.getRoleId().asLong();
 
-        if (serverProperties == null) {
+            DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
+
+            if (serverProperties == null) {
+                DatabaseLoader.closeConnectionIfOpen();
+                return Mono.empty();
+            }
+
+            Long mutedRole = serverProperties.getMutedRoleSnowflake();
+            if (mutedRole == null || mutedRole == 0) {
+                DatabaseLoader.closeConnectionIfOpen();
+                return Mono.empty();
+            }
+
+            if (mutedRole.equals(roleId)) {
+                serverProperties.setMutedRoleSnowflake(null);
+                serverProperties.save();
+                serverProperties.refresh();
+                cache.invalidate(guild.getId().asLong());
+                LoggingListener listener = LoggingListenerManager.getManager().getLoggingListener();
+                return listener.onMutedRoleDelete(guild, roleId);
+            }
+
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
-        }
-
-        Long mutedRole = serverProperties.getMutedRoleSnowflake();
-        if (mutedRole == null || mutedRole == 0) {
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
-        }
-
-        if (mutedRole.equals(roleId)) {
-            serverProperties.setMutedRoleSnowflake(null);
-            serverProperties.save();
-            serverProperties.refresh();
-            cache.invalidate(guild.getId().asLong());
-            LoggingListener listener = LoggingListenerManager.getManager().getLoggingListener();
-            listener.onMutedRoleDelete(guild, roleId);
-        }
-        DatabaseLoader.closeConnectionIfOpen();
-        return Mono.empty();
+        });
     }
 }

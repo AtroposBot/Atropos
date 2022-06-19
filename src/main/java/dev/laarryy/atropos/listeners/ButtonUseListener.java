@@ -5,6 +5,7 @@ import dev.laarryy.atropos.commands.punishments.PunishmentManager;
 import dev.laarryy.atropos.exceptions.NoMutedRoleException;
 import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NoUserException;
+import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.exceptions.UserNotMutedExcception;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
 import dev.laarryy.atropos.managers.LoggingListenerManager;
@@ -57,7 +58,7 @@ public class ButtonUseListener {
 
             Member member = event.getInteraction().getMember().get();
             if (guild == null) {
-                return Mono.empty();
+                return Mono.error(new NullServerException("No Server"));
             }
 
             Member mod = event.getInteraction().getMember().get();
@@ -113,7 +114,7 @@ public class ButtonUseListener {
 
                         if (!theBool) {
                             AuditLogger.addCommandToDB(event, auditString, false);
-                            return Mono.error(new NoPermissionsException("No Permissions")).then();
+                            return Mono.error(new NoPermissionsException("No Permission")).then();
                         }
 
                         return event.deferReply().flatMap(unused -> {

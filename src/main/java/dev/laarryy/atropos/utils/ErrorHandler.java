@@ -22,11 +22,17 @@ import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.exceptions.TooManyEntriesException;
 import dev.laarryy.atropos.exceptions.TryAgainException;
 import dev.laarryy.atropos.exceptions.UserNotMutedExcception;
+import discord4j.core.event.domain.Event;
+import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.InteractionFollowupCreateSpec;
 import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.http.client.ClientException;
 import discord4j.rest.util.Color;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -35,6 +41,7 @@ public class ErrorHandler {
 
     //TODO: Make each error's embed a field of the Exception class and not stored here, then just get the error's EmbedCreateSpec
 
+    private static final Logger logger = LogManager.getLogger(ErrorHandler.class);
     public static Mono<Void> handleError(Throwable error, ChatInputInteractionEvent event) {
 
         if (error instanceof NoPermissionsException) {
@@ -252,6 +259,34 @@ public class ErrorHandler {
                                 .build()))
                 .then();
 
+    }
+
+    public static Mono<Void> handleListenerError(Throwable error, Event event) {
+        logger.error(error);
+
+        if (event instanceof ButtonInteractionEvent) {
+            if (error instanceof NoUserException) {
+                return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(noUserEmbed()).build()).then();
+            }
+
+            if (error instanceof NullServerException) {
+                return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(nullServerEmbed()).build()).then();
+            }
+
+            if (error instanceof NoPermissionsException) {
+                return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(noPermissionsEmbed()).build()).then();
+            }
+
+            if (error instanceof NoMutedRoleException) {
+                return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(noMutedRoleEmbed()).build()).then();
+            }
+
+            if (error instanceof UserNotMutedExcception) {
+                return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(userNotMutedEmbed()).build()).then();
+            }
+        }
+
+        return Mono.empty();
     }
 
     private static EmbedCreateSpec noBotPermissionsEmbed() {

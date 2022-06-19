@@ -21,34 +21,28 @@ public class VoiceChannelCreateListener {
     @EventListener
     public Mono<Void> on(VoiceChannelCreateEvent event) {
         DatabaseLoader.openConnectionIfClosed();
-        Guild guild = event.getChannel().getGuild().block();
-        DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
-        if (discordServerProperties != null && discordServerProperties.getMutedRoleSnowflake() != null && discordServerProperties.getMutedRoleSnowflake() != 0) {
-            guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake()))
-                        .flatMap(role -> {
-                        VoiceChannel voiceChannel = event.getChannel();
-                        Set<ExtendedPermissionOverwrite> overwrites = voiceChannel.getPermissionOverwrites();
-                        Set<PermissionOverwrite> newOverwrites = new HashSet<>(overwrites);
-                        newOverwrites.add(PermissionOverwrite.forRole(role.getId(),
-                                PermissionSet.none(),
-                                PermissionSet.of(
-                                        discord4j.rest.util.Permission.SPEAK,
-                                        discord4j.rest.util.Permission.PRIORITY_SPEAKER,
-                                        discord4j.rest.util.Permission.STREAM
-                                )));
-                        try {
-                            voiceChannel.edit(VoiceChannelEditSpec.builder()
-                                            .addAllPermissionOverwrites(newOverwrites.stream().toList())
-                                            .build())
-                                                        .subscribe();
-                        } catch (Exception ignored) {}
 
-                        return Mono.empty();
-                    })
-                    .subscribe();
+        return event.getChannel().getGuild().flatMap(guild -> {
+            DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+            if (discordServerProperties != null && discordServerProperties.getMutedRoleSnowflake() != null && discordServerProperties.getMutedRoleSnowflake() != 0) {
+                return guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake())).flatMap(role -> {
+                    VoiceChannel voiceChannel = event.getChannel();
+                    Set<ExtendedPermissionOverwrite> overwrites = voiceChannel.getPermissionOverwrites();
+                    Set<PermissionOverwrite> newOverwrites = new HashSet<>(overwrites);
+                    newOverwrites.add(
+                            PermissionOverwrite.forRole(
+                                    role.getId(),
+                                    PermissionSet.none(),
+                                    PermissionSet.of(
+                                            discord4j.rest.util.Permission.SPEAK,
+                                            discord4j.rest.util.Permission.PRIORITY_SPEAKER,
+                                            discord4j.rest.util.Permission.STREAM)));
 
-        }
-        DatabaseLoader.closeConnectionIfOpen();
-        return Mono.empty();
+                    return voiceChannel.edit(VoiceChannelEditSpec.builder().addAllPermissionOverwrites(newOverwrites.stream().toList()).build()).then();
+                });
+            }
+            DatabaseLoader.closeConnectionIfOpen();
+            return Mono.empty();
+        });
     }
 }

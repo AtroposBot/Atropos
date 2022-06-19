@@ -21,22 +21,6 @@ public class GuildJoinListener {
 
         Guild guild = event.getGuild();
 
-        addServerToDB.addServerToDatabase(guild);
-
-        // Add Early Adopter Role - quick n dirty because I'll remove at release
-
-        if (event.getGuild().getId().asString().equals("931389256180580433")) {
-            for (Member guildMember : guild.getMembers().collectList().block()) {
-                for (Guild botGuild : event.getClient().getGuilds().collectList().block()) {
-                    if (botGuild.getOwner().block().equals(guildMember) && !guildMember.getRoles().map(role -> role.getId()).collectList().block().contains(Snowflake.of("931389913503506502"))) {
-                        guildMember.addRole(Snowflake.of("931389913503506502")).block();
-                    }
-                }
-            }
-        }
-
-        DatabaseLoader.closeConnectionIfOpen();
-
-        return Mono.empty();
+        return addServerToDB.addServerToDatabase(guild);
     }
 }
