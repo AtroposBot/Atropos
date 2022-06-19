@@ -47,7 +47,8 @@ public class CommandManager {
                         Command command;
                         try {
                             command = aClass.getDeclaredConstructor().newInstance();
-                        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                                 NoSuchMethodException e) {
                             e.printStackTrace();
                             command = null;
                         }
@@ -82,7 +83,7 @@ public class CommandManager {
                                     .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
                                     .flatMap(entry -> {
                                                 logger.info("Command Received");
-                                                return Mono.from(event.deferReply().withEphemeral(true)).flatMap(unused ->
+                                                return event.deferReply().withEphemeral(true).flatMap(unused ->
                                                         entry.execute(event)
                                                                 .doFirst(DatabaseLoader::openConnectionIfClosed)
                                                                 .doFinally(signalType -> DatabaseLoader.closeConnectionIfOpen())

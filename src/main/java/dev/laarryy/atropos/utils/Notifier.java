@@ -64,11 +64,13 @@ public final class Notifier {
     public static Mono<Void> notifyPunisher(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
 
         if (punishment.getPunishmentType().equals("note")) {
-            return event.deferReply().withEphemeral(true);
+            return event.deferReply().withEphemeral(true).then(handlePunisherNotification(event, punishment, punishmentReason));
         } else {
-            return event.deferReply();
+            return event.deferReply().then(handlePunisherNotification(event, punishment, punishmentReason));
         }
+    }
 
+    public static Mono<Void> handlePunisherNotification(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
         String punishmentEnd;
         if (punishment.getEndDate() != null) {
             Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
@@ -79,26 +81,31 @@ public final class Notifier {
             punishmentEnd = "Never.";
         }
 
-        String userName = event.getOption("user").get().getValue().get().asUser().block().getUsername();
-        String caseId = String.valueOf(punishment.getPunishmentId());
+        return event.getOption("user").get().getValue().get().asUser().flatMap(user -> {
+            String userName = user.getUsername();
+            String caseId = String.valueOf(punishment.getPunishmentId());
 
-        switch (punishment.getPunishmentType()) {
-            case "warn" -> {
-                return replyDeferredInteraction(event, warnEmbed(userName, punishmentReason, caseId));
+            switch (punishment.getPunishmentType()) {
+                case "warn" -> {
+                    return replyDeferredInteraction(event, warnEmbed(userName, punishmentReason, caseId));
+                }
+                case "kick" -> {
+                    return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
+                }
+                case "ban" -> {
+                    return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
+                }
+                case "mute" -> {
+                    return replyDeferredInteraction(event, muteEmbed(userName, punishmentEnd, punishmentReason, caseId));
+                }
+                case "note" -> {
+                    return replyDeferredInteraction(event, noteEmbed(userName, punishmentReason, caseId));
+                }
+                default -> {
+                    return Mono.empty();
+                }
             }
-            case "kick" -> {
-                return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
-            }
-            case "ban" -> {
-                return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
-            }
-            case "mute" -> {
-                return replyDeferredInteraction(event, muteEmbed(userName, punishmentEnd, punishmentReason, caseId));
-            }
-            case "note" -> {
-                return replyDeferredInteraction(event, noteEmbed(userName, punishmentReason, caseId));
-            }
-        }
+        });
     }
 
     public static Mono<Void> notifyPunisherOfBan(ButtonInteractionEvent event, Punishment punishment, String punishmentReason) {

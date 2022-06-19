@@ -11,6 +11,7 @@ import discord4j.core.object.command.ApplicationCommandInteractionOption;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 
@@ -102,21 +103,21 @@ public final class AuditLogger {
         return sb.toString();
     }
 
-    private static String stringifyOptionValue(ApplicationCommandInteractionOption option) {
+    private static Mono<String> stringifyOptionValue(ApplicationCommandInteractionOption option) {
 
         if (option.getValue().isEmpty()) {
-            return "";
+            return Mono.just("");
         }
 
         return switch (option.getType().name()) {
-            case "USER" -> option.getValue().get().asUser().block().getId().asString();
-            case "STRING" -> option.getValue().get().asString();
-            case "INTEGER" -> String.valueOf(option.getValue().get().asLong());
-            case "BOOLEAN" -> String.valueOf(option.getValue().get().asBoolean());
-            case "CHANNEL" -> option.getValue().get().asChannel().block().getId().asString();
-            case "ROLE" -> option.getValue().get().asRole().block().getId().asString();
-            case "MENTIONABLE" -> option.getValue().get().toString();
-            default -> option.getName();
+            case "USER" -> option.getValue().get().asUser().flatMap(user -> Mono.just(user.getId().asString()));
+            case "STRING" -> Mono.just(option.getValue().get().asString());
+            case "INTEGER" -> Mono.just(String.valueOf(option.getValue().get().asLong()));
+            case "BOOLEAN" -> Mono.just(String.valueOf(option.getValue().get().asBoolean()));
+            case "CHANNEL" -> option.getValue().get().asChannel().flatMap(channel -> Mono.just(channel.getId().asString()));
+            case "ROLE" -> option.getValue().get().asRole().flatMap(role -> Mono.just(role.getId().asString()));
+            case "MENTIONABLE" -> Mono.just(option.getValue().get().toString());
+            default -> Mono.just(option.getName());
         };
     }
 }

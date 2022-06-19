@@ -62,8 +62,7 @@ public final class ManualPunishmentEnder {
                                 .flatMap(lo -> event.getClient().getUserById(Snowflake.of(lo)).flatMap(user ->
                                         databaseEndPunishment(lo, guild, event.getCommandName(), reason, event.getInteraction().getUser(), user)
                                                 .flatMap(guild1 -> guild.unban(Snowflake.of(lo), reason))
-                                                .doFinally(s ->
-                                                        Notifier.notifyModOfUnban(event, reason, lo))))
+                                                .then(Notifier.notifyModOfUnban(event, reason, lo))))
                                 .then();
                     }
 
@@ -73,11 +72,9 @@ public final class ManualPunishmentEnder {
                                 .filter(Objects::nonNull)
                                 .flatMap(user -> user.asMember(guild.getId()))
                                 .flatMap(member ->
-                                        Mono.just(member).flatMap(member1 -> {
-                                            return Mono.when(discordUnmute(member1, event, reason),
-                                                    databaseEndPunishment(member.getId().asLong(), guild, event.getCommandName(), reason, event.getInteraction().getUser(), member));
-
-                                                }));
+                                        Mono.just(member).flatMap(member1 ->
+                                                Mono.when(discordUnmute(member1, event, reason),
+                                                databaseEndPunishment(member.getId().asLong(), guild, event.getCommandName(), reason, event.getInteraction().getUser(), member))));
                     }
 
 
@@ -112,8 +109,7 @@ public final class ManualPunishmentEnder {
                                                 }
 
                                                 AuditLogger.addCommandToDB(event, true);
-                                                Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason);
-                                                return member.removeRole(Snowflake.of(mutedRoleId));
+                                                return member.removeRole(Snowflake.of(mutedRoleId)).then(Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason));
                                             })
                                             .thenReturn(true)
                                             .onErrorReturn(Exception.class, false);
@@ -165,10 +161,10 @@ public final class ManualPunishmentEnder {
                         punishment.refresh();
 
                         if (punishmentType.equals("mute")) {
-                            loggingListener.onUnmute(guild, reason, punishment);
+                            return loggingListener.onUnmute(guild, reason, punishment);
                         }
                         if (punishmentType.equals("ban")) {
-                            loggingListener.onUnban(guild, reason, punishment);
+                            return loggingListener.onUnban(guild, reason, punishment);
                         }
                         return Mono.empty();
                     }).then();

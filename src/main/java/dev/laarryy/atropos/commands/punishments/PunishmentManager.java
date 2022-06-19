@@ -57,7 +57,6 @@ public class PunishmentManager {
     public Mono<Void> doPunishment(ApplicationCommandRequest request, ChatInputInteractionEvent event) {
 
 
-
         return Mono.from(event.getInteraction().getGuild())
                 .flatMap(guild -> {
 
@@ -286,59 +285,10 @@ public class PunishmentManager {
 
                                         if ((event.getOption("dm").isPresent() && event.getOption("dm").get().getValue().get().asBoolean())
                                                 || ((event.getOption("dm").isEmpty()) && !event.getCommandName().equals("note"))) {
-                                            notifyPunishedUser(guild, punishment, punishmentReason);
+                                            return notifyPunishedUser(guild, punishment, punishmentReason).then(carryOutPunishment(guild, punishment, punished, messageDeleteDays, punishmentReason, event));
+                                        } else {
+                                            return carryOutPunishment(guild, punishment, punished, messageDeleteDays, punishmentReason, event);
                                         }
-
-                                        // Actually do the punishment, discord-side. Nothing to do for warnings or notes.
-
-                                        DatabaseLoader.openConnectionIfClosed();
-                                        switch (punishment.getPunishmentType()) {
-                                            case "mute" -> discordMuteUser(guild, punished.getUserIdSnowflake());
-                                            case "ban" -> discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason);
-                                            case "kick" -> discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason);
-                                        }
-
-                                        loggingListener.onPunishment(event, punishment);
-                                        Notifier.notifyPunisher(event, punishment, punishmentReason);
-                                        AuditLogger.addCommandToDB(event, true);
-                                        DatabaseLoader.closeConnectionIfOpen();
-
-                                        DiscordUser finalPunished = punished;
-                                        return Mono.just(punishment.getPunishmentType()).flatMap(typeString -> {
-                                            switch (punishment.getPunishmentType()) {
-                                                case "mute" -> {
-                                                    return Mono.from(discordMuteUser(guild, finalPunished.getUserIdSnowflake())).flatMap(unused -> {
-                                                        loggingListener.onPunishment(event, punishment);
-                                                        Notifier.notifyPunisher(event, punishment, punishmentReason);
-                                                        AuditLogger.addCommandToDB(event, true);
-                                                        DatabaseLoader.closeConnectionIfOpen();
-                                                        return Mono.empty();
-                                                    });
-                                                }
-                                                case "ban" -> {
-                                                    return Mono.from(discordBanUser(guild, finalPunished.getUserIdSnowflake(), messageDeleteDays, punishmentReason)).flatMap(unused -> {
-                                                        loggingListener.onPunishment(event, punishment);
-                                                        Notifier.notifyPunisher(event, punishment, punishmentReason);
-                                                        AuditLogger.addCommandToDB(event, true);
-                                                        DatabaseLoader.closeConnectionIfOpen();
-                                                        return Mono.empty();
-                                                    });
-                                                }
-                                                case "kick" -> {
-                                                    return Mono.from(discordKickUser(guild, finalPunished.getUserIdSnowflake(), punishmentReason)).flatMap(unused -> {
-                                                        loggingListener.onPunishment(event, punishment);
-                                                        Notifier.notifyPunisher(event, punishment, punishmentReason);
-                                                        AuditLogger.addCommandToDB(event, true);
-                                                        DatabaseLoader.closeConnectionIfOpen();
-                                                        return Mono.empty();
-                                                    });
-                                                }
-                                                default -> {
-                                                    DatabaseLoader.closeConnectionIfOpen();
-                                                    return Mono.empty();
-                                                }
-                                            }
-                                        });
                                     });
                                 });
                             });
@@ -349,12 +299,46 @@ public class PunishmentManager {
                 });
     }
 
-    public void notifyPunishedUser(Guild guild, Punishment punishment, String reason) {
+    public Mono<Void> carryOutPunishment(Guild guild, Punishment punishment, DiscordUser punished, int messageDeleteDays, String punishmentReason, ChatInputInteractionEvent event) {
+
+        // Actually do the punishment, discord-side. Nothing to do for warnings or notes.
+
+        return Mono.just(punishment.getPunishmentType()).flatMap(typeString -> {
+            switch (punishment.getPunishmentType()) {
+                case "mute" -> {
+                    return Mono.from(discordMuteUser(guild, punished.getUserIdSnowflake())).flatMap(unused ->
+                            loggingListener.onPunishment(event, punishment)
+                                    .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
+                                    .then(AuditLogger.addCommandToDB(event, true)));
+                }
+                case "ban" -> {
+                    return Mono.from(discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason)).flatMap(unused ->
+                            loggingListener.onPunishment(event, punishment)
+                                    .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
+                                    .then(AuditLogger.addCommandToDB(event, true)));
+
+            }
+            case "kick" -> {
+                return Mono.from(discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason)).flatMap(unused ->
+                    loggingListener.onPunishment(event, punishment)
+                            .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
+                            .then(AuditLogger.addCommandToDB(event, true)));
+            }
+            default -> {
+                DatabaseLoader.closeConnectionIfOpen();
+                return Mono.empty();
+            }
+        }
+    });
+
+}
+
+    public Mono<Void> notifyPunishedUser(Guild guild, Punishment punishment, String reason) {
         punishment.setDMed(true);
         punishment.save();
         punishment.refresh();
 
-        Notifier.notifyPunished(guild, punishment, reason);
+        return Notifier.notifyPunished(guild, punishment, reason);
     }
 
     private Punishment createDatabasePunishmentRecord(DiscordUser punisher, String punisherName, String punisherDiscrim,
@@ -489,7 +473,7 @@ public class PunishmentManager {
                                     changePositionMono,
                                     updateTextPerms,
                                     updateVoicePerms
-                                    );
+                            );
                         });
                     });
                 });
