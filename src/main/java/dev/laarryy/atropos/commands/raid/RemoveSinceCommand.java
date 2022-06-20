@@ -106,9 +106,8 @@ public class RemoveSinceCommand implements Command {
                         Duration duration = DurationParser.parseDuration(durationInput);
 
                         if (duration.toDays() > 2) {
-                            AuditLogger.addCommandToDB(event, false);
                             DatabaseLoader.closeConnectionIfOpen();
-                            return Mono.error(new DurationTooLongException("Duration Too Long"));
+                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new DurationTooLongException("Duration Too Long")));
                         }
 
                         Instant startPoint = Instant.now().minus(duration);
@@ -145,7 +144,7 @@ public class RemoveSinceCommand implements Command {
                                                 .build();
 
                                         return Notifier.sendResultsEmbed(event, embed);
-                                    }).then();
+                                    }).then(AuditLogger.addCommandToDB(event, true));
                         }
 
                         if (type.equals("kick")) {
@@ -170,7 +169,7 @@ public class RemoveSinceCommand implements Command {
                                                 .build();
 
                                         return Notifier.sendResultsEmbed(event, embed);
-                                    }).then();
+                                    }).then(AuditLogger.addCommandToDB(event, true));
                         }
                         DatabaseLoader.closeConnectionIfOpen();
                         return Mono.empty();

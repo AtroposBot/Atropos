@@ -119,35 +119,31 @@ public class AuditCommand implements Command {
         DatabaseLoader.openConnectionIfClosed();
 
         if (event.getOption("id").get().getOption("number").isEmpty() || event.getOption("id").get().getOption("number").get().getValue().isEmpty()) {
-            AuditLogger.addCommandToDB(event, false);
             DatabaseLoader.closeConnectionIfOpen();
-            return Mono.error(new MalformedInputException("Malformed Input"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
         int auditInt = (int) event.getOption("id").get().getOption("number").get().getValue().get().asLong();
 
         if (discordServer == null) {
-            AuditLogger.addCommandToDB(event, false);
             DatabaseLoader.closeConnectionIfOpen();
-            return Mono.error(new NullServerException("Null Server"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
         }
 
         int serverId = discordServer.getServerId();
         CommandUse commandUse = CommandUse.findFirst("id = ? and server_id = ?", auditInt, serverId);
 
         if (commandUse == null) {
-            AuditLogger.addCommandToDB(event, false);
             DatabaseLoader.closeConnectionIfOpen();
-            return Mono.error(new NotFoundException("404 Not Found"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
         }
 
         DiscordUser discordUser = DiscordUser.findFirst("id = ?", commandUse.getUserId());
 
         if (discordUser == null) {
-            AuditLogger.addCommandToDB(event, false);
             DatabaseLoader.closeConnectionIfOpen();
-            return Mono.error(new NoUserException("No User"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
         }
 
         String succeeded;
@@ -173,7 +169,7 @@ public class AuditCommand implements Command {
 
         DatabaseLoader.closeConnectionIfOpen();
 
-        return Notifier.sendResultsEmbed(event, embed);
+        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
     }
 
     private Mono<Void> recentAudits(ChatInputInteractionEvent event) {
@@ -197,9 +193,8 @@ public class AuditCommand implements Command {
                         .timestamp(Instant.now())
                         .build();
 
-                AuditLogger.addCommandToDB(event, true);
                 DatabaseLoader.closeConnectionIfOpen();
-                return Notifier.sendResultsEmbed(event, resultEmbed);
+                return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
             }
 
             return createFormattedAuditTable(commandUseLazyList, guild).flatMap(results -> {
@@ -211,9 +206,8 @@ public class AuditCommand implements Command {
                         .timestamp(Instant.now())
                         .build();
 
-                AuditLogger.addCommandToDB(event, true);
                 DatabaseLoader.closeConnectionIfOpen();
-                return Notifier.sendResultsEmbed(event, resultEmbed);
+                return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
             });
         });
     }
@@ -227,8 +221,7 @@ public class AuditCommand implements Command {
             Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
 
             if (!snowflakePattern.matcher(snowflakeString).matches()) {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new MalformedInputException("Malformed Input"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
             }
 
             userIdSnowflake = Long.parseLong(snowflakeString);
@@ -249,13 +242,11 @@ public class AuditCommand implements Command {
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
 
             if (discordUser == null) {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new NoUserException("No User"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
             }
 
             if (discordServer == null) {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new NullServerException("Null Server"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
             }
 
             int userId = discordUser.getUserId();
@@ -267,13 +258,10 @@ public class AuditCommand implements Command {
             LazyList<CommandUse> commandUsesLazyList = CommandUse.find("command_user_id = ? and server_id = ? and date > ?", userId, serverId, tenDaysAgoStamp).limit(30).orderBy("id desc");
 
             if (commandUsesLazyList.isEmpty()) {
-                AuditLogger.addCommandToDB(event, true);
-                return Mono.error(new NoResultsException("No Results"));
+                return AuditLogger.addCommandToDB(event, true).then(Mono.error(new NoResultsException("No Results")));
             }
 
             return Mono.from(createFormattedAuditTable(commandUsesLazyList, guild)).flatMap(results -> {
-                AuditLogger.addCommandToDB(event, true);
-
                 EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                         .color(Color.ENDEAVOUR)
                         .title("Results")
@@ -282,9 +270,8 @@ public class AuditCommand implements Command {
                         .timestamp(Instant.now())
                         .build();
 
-                AuditLogger.addCommandToDB(event, true);
                 DatabaseLoader.closeConnectionIfOpen();
-                return Notifier.sendResultsEmbed(event, resultEmbed);
+                return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
             });
         });
     }

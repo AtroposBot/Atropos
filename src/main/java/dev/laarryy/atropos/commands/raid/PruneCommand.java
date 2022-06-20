@@ -63,8 +63,7 @@ public class PruneCommand implements Command {
                                 long number = event.getOption("number").get().getValue().get().asLong();
 
                                 if (number < 2 || number > 100) {
-                                    AuditLogger.addCommandToDB(event, false);
-                                    return Mono.error(new MalformedInputException("Malformed Input"));
+                                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
                                 }
 
                                 Flux<Snowflake> snowflakeFlux = channel.getMessagesBefore(Snowflake.of(Instant.now()))
@@ -78,10 +77,9 @@ public class PruneCommand implements Command {
                                         .timestamp(Instant.now())
                                         .build();
 
-                                AuditLogger.addCommandToDB(event, true);
-
                                 return Mono.from(channel.bulkDelete(snowflakeFlux))
-                                        .then(Notifier.sendResultsEmbed(event, embed));
+                                        .then(Notifier.sendResultsEmbed(event, embed))
+                                        .then(AuditLogger.addCommandToDB(event, true));
 
                             }));
                 });

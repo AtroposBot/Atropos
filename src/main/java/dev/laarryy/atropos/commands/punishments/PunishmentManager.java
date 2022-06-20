@@ -109,10 +109,6 @@ public class PunishmentManager {
                                     .map(Long::valueOf)
                                     .onErrorReturn(NumberFormatException.class, 0L)
                                     .filter(aLong -> aLong != 0)
-                                    .doOnComplete(() -> {
-                                        Notifier.notifyPunisherForcebanComplete(event, "```\n" + idInput.replaceAll(" ", "\n") + "\n ```");
-                                        AuditLogger.addCommandToDB(event, true);
-                                    })
                                     .flatMap(aLong -> {
 
                                         // Ensure nobody is trying to forceban their boss or a bot or someone that doesn't exist
@@ -161,15 +157,18 @@ public class PunishmentManager {
                                                 .then();
 
 
-                                    }).then();
+                                    })
+                                    .then(
+                                            Notifier.notifyPunisherForcebanComplete(event, "```\n" + idInput.replaceAll(" ", "\n") + "\n ```"))
+                                    .then(
+                                            AuditLogger.addCommandToDB(event, true));
                         }
 
                         if (event.getOption("user").isPresent() && event.getOption("user").get().getValue().isPresent()) {
                             return Mono.from(event.getOption("user").get().getValue().get().asUser()).flatMap(punishedUser -> {
                                 if (punishedUser.isBot()) {
-                                    AuditLogger.addCommandToDB(event, false);
                                     DatabaseLoader.closeConnectionIfOpen();
-                                    return Mono.error(new CannotTargetBotsException("Cannot Target Bots"));
+                                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new CannotTargetBotsException("Cannot Target Bots")));
                                 }
 
                                 User punishingUser = event.getInteraction().getUser();
@@ -180,9 +179,8 @@ public class PunishmentManager {
 
 
                                     if (punishedMember == null && (request.name().equals("kick") || request.name().equals("mute") || request.name().equals("warn"))) {
-                                        AuditLogger.addCommandToDB(event, false);
                                         DatabaseLoader.closeConnectionIfOpen();
-                                        return Mono.error(new NoMemberException("No Member"));
+                                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoMemberException("No Member")));
                                     }
 
                                     return Mono.from(checkIfPunisherHasHighestRole(member, punishedMember, guild, event)).flatMap(hasHighestRole -> {
@@ -212,9 +210,8 @@ public class PunishmentManager {
                                                 request.name(),
                                                 false,
                                                 false) != null) {
-                                            AuditLogger.addCommandToDB(event, false);
                                             DatabaseLoader.closeConnectionIfOpen();
-                                            return Mono.error(new AlreadyAppliedException("Punishment Already Applied"));
+                                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new AlreadyAppliedException("Punishment Already Applied")));
                                         }
 
                                         Punishment punishment = createDatabasePunishmentRecord(punisher,
@@ -253,10 +250,9 @@ public class PunishmentManager {
                                                 punishment.setPermanent(false);
                                                 punishment.save();
                                             } catch (Exception exception) {
-                                                AuditLogger.addCommandToDB(event, false);
                                                 punishment.delete();
                                                 DatabaseLoader.closeConnectionIfOpen();
-                                                return Mono.error(new InvalidDurationException("Invalid Duration"));
+                                                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new InvalidDurationException("Invalid Duration")));
                                             }
                                         } else {
                                             punishment.setEnded(false);
@@ -317,21 +313,21 @@ public class PunishmentManager {
                                     .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
                                     .then(AuditLogger.addCommandToDB(event, true)));
 
+                }
+                case "kick" -> {
+                    return Mono.from(discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason)).flatMap(unused ->
+                            loggingListener.onPunishment(event, punishment)
+                                    .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
+                                    .then(AuditLogger.addCommandToDB(event, true)));
+                }
+                default -> {
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return Mono.empty();
+                }
             }
-            case "kick" -> {
-                return Mono.from(discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason)).flatMap(unused ->
-                    loggingListener.onPunishment(event, punishment)
-                            .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
-                            .then(AuditLogger.addCommandToDB(event, true)));
-            }
-            default -> {
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.empty();
-            }
-        }
-    });
+        });
 
-}
+    }
 
     public Mono<Void> notifyPunishedUser(Guild guild, Punishment punishment, String reason) {
         punishment.setDMed(true);
@@ -495,9 +491,9 @@ public class PunishmentManager {
                     if (punisherIsAdmin && !punishedIsAdmin) {
                         return Mono.just(true);
                     } else if (punishedIsAdmin && punisherIsAdmin) {
-                        loggingListener.onAttemptedInsubordination(event, punished);
-                        AuditLogger.addCommandToDB(event, false);
-                        return Mono.just(false);
+                        return loggingListener.onAttemptedInsubordination(event, punished)
+                                .then(AuditLogger.addCommandToDB(event, false))
+                                .thenReturn(false);
                     }
                     return Mono.just(false);
                 });
@@ -515,8 +511,7 @@ public class PunishmentManager {
                         } else {
                             return Mono.from(punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(punisherHasHigherRoles -> {
                                 if (!punisherHasHigherRoles) {
-                                    loggingListener.onAttemptedInsubordination(event, punished);
-                                    return Mono.error(new NoPermissionsException("No Permission"));
+                                    return loggingListener.onAttemptedInsubordination(event, punished).then(Mono.error(new NoPermissionsException("No Permission")));
                                 } else {
                                     return Mono.just(true);
                                 }
@@ -578,8 +573,7 @@ public class PunishmentManager {
                     if (punisherIsAdmin && !punishedIsAdmin) {
                         return Mono.just(true);
                     } else if (punishedIsAdmin && punisherIsAdmin) {
-                        loggingListener.onAttemptedInsubordination(event, punished);
-                        return Mono.just(false);
+                        return loggingListener.onAttemptedInsubordination(event, punished).thenReturn(false);
                     }
                     return Mono.just(false);
                 });
@@ -597,8 +591,7 @@ public class PunishmentManager {
                         } else {
                             return Mono.from(punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(punisherHasHigherRoles -> {
                                 if (!punisherHasHigherRoles) {
-                                    loggingListener.onAttemptedInsubordination(event, punished);
-                                    return Mono.error(new NoPermissionsException("No Permission"));
+                                    return loggingListener.onAttemptedInsubordination(event, punished).then(Mono.error(new NoPermissionsException("No Permission")));
                                 } else {
                                     return Mono.just(true);
                                 }

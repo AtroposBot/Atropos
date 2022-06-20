@@ -61,10 +61,9 @@ public class StopJoinsCommand implements Command {
                     return Mono.from(loggingListener.onStopJoinsEnable(guild)).flatMap(a -> {
                         EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Success").description("Enabled the prevention of all joins.").color(Color.ENDEAVOUR).timestamp(Instant.now()).build();
 
-                        AuditLogger.addCommandToDB(event, true);
                         DatabaseLoader.closeConnectionIfOpen();
 
-                        return Notifier.sendResultsEmbed(event, embed);
+                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
                     });
                 }
 
@@ -82,9 +81,8 @@ public class StopJoinsCommand implements Command {
                     return Mono.from(loggingListener.onStopJoinsDisable(guild)).flatMap(a -> {
                         EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Success").description("Disabled the prevention of all joins.").color(Color.ENDEAVOUR).timestamp(Instant.now()).build();
 
-                        AuditLogger.addCommandToDB(event, true);
                         DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed);
+                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
                     });
 
                 }

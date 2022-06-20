@@ -20,17 +20,17 @@ public final class AuditLogger {
 
     private AuditLogger() {}
 
-    public static void addCommandToDB(ChatInputInteractionEvent event, boolean success) {
+    public static Mono<Void> addCommandToDB(ChatInputInteractionEvent event, boolean success) {
         DatabaseLoader.openConnectionIfClosed();
 
         if (event.getInteraction().getGuildId().isEmpty()) {
-            return;
+            return Mono.empty();
         }
 
         DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
         if (server == null) {
-            return;
+            return Mono.empty();
         }
 
         int serverId = server.getServerId();
@@ -38,7 +38,7 @@ public final class AuditLogger {
         DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());
 
         if (user == null) {
-            return;
+            return Mono.empty();
         }
         int commandUserId = user.getUserId();
 
@@ -47,27 +47,28 @@ public final class AuditLogger {
 
         stringBuffer.append(event.getCommandName());
 
-        Flux.fromIterable(event.getOptions())
-                .map(option -> stringBuffer.append(generateOptionString(option, sb)))
+        return Flux.fromIterable(event.getOptions())
+                .flatMap(options -> generateOptionString(options, sb))
+                .map(stringBuffer::append)
                 .doOnComplete(() -> {
                     String commandContent = stringBuffer.toString();
                     CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", commandContent, "date", Instant.now().toEpochMilli(), "success", success);
                     commandUse.save();
                 })
-                .subscribe();
+                .then();
     }
 
-    public static void addCommandToDB(ButtonInteractionEvent event, String entry, boolean success) {
+    public static Mono<Void> addCommandToDB(ButtonInteractionEvent event, String entry, boolean success) {
         DatabaseLoader.openConnectionIfClosed();
 
         if (event.getInteraction().getGuildId().isEmpty()) {
-            return;
+            return Mono.empty();
         }
 
         DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
         if (server == null) {
-            return;
+            return Mono.empty();
         }
 
         int serverId = server.getServerId();
@@ -75,21 +76,46 @@ public final class AuditLogger {
         DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());
 
         if (user == null) {
-            return;
+            return Mono.empty();
         }
         int commandUserId = user.getUserId();
 
         CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", entry, "date", Instant.now().toEpochMilli(), "success", success);
         commandUse.save();
+
+        return Mono.empty();
     }
 
-    public static String generateOptionString(ApplicationCommandInteractionOption option) {
+    public static Mono<String> generateOptionString(ApplicationCommandInteractionOption option) {
         return generateOptionString(option, new StringBuilder());
     }
 
-    public static String generateOptionString(ApplicationCommandInteractionOption option, StringBuilder sb) {
+    public static Mono<String> generateOptionString(ApplicationCommandInteractionOption option, StringBuilder sb) {
 
-        if (option.getValue().isEmpty()) {
+        return Mono.just(sb).flatMap(unused -> {
+            if (option.getValue().isEmpty()) {
+                return Mono.just(sb.append(" ").append(option.getName())).flatMap($ -> {
+                    if (!option.getOptions().isEmpty()) {
+                        for (ApplicationCommandInteractionOption opt : option.getOptions()) {
+                            return generateOptionString(opt, sb);
+                        }
+                    }
+                    return Mono.just(sb.toString());
+                });
+            } else {
+                return stringifyOptionValue(option).flatMap(result ->
+                        Mono.just(sb.append(" ").append(option.getName()).append(":").append(result)).flatMap($ -> {
+                    if (!option.getOptions().isEmpty()) {
+                        for (ApplicationCommandInteractionOption opt : option.getOptions()) {
+                            return generateOptionString(opt, sb);
+                        }
+                    }
+                    return Mono.just(sb.toString());
+                }));
+            }
+        });
+
+        /*if (option.getValue().isEmpty()) {
             sb.append(" ").append(option.getName());
         } else {
             sb.append(" ").append(option.getName()).append(":").append(stringifyOptionValue(option));
@@ -100,7 +126,7 @@ public final class AuditLogger {
                 generateOptionString(opt, sb);
             }
         }
-        return sb.toString();
+        return Mono.just(sb.toString());*/
     }
 
     private static Mono<String> stringifyOptionValue(ApplicationCommandInteractionOption option) {

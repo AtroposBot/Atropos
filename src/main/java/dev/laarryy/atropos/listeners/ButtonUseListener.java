@@ -6,7 +6,7 @@ import dev.laarryy.atropos.exceptions.NoMutedRoleException;
 import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NoUserException;
 import dev.laarryy.atropos.exceptions.NullServerException;
-import dev.laarryy.atropos.exceptions.UserNotMutedExcception;
+import dev.laarryy.atropos.exceptions.UserNotMutedException;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
 import dev.laarryy.atropos.managers.LoggingListenerManager;
 import dev.laarryy.atropos.managers.PunishmentManagerManager;
@@ -25,7 +25,6 @@ import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Role;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
@@ -261,7 +260,7 @@ public class ButtonUseListener {
                             });
                         } else {
                             AuditLogger.addCommandToDB(event, auditString, false);
-                            return Mono.error(new UserNotMutedExcception("User Not Muted"));
+                            return Mono.error(new UserNotMutedException("User Not Muted"));
                         }
                     })));
                 });

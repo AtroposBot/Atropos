@@ -21,11 +21,10 @@ import dev.laarryy.atropos.exceptions.NotFoundException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.exceptions.TooManyEntriesException;
 import dev.laarryy.atropos.exceptions.TryAgainException;
-import dev.laarryy.atropos.exceptions.UserNotMutedExcception;
+import dev.laarryy.atropos.exceptions.UserNotMutedException;
 import discord4j.core.event.domain.Event;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.InteractionFollowupCreateSpec;
 import discord4j.discordjson.json.WebhookMessageEditRequest;
@@ -224,7 +223,7 @@ public class ErrorHandler {
                     .then();
         }
 
-        if (error instanceof UserNotMutedExcception) {
+        if (error instanceof UserNotMutedException) {
             return Mono.from(
                             event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
@@ -281,7 +280,7 @@ public class ErrorHandler {
                 return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(noMutedRoleEmbed()).build()).then();
             }
 
-            if (error instanceof UserNotMutedExcception) {
+            if (error instanceof UserNotMutedException) {
                 return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(userNotMutedEmbed()).build()).then();
             }
         }

@@ -29,6 +29,7 @@ import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.units.qual.A;
 import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -283,9 +284,8 @@ public class CaseCommand implements Command {
                             .timestamp(Instant.now())
                             .build();
 
-                    AuditLogger.addCommandToDB(event, true);
                     DatabaseLoader.closeConnectionIfOpen();
-                    return Notifier.sendResultsEmbed(event, resultEmbed);
+                    return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
                 });
             }
 
@@ -297,17 +297,15 @@ public class CaseCommand implements Command {
                     .timestamp(Instant.now())
                     .build();
 
-            AuditLogger.addCommandToDB(event, true);
             DatabaseLoader.closeConnectionIfOpen();
-            return Notifier.sendResultsEmbed(event, resultEmbed);
+            return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event,true));
         });
     }
 
     private Mono<Void> searchForCase(ChatInputInteractionEvent event) {
 
         if (event.getOption("search").get().getOption("id").isEmpty() || event.getOption("search").get().getOption("id").get().getOption("caseid").isEmpty()) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new MalformedInputException("Malformed Input"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
         DatabaseLoader.openConnectionIfClosed();
@@ -316,16 +314,14 @@ public class CaseCommand implements Command {
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
         if (discordServer == null) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new NullServerException("Null Server"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
         }
 
         int serverId = discordServer.getServerId();
         Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", caseInt, serverId);
 
         if (punishment == null) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new NotFoundException("404 Not Found"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
         }
 
         DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
@@ -338,8 +334,7 @@ public class CaseCommand implements Command {
             punishmentEnderUser = null;
         }
         if (discordUser == null || punisher == null) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new NoUserException("No User"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
         }
 
         Long userSnowflake = discordUser.getUserIdSnowflake();
@@ -467,9 +462,8 @@ public class CaseCommand implements Command {
                     .build();
         }
 
-        AuditLogger.addCommandToDB(event, true);
         DatabaseLoader.closeConnectionIfOpen();
-        return Notifier.sendResultsEmbed(event, embed);
+        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
 
     }
 
@@ -484,8 +478,7 @@ public class CaseCommand implements Command {
                 String snowflakeString = event.getOption("search").get().getOption("user").get().getOption("snowflake").get().getValue().get().asString();
 
                 if (!snowflakePattern.matcher(snowflakeString).matches()) {
-                    AuditLogger.addCommandToDB(event, false);
-                    return Mono.error(new MalformedInputException("Malformed Input"));
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
                 }
 
                 userIdSnowflake = Long.parseLong(snowflakeString);
@@ -513,8 +506,7 @@ public class CaseCommand implements Command {
         DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
 
         if (discordUser == null) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new NoUserException("No User"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
         }
 
         int userId = discordUser.getUserId();
@@ -522,8 +514,7 @@ public class CaseCommand implements Command {
         DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
 
         if (discordServer == null) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new NullServerException("Null Server"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
         }
 
         int serverId = discordServer.getServerId();
@@ -543,10 +534,8 @@ public class CaseCommand implements Command {
                         .timestamp(Instant.now())
                         .build();
 
-                AuditLogger.addCommandToDB(event, true);
-
                 DatabaseLoader.closeConnectionIfOpen();
-                return Notifier.sendResultsEmbed(event, resultEmbed);
+                return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
             });
         }
 
@@ -558,10 +547,8 @@ public class CaseCommand implements Command {
                 .timestamp(Instant.now())
                 .build();
 
-        AuditLogger.addCommandToDB(event, true);
-
         DatabaseLoader.closeConnectionIfOpen();
-        return Notifier.sendResultsEmbed(event, resultEmbed);
+        return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
     }
 
     private Mono<Void> updatePunishment(ChatInputInteractionEvent event) {
@@ -579,13 +566,11 @@ public class CaseCommand implements Command {
                     && event.getOption("update").get().getOption("reason").get().getValue().isPresent()) {
                 newReason = event.getOption("update").get().getOption("reason").get().getValue().get().asString();
             } else {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new MalformedInputException("Malformed Input"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
             }
 
             if (punishment == null) {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new NotFoundException("404 Not Found"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
             }
 
             EmbedCreateSpec spec = EmbedCreateSpec.builder()
@@ -604,8 +589,7 @@ public class CaseCommand implements Command {
                 punishment.setEndReason(newReason);
             }
             punishment.save();
-            AuditLogger.addCommandToDB(event, true);
-            return Notifier.sendResultsEmbed(event, spec);
+            return Notifier.sendResultsEmbed(event, spec).then(AuditLogger.addCommandToDB(event, true));
         } else {
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.error(new MalformedInputException("Malformed Input"));

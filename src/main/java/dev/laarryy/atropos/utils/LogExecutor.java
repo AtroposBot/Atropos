@@ -91,7 +91,7 @@ public final class LogExecutor {
                 }).orElse("Unknown");
 
             return Flux.fromIterable(event.getOptions())
-                .map(AuditLogger::generateOptionString)
+                .flatMap(AuditLogger::generateOptionString)
                 .reduce(event.getCommandName(), String::concat)
                 .map(commandContent -> EmbedCreateSpec.builder()
                     .title(EmojiManager.getUserWarn() + " Insubordination Alert")
