@@ -25,6 +25,7 @@ import discord4j.core.object.entity.channel.PrivateChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.checkerframework.checker.units.qual.A;
+import org.javalite.activejdbc.DBException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.ReactorBlockHoundIntegration;
@@ -113,12 +114,18 @@ public class Atropos {
                         addServersToDB,
                         client.onDisconnect()
                 )
-                .onErrorResume(e -> {
+                .onErrorContinue((throwable, o) -> {
                     logger.error("-- Error in Bot --");
-                    logger.error(e);
-                    return Mono.empty();
+                    logger.error(throwable);
+                    logger.error("Error while processing {}. Cause: {}", o, throwable.getMessage());
+                    if (throwable instanceof DBException) {
+                        logger.error("--- Database Exception! ---");
+                        logger.error(throwable);
+                        logger.error(throwable.getMessage());
+                        logger.error(throwable.getSuppressed());
+                        logger.error(throwable.getCause());
+                    }
                 })
-                .subscribe();
-
+                .block();
     }
 }

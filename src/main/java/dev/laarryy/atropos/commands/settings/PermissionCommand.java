@@ -253,9 +253,8 @@ public class PermissionCommand implements Command {
 
                 if (event.getOption("list").isPresent() && event.getOption("list").get().getOption("role").isPresent()) {
                     if (event.getOption("list").get().getOption("role").get().getValue().isEmpty()) {
-                        AuditLogger.addCommandToDB(event, false);
                         DatabaseLoader.closeConnectionIfOpen();
-                        return Mono.error(new MalformedInputException("Malformed Input"));
+                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
                     }
 
                     return event.getOption("list").get().getOption("role").get().getValue().get().asRole().flatMap(role -> {
@@ -300,9 +299,9 @@ public class PermissionCommand implements Command {
                                     .description(rolePermissionsInfo)
                                     .build();
                         }
-                        AuditLogger.addCommandToDB(event, true);
+
                         DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed);
+                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
                     });
                 }
 
@@ -313,9 +312,8 @@ public class PermissionCommand implements Command {
                         int permissionToAddId = getIdOfPermissionToHandle(option);
 
                         if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToAddId, role.getId().asLong()) != null) {
-                            AuditLogger.addCommandToDB(event, false);
                             DatabaseLoader.closeConnectionIfOpen();
-                            return Mono.error(new AlreadyAssignedException("Permission Already Assigned"));
+                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new AlreadyAssignedException("Permission Already Assigned")));
                         }
 
 
@@ -336,9 +334,8 @@ public class PermissionCommand implements Command {
                                 .addField("Role", roleInfo, false)
                                 .build();
 
-                        AuditLogger.addCommandToDB(event, true);
                         DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed);
+                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
                     });
                 }
 
@@ -349,9 +346,8 @@ public class PermissionCommand implements Command {
                         int permissionToRemoveId = getIdOfPermissionToHandle(option);
 
                         if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong()) == null) {
-                            AuditLogger.addCommandToDB(event, false);
                             DatabaseLoader.closeConnectionIfOpen();
-                            return Mono.error(new NotFoundException("404 Not Found"));
+                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
                         }
 
                         ServerRolePermission serverRolePermission = ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong());
@@ -371,9 +367,8 @@ public class PermissionCommand implements Command {
                                 .addField("Role", roleInfo, false)
                                 .build();
 
-                        AuditLogger.addCommandToDB(event, true);
                         DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed);
+                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
                     });
                 }
                 DatabaseLoader.closeConnectionIfOpen();

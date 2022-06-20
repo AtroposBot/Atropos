@@ -254,7 +254,7 @@ public class AntiSpamListener {
                 DatabaseLoader.closeConnectionIfOpen();
 
                 return event.getMessage().delete("ANTI-SCAM: Message contained suspicious link, user muted. Punishment ID: " + punishment.getPunishmentId())
-                    .then(Mono.fromRunnable(() -> Notifier.notifyPunished(guild, punishment, punishmentMessage)))
+                    .then(Notifier.notifyPunished(guild, punishment, punishmentMessage))
                     .then(punishmentManager.discordMuteUser(guild, userIdSnowflake))
                     .then(loggingListener.onPunishment(event, punishment))
                     .then(loggingListener.onScamMute(event, punishment));

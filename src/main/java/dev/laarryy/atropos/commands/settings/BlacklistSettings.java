@@ -59,14 +59,14 @@ public class BlacklistSettings {
 
             if (event.getOption("blacklist").get().getOption("info").get().getOption("id").isEmpty() || event.getOption("blacklist").get().getOption("info").get().getOption("id").get().getValue().isEmpty()) {
                 AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new MalformedInputException("Malformed Input"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
             }
 
             DatabaseLoader.openConnectionIfClosed();
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
 
             if (discordServer == null) {
-                return Mono.error(new NullServerException("Null Server"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
             }
 
             int serverId = discordServer.getServerId();
@@ -75,8 +75,7 @@ public class BlacklistSettings {
             ServerBlacklist blacklist = ServerBlacklist.findFirst("server_id = ? and id = ?", serverId, inputId);
 
             if (blacklist == null) {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new NotFoundException("404 Not Found"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
             }
 
             long blacklistId = blacklist.getBlacklistId();
@@ -92,7 +91,7 @@ public class BlacklistSettings {
                     .footer("To remove this entry, run /blacklist remove " + blacklistId, "")
                     .build();
 
-            return Notifier.sendResultsEmbed(event, embed);
+            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
         });
     }
 
@@ -128,7 +127,7 @@ public class BlacklistSettings {
                         .build();
             }
 
-            return Notifier.sendResultsEmbed(event, embed);
+            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
         });
     }
 
@@ -156,8 +155,7 @@ public class BlacklistSettings {
 
     private Mono<Void> removeBlacklistEntry(ChatInputInteractionEvent event) {
         if (event.getOption("blacklist").get().getOption("remove").get().getOption("id").isEmpty()) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new MalformedInputException("Malformed Input"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
         return event.getInteraction().getGuild().flatMap(guild -> {
@@ -166,11 +164,11 @@ public class BlacklistSettings {
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
             if (discordServer == null) {
-                return Mono.error(new NullServerException("Null Server"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
             }
 
             if (event.getOption("blacklist").get().getOption("remove").get().getOption("id").get().getValue().isEmpty()) {
-                return Mono.error(new MalformedInputException("Malformed Input"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
             }
 
             long blacklistId = event.getOption("blacklist").get().getOption("remove").get().getOption("id").get().getValue().get().asLong();
@@ -184,7 +182,6 @@ public class BlacklistSettings {
             LoadingCache<Long, List<Blacklist>> cache = BlacklistCacheManager.getManager().getBlacklistCache();
             serverBlacklist.delete();
             cache.invalidate(guild.getId().asLong());
-            AuditLogger.addCommandToDB(event, true);
 
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Success")
@@ -193,7 +190,7 @@ public class BlacklistSettings {
                     .timestamp(Instant.now())
                     .build();
 
-            return Notifier.sendResultsEmbed(event, embed);
+            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
         });
     }
 
@@ -202,7 +199,7 @@ public class BlacklistSettings {
                 || event.getOption("blacklist").get().getOption("add").get().getOption("entry").get().getValue().isEmpty()
                 || event.getOption("blacklist").get().getOption("add").get().getOption("action").get().getValue().isEmpty()) {
             AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new MalformedInputException("Malformed Input"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
         return event.getInteraction().getGuild().flatMap(guild -> {
@@ -215,8 +212,7 @@ public class BlacklistSettings {
             }
 
             if (event.getOption("blacklist").get().getOption("add").get().getOption("entry").get().getValue().get().asString().length() >= 200) {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new InputTooLongException("Input Too Long"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new InputTooLongException("Input Too Long")));
             }
 
             long serverId = discordServer.getServerId();
@@ -232,7 +228,7 @@ public class BlacklistSettings {
 
             if (serverBlacklist != null) {
                 AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new AlreadyBlacklistedException("Already Blacklisted"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new AlreadyBlacklistedException("Already Blacklisted")));
             }
 
             LoadingCache<Long, List<Blacklist>> blacklistCache = BlacklistCacheManager.getManager().getBlacklistCache();
@@ -240,15 +236,13 @@ public class BlacklistSettings {
             List<Blacklist> blacklistList = blacklistCache.get(guild.getId().asLong());
 
             if (blacklistList.size() >= 31) {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new TooManyEntriesException("Too Many Entries"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new TooManyEntriesException("Too Many Entries")));
             }
 
             ServerBlacklist blacklist = ServerBlacklist.create("server_id", serverId, "type", type, "regex_trigger", regexTrigger, "action", action);
             blacklist.save();
             blacklist.refresh();
             blacklistCache.invalidate(guild.getId().asLong());
-            AuditLogger.addCommandToDB(event, true);
 
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Success")
@@ -261,7 +255,7 @@ public class BlacklistSettings {
                     .timestamp(Instant.now())
                     .build();
 
-            return Notifier.sendResultsEmbed(event, embed);
+            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
         });
     }
 }

@@ -37,6 +37,7 @@ public class CommandManager {
 
         return client.getRestClient().getApplicationId().flatMap(applicationId -> {
             ApplicationService applicationService = client.getRestClient().getApplicationService();
+
             Flux<Map<String, ApplicationCommandData>> discordCommands = applicationService
                     .getGlobalApplicationCommands(applicationId)
                     .collectMap(ApplicationCommandData::name)
@@ -55,16 +56,15 @@ public class CommandManager {
                         COMMANDS.add(command);
                         return command;
                     })
-                    .onErrorResume(throwable -> {
+                    .onErrorContinue((throwable, o) -> {
                         logger.error(throwable);
-                        return Mono.empty();
                     })
-                    .filterWhen(command -> discordCommands.any(cMap -> cMap.containsKey(command.getRequest().name())))
+                    .filterWhen(command -> discordCommands.any(cMap -> !cMap.containsKey(command.getRequest().name())))
                     .flatMap(command -> registerCommand(client, command, applicationId, ConfigManager.getControlGuildId()));
 
 
             // Uncomment this to force re-send all commands: will force update their options in case you add any
-            List<ApplicationCommandRequest> applicationCommandRequestList = new ArrayList<>();
+            /*List<ApplicationCommandRequest> applicationCommandRequestList = new ArrayList<>();
 
             for (Command command : COMMANDS) {
                 if (!command.getRequest().name().equals("presence")) {
@@ -72,7 +72,7 @@ public class CommandManager {
                 }
             }
 
-            Mono<Void> overwriteCommands = applicationService.bulkOverwriteGlobalApplicationCommand(applicationId, applicationCommandRequestList).then();
+            Mono<Void> overwriteCommands = applicationService.bulkOverwriteGlobalApplicationCommand(applicationId, applicationCommandRequestList).then();*/
 
             // Listen for command event and execute from map
 
@@ -84,10 +84,9 @@ public class CommandManager {
                                     .flatMap(entry -> {
                                                 logger.info("Command Received");
                                                 return event.deferReply().withEphemeral(true).flatMap(unused ->
-                                                        entry.execute(event)
-                                                                .doFirst(DatabaseLoader::openConnectionIfClosed)
-                                                                .doFinally(signalType -> DatabaseLoader.closeConnectionIfOpen())
-                                                                .log());
+                                                                entry.execute(event))
+                                                        .doFirst(DatabaseLoader::openConnectionIfClosed)
+                                                        .doFinally(s -> logger.info("Command Done"));
                                             }
                                     )
                                     .onErrorResume(e -> ErrorHandler.handleError(e, event))

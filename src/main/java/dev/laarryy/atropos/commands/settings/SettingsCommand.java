@@ -304,7 +304,7 @@ public class SettingsCommand implements Command {
                         if (aBoolean) {
                             return Mono.from(antiSpamSettings.execute(event));
                         } else {
-                            return Mono.empty();
+                            return Mono.error(new NoPermissionsException("No Permission"));
                         }
                     });
         }
@@ -318,7 +318,7 @@ public class SettingsCommand implements Command {
                         if (aBoolean) {
                             return Mono.from(antiSpamSettings.execute(event));
                         } else {
-                            return Mono.empty();
+                            return Mono.error(new NoPermissionsException("No Permission"));
                         }
                     });
         }
@@ -332,7 +332,7 @@ public class SettingsCommand implements Command {
                         if (aBoolean) {
                             return Mono.from(antiSpamSettings.execute(event));
                         } else {
-                            return Mono.empty();
+                            return Mono.error(new NoPermissionsException("No Permission"));
                         }
                     });
         }
@@ -346,7 +346,7 @@ public class SettingsCommand implements Command {
                         if (aBoolean) {
                             return Mono.from(antiSpamSettings.execute(event));
                         } else {
-                            return Mono.empty();
+                            return Mono.error(new NoPermissionsException("No Permission"));
                         }
                     });
         }
@@ -360,7 +360,7 @@ public class SettingsCommand implements Command {
                         if (aBoolean) {
                             return Mono.from(antiSpamSettings.execute(event));
                         } else {
-                            return Mono.empty();
+                            return Mono.error(new NoPermissionsException("No Permission"));
                         }
                     });
         }

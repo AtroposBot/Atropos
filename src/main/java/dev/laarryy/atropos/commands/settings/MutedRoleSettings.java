@@ -39,9 +39,8 @@ public class MutedRoleSettings {
 
                return event.getOption("mutedrole").get().getOption("set").get().getOption("role").get().getValue().get().asRole().flatMap(mutedRole -> {
                    if (mutedRole.isEveryone() || mutedRole.isManaged()) {
-                       AuditLogger.addCommandToDB(event, false);
                        DatabaseLoader.closeConnectionIfOpen();
-                       return Mono.error(new NotFoundException("404 Not Found"));
+                       return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
                    }
 
                    Long mutedRoleId = mutedRole.getId().asLong();

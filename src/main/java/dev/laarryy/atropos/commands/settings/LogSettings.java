@@ -47,8 +47,7 @@ public class LogSettings {
 
     private Mono<Void> unsetLogChannel(ChatInputInteractionEvent event) {
         if (event.getOption("log").get().getOption("unset").get().getOption("type").isEmpty()) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new MalformedInputException("Malformed Input"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
         return event.getInteraction().getGuild().flatMap(guild -> {
@@ -62,13 +61,13 @@ public class LogSettings {
 
             return event.getInteraction().getChannel().flatMap(channel -> {
                 if (!(channel instanceof TextChannel)) {
-                    AuditLogger.addCommandToDB(event, false);
-                    return Mono.error(new InvalidChannelException("Invalid Channel"));
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new InvalidChannelException("Invalid Channel")));
                 }
 
                 if (serverProperties == null) {
-                    AuditLogger.addCommandToDB(event, false);
-                    return addServerToDB.addServerToDatabase(guild).then(Mono.error(new NullServerException("Null Server")));
+                    return addServerToDB.addServerToDatabase(guild)
+                            .then(AuditLogger.addCommandToDB(event, false))
+                            .then(Mono.error(new NullServerException("Null Server")));
                 }
 
                 switch (logType) {
@@ -83,8 +82,7 @@ public class LogSettings {
                         serverProperties.setPunishmentLogChannelSnowflake(null);
                     }
                     default -> {
-                        AuditLogger.addCommandToDB(event, false);
-                        return Mono.error(new MalformedInputException("Malformed Input"));
+                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
                     }
                 }
 
@@ -98,22 +96,19 @@ public class LogSettings {
                         .timestamp(Instant.now())
                         .build();
 
-                AuditLogger.addCommandToDB(event, true);
-                return Notifier.sendResultsEmbed(event, embed);
+                return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
             });
         });
     }
 
     private Mono<Void> setLogChannel(ChatInputInteractionEvent event) {
         if (event.getOption("log").get().getOption("set").get().getOption("type").isEmpty()) {
-            AuditLogger.addCommandToDB(event, false);
-            return Mono.error(new MalformedInputException("Malformed Input"));
+            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
         return event.getInteraction().getGuild().flatMap(guild -> {
             if (guild == null) {
-                AuditLogger.addCommandToDB(event, false);
-                return Mono.error(new NullServerException("Null Server"));
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
             }
 
             DatabaseLoader.openConnectionIfClosed();
@@ -125,14 +120,15 @@ public class LogSettings {
             DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
             if (serverProperties == null) {
-                AuditLogger.addCommandToDB(event, false);
-                return addServerToDB.addServerToDatabase(guild).then(Mono.error(new NullServerException("Null Server")));
+
+                return addServerToDB.addServerToDatabase(guild)
+                        .then(AuditLogger.addCommandToDB(event, false))
+                        .then(Mono.error(new NullServerException("Null Server")));
             }
 
             return event.getInteraction().getChannel().flatMap(channel -> {
                 if (!(channel instanceof TextChannel textChannel)) {
-                    AuditLogger.addCommandToDB(event, false);
-                    return Mono.error(new InvalidChannelException("Invalid Channel"));
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new InvalidChannelException("Invalid Channel")));
                 }
 
                 Long targetChannelId = textChannel.getId().asLong();
@@ -149,8 +145,7 @@ public class LogSettings {
                         serverProperties.setPunishmentLogChannelSnowflake(targetChannelId);
                     }
                     default -> {
-                        AuditLogger.addCommandToDB(event, false);
-                        return Mono.error(new MalformedInputException("Malformed Input"));
+                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
                     }
                 }
                 serverProperties.save();
@@ -164,8 +159,7 @@ public class LogSettings {
                         .timestamp(Instant.now())
                         .build();
 
-                AuditLogger.addCommandToDB(event, true);
-                return Notifier.sendResultsEmbed(event, embed);
+                return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
             });
         });
     }

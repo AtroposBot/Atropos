@@ -385,6 +385,7 @@ public class InfoCommand implements Command {
                                                                     .footer("Requested by " + username, requester.getAvatarUrl())
                                                                     .build();
                                                             DatabaseLoader.closeConnectionIfOpen();
+                                                            logger.info("SENDING SERVER INFO!!!");
                                                             return Notifier.sendResultsEmbed(event, embedCreateSpec);
                                                         })))))));
             });

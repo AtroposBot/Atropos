@@ -14,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.Objects;
 
 public final class AuditLogger {
     private static final Logger logger = LogManager.getLogger(ManualPunishmentEnder.class);
@@ -92,7 +93,24 @@ public final class AuditLogger {
 
     public static Mono<String> generateOptionString(ApplicationCommandInteractionOption option, StringBuilder sb) {
 
-        return Mono.just(sb).flatMap(unused -> {
+        return Flux.fromIterable(option.getOptions())
+                .flatMap(opt -> {
+                    if (opt.getOptions().isEmpty()) {
+                        if (opt.getValue().isPresent()) {
+                            return AuditLogger.stringifyOptionValue(opt).flatMap(result -> Mono.just(":" + result));
+                        } else {
+                            return Mono.just("");
+                        }
+                    } else {
+                        return Flux.fromIterable(opt.getOptions())
+                                .flatMap(AuditLogger::generateOptionString)
+                                .reduce(opt.getName(), String::concat);
+                    }
+
+                })
+                .reduce(" " + option.getName(), String::concat);
+
+        /*return Mono.just(sb).flatMap(unused -> {
             if (option.getValue().isEmpty()) {
                 return Mono.just(sb.append(" ").append(option.getName())).flatMap($ -> {
                     if (!option.getOptions().isEmpty()) {
@@ -113,7 +131,7 @@ public final class AuditLogger {
                     return Mono.just(sb.toString());
                 }));
             }
-        });
+        });*/
 
         /*if (option.getValue().isEmpty()) {
             sb.append(" ").append(option.getName());
