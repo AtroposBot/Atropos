@@ -83,8 +83,13 @@ public final class AuditLogger {
     }
 
     public static Mono<String> generateOptionString(ApplicationCommandInteractionOption option) {
-        final Mono<String> nameAndValueMono = stringifyOptionValue(option) // returns Mono.just("") if value is not present
-                .map(value -> ' ' + option.getName() + ':' + value);
+        final Mono<String> nameAndValueMono;
+        if (option.getValue().isPresent()) {
+            nameAndValueMono = stringifyOptionValue(option).map(value -> ' ' + option.getName() + ':' + value);
+        } else {
+            nameAndValueMono = Mono.just(' ' + option.getName());
+        }
+
         return Flux.fromIterable(option.getOptions())
                 .flatMap(AuditLogger::generateOptionString)
                 .reduce("", String::concat) // make sure there's at least an empty string, otherwise the zip combinator below won't ever be called
