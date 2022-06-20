@@ -160,38 +160,39 @@ public final class Notifier {
         }
 
         DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-        User punishedUser = guild.getClient().getUserById(Snowflake.of(discordUser.getUserIdSnowflake())).block();
+        return guild.getClient().getUserById(Snowflake.of(discordUser.getUserIdSnowflake())).flatMap(punishedUser -> {
+            String punishmentEnd;
+            if (punishment.getEndDate() != null) {
+                Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
+                punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
+                        endDate.getEpochSecond(),
+                        TimestampMaker.TimestampType.RELATIVE);
+            } else {
+                punishmentEnd = "No end date provided.";
+            }
 
-        String punishmentEnd;
-        if (punishment.getEndDate() != null) {
-            Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
-            punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
-                    endDate.getEpochSecond(),
-                    TimestampMaker.TimestampType.RELATIVE);
-        } else {
-            punishmentEnd = "No end date provided.";
-        }
+            return guild.getSelfMember().flatMap(selfMember -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(guild.getName())
+                        .author("Notice from Guild:", "", guild.getIconUrl(Image.Format.PNG).orElse(selfMember.getAvatarUrl()))
+                        .description(punishedUser.getMention() + ", this message is to notify you of moderation action taken by the staff of "
+                                + guild.getName()
+                                + ". This incident will be recorded.")
+                        .addField("Action Taken", punishment.getPunishmentType().toUpperCase(), true)
+                        .addField("Reason", punishmentReason, false)
+                        .addField("End Date", punishmentEnd, false)
+                        .color(Color.RUST)
+                        .footer("Case: " + punishment.getPunishmentId(), "")
+                        .timestamp(Instant.now())
+                        .build();
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .title(guild.getName())
-                .author("Notice from Guild:", "", guild.getIconUrl(Image.Format.PNG).orElse(guild.getSelfMember().block().getAvatarUrl()))
-                .description(punishedUser.getMention() + ", this message is to notify you of moderation action taken by the staff of "
-                        + guild.getName()
-                        + ". This incident will be recorded.")
-                .addField("Action Taken", punishment.getPunishmentType().toUpperCase(), true)
-                .addField("Reason", punishmentReason, false)
-                .addField("End Date", punishmentEnd, false)
-                .color(Color.RUST)
-                .footer("Case: " + punishment.getPunishmentId(), "")
-                .timestamp(Instant.now())
-                .build();
+                punishment.setDMed(true);
+                punishment.save();
+                DatabaseLoader.closeConnectionIfOpen();
 
-        punishment.setDMed(true);
-        punishment.save();
-        DatabaseLoader.closeConnectionIfOpen();
-
-        return punishedUser.getPrivateChannel().flatMap(privateChannel -> privateChannel.createMessage(embed).then());
-
+                return punishedUser.getPrivateChannel().flatMap(privateChannel -> privateChannel.createMessage(embed).then());
+            });
+        });
     }
 
     public static Mono<Void> notifyModOfUnban(ChatInputInteractionEvent event, String reason, long userId) {
