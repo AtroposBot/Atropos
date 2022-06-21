@@ -222,19 +222,27 @@ public final class LogExecutor {
         logger.info("Logging Message Delete");
         return event.getGuild().flatMap(guild -> guild.getAuditLog().withActionType(ActionType.MESSAGE_DELETE)
                 .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent() && entry.getTargetId().isPresent())
+                .mapNotNull(entry -> {
+                    if (entry.getResponsibleUser().isPresent()
+                            && entry.getTargetId().isPresent()
+                            && entry.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15)))
+                    ) {
+                        return Optional.of(entry);
+                    }
+                    return Optional.empty();
+                })
+                .takeWhile(Optional::isPresent)
                 .next()
-                .switchIfEmpty(Mono.empty())
                 .flatMap(recentDelete -> {
                     final Optional<Message> message = event.getMessage();
 
                     Optional<String> responsibleUserDescriptor;
-                    if (recentDelete == null) {
+                    if (recentDelete.isEmpty()) {
                         logger.info("NULL LOG ENTRY");
                         responsibleUserDescriptor = Optional.empty();
                     } else {
-                        String responsibleUserString = recentDelete.getResponsibleUser()
-                                .filter($ -> recentDelete.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15))))
+                        AuditLogEntry auditLogEntry = (AuditLogEntry) recentDelete.get();
+                        String responsibleUserString = auditLogEntry.getResponsibleUser()
                                 .map(responsibleUser -> {
                                     long id = responsibleUser.getId().asLong();
                                     String username = responsibleUser.getUsername() + '#' + responsibleUser.getDiscriminator();
