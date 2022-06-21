@@ -29,7 +29,7 @@ public class ListenerManager {
         Flux<Method> listenersToRegister = Flux.fromIterable(reflections2.getMethodsAnnotatedWith(EventListener.class));
 
         Mono<Void> registerListeners = Flux.from(listenersToRegister)
-                .mapNotNull(listenerMethod -> {
+                .flatMap(listenerMethod -> {
                     Object listener;
                     if (listenerMethod.getDeclaringClass().isInstance(LoggingListener.class)) {
                         listener = LoggingListenerManager.getManager().getLoggingListener();
@@ -38,7 +38,7 @@ public class ListenerManager {
                             listener = listenerMethod.getDeclaringClass().getDeclaredConstructor().newInstance();
                         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                             e.printStackTrace();
-                            return null;
+                            return Mono.empty();
                         }
                     }
 
@@ -46,33 +46,30 @@ public class ListenerManager {
 
                     if (params.length == 0) {
                         logger.error("You have a listener with no parameters!");
-                        return null;
+                        return Mono.empty();
                     }
+
+                    logger.info("Registered Listeners!");
 
                     Class<? extends Event> type = (Class<? extends Event>) params[0].getType();
 
                     return client.getEventDispatcher().on(type)
                                         .flatMap(event -> {
-
-                                    return Mono.empty().map(unused -> {
-                                                try {
-                                                    return listenerMethod.invoke(listener, event);
-                                                } catch (Exception e) {
-                                                    throw new RuntimeException(e);
-                                                }
-                                            })
-                                            .doFirst(DatabaseLoader::openConnectionIfClosed)
-                                            .doFinally(signalType -> DatabaseLoader.closeConnectionIfOpen())
-                                            .onErrorResume(e -> ErrorHandler.handleListenerError(e, event));
-                                    //.log()
+                                            try {
+                                                return ((Mono<Void>) listenerMethod.invoke(listener, event))
+                                                        .doFirst(DatabaseLoader::openConnectionIfClosed)
+                                                        .doFinally(signalType -> DatabaseLoader.closeConnectionIfOpen())
+                                                        .onErrorResume(e -> ErrorHandler.handleListenerError(e, event));
+                                            } catch (Exception e) {
+                                                logger.error("Error in Listener");
+                                                return Flux.error(new RuntimeException(e));
+                                            }
+                                            //.log()
                                     //.doFinally(signalType -> logger.info("Done Listener"));
 
                             });
                 })
                 .then();
-
-
-        logger.info("Registered Listeners!");
 
         return Mono.when(registerListeners);
     }

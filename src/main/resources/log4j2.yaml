@@ -48,12 +48,12 @@ Configuration:
         additivity: false
         AppenderRef:
           ref: Console
-      -
-        name: discord4j.rest.http.JacksonWriterStrategy
-        level: trace
-        additivity: false
-        AppenderRef:
-            ref: Console
+      #-
+       # name: discord4j.rest.http.JacksonWriterStrategy
+        #level: trace
+        #additivity: false
+        #AppenderRef:
+         #   ref: Console
       -
         name: org.javalite
         level: warn

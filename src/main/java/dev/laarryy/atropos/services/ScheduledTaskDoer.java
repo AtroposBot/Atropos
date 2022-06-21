@@ -65,12 +65,13 @@ public class ScheduledTaskDoer {
 
         DatabaseLoader.openConnectionIfClosed();
         LazyList<Punishment> punishmentsLazyList = Punishment.find("end_date_passed = ? and permanent = ?", false, false);
-        DatabaseLoader.closeConnectionIfOpen();
 
         return Flux.fromIterable(punishmentsLazyList)
                 .filter(this::checkIfOverDue)
                 .doOnNext(pun -> logger.info("handling overdue punishment"))
-                .doOnNext(this::endPunishment).then();
+                .doOnNext(this::endPunishment)
+                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
+                .then();
     }
 
     private boolean checkIfOverDue(Punishment punishment) {
