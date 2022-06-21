@@ -11,6 +11,8 @@ import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -22,6 +24,7 @@ public class SettingsCommand implements Command {
     private final LogSettings logSettings = new LogSettings();
     private final ModMailSettings modMailSettings = new ModMailSettings();
     private final MutedRoleSettings mutedRoleSettings = new MutedRoleSettings();
+    private final Logger logger = LogManager.getLogger(this);
 
     List<ApplicationCommandOptionChoiceData> blacklistTypes = List.of(
             ApplicationCommandOptionChoiceData
@@ -316,7 +319,7 @@ public class SettingsCommand implements Command {
                     .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                     .flatMap(aBoolean -> {
                         if (aBoolean) {
-                            return Mono.from(antiSpamSettings.execute(event));
+                            return Mono.from(blacklistSettings.execute(event));
                         } else {
                             return Mono.error(new NoPermissionsException("No Permission"));
                         }
@@ -330,7 +333,7 @@ public class SettingsCommand implements Command {
                     .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                     .flatMap(aBoolean -> {
                         if (aBoolean) {
-                            return Mono.from(antiSpamSettings.execute(event));
+                            return Mono.from(logSettings.execute(event));
                         } else {
                             return Mono.error(new NoPermissionsException("No Permission"));
                         }
@@ -344,7 +347,7 @@ public class SettingsCommand implements Command {
                     .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                     .flatMap(aBoolean -> {
                         if (aBoolean) {
-                            return Mono.from(antiSpamSettings.execute(event));
+                            return Mono.from(modMailSettings.execute(event));
                         } else {
                             return Mono.error(new NoPermissionsException("No Permission"));
                         }
@@ -358,7 +361,7 @@ public class SettingsCommand implements Command {
                     .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                     .flatMap(aBoolean -> {
                         if (aBoolean) {
-                            return Mono.from(antiSpamSettings.execute(event));
+                            return Mono.from(mutedRoleSettings.execute(event));
                         } else {
                             return Mono.error(new NoPermissionsException("No Permission"));
                         }

@@ -44,11 +44,19 @@ public final class Notifier {
     }
 
     private static Mono<Void> replyDeferredInteraction(ButtonInteractionEvent event, EmbedCreateSpec embed) {
-        return event.getInteractionResponse().editInitialResponse(
-                WebhookMessageEditRequest
+        return event.getInteractionResponse().createFollowupMessage(
+                MultipartRequest.ofRequest(
+                        WebhookExecuteRequest
+                                .builder()
+                                .addEmbed(embed.asRequest())
+                                .build())
+        ).then();
+
+
+                /*WebhookMessageEditRequest
                         .builder()
                         .addEmbed(embed.asRequest())
-                        .build()).then();
+                        .build()).then();*/
     }
 
     private static Mono<Void> replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed) {

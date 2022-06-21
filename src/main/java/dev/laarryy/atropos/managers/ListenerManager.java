@@ -53,18 +53,20 @@ public class ListenerManager {
 
                     return client.getEventDispatcher().on(type)
                                         .flatMap(event -> {
-                                try {
-                                    Mono<Void> voidMono = Mono.from((Mono<Void>) listenerMethod.invoke(listener, event))
+
+                                    return Mono.empty().map(unused -> {
+                                                try {
+                                                    return listenerMethod.invoke(listener, event);
+                                                } catch (Exception e) {
+                                                    throw new RuntimeException(e);
+                                                }
+                                            })
                                             .doFirst(DatabaseLoader::openConnectionIfClosed)
                                             .doFinally(signalType -> DatabaseLoader.closeConnectionIfOpen())
                                             .onErrorResume(e -> ErrorHandler.handleListenerError(e, event));
                                     //.log()
                                     //.doFinally(signalType -> logger.info("Done Listener"));
-                                    return voidMono;
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                                return Mono.empty();
+
                             });
                 })
                 .then();

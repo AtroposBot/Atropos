@@ -83,11 +83,8 @@ public class CommandManager {
                                     .filter(entry -> event.getInteraction().getData().data().get().name().get().equals(entry.getRequest().name()))
                                     .flatMap(entry -> {
                                                 logger.info("Command Received");
-                                                return event.deferReply().withEphemeral(true).flatMap(unused -> {
-                                                                    DatabaseLoader.openConnectionIfClosed();
-                                                                    logger.info("-- Executing Command --");
-                                                                    return entry.execute(event);
-                                                                })
+                                                return event.deferReply().withEphemeral(true)
+                                                        .then(entry.execute(event))
                                                         .doFirst(DatabaseLoader::openConnectionIfClosed)
                                                         .doFinally(s -> logger.info("Command Done"));
                                             }
