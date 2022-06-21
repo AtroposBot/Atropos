@@ -85,10 +85,14 @@ public class InfoCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
+
+        logger.info("Execute Received");
         return Mono.from(CommandChecks.commandChecks(event, request.name())).flatMap(aBoolean -> {
             if (!aBoolean) {
                 return Mono.error(new NoPermissionsException("No Permission"));
             }
+
+            logger.info("Command checks done");
 
             if (event.getOption("server").isPresent()) {
                 return sendServerInfo(event);
@@ -261,6 +265,8 @@ public class InfoCommand implements Command {
 
     private Mono<Void> sendServerInfo(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
+
+        logger.info("Sending server info");
 
         return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
             Long guildId = guild.getId().asLong();

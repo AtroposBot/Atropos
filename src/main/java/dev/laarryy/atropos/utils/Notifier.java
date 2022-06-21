@@ -32,13 +32,15 @@ public final class Notifier {
 
     public static Mono<Void> sendResultsEmbed(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
 
-        return Mono.from(event.getInteractionResponse().deleteInitialResponse())
+        return replyDeferredInteraction(event, embed);
+
+        /*return Mono.from(event.getInteractionResponse().deleteInitialResponse())
                 .thenReturn(event.getInteractionResponse().createFollowupMessage(
                         MultipartRequest.ofRequest(WebhookExecuteRequest
                                 .builder()
                                 .addEmbed(embed.asRequest())
                                 .build())))
-                .then();
+                .then();*/
     }
 
     private static Mono<Void> replyDeferredInteraction(ButtonInteractionEvent event, EmbedCreateSpec embed) {

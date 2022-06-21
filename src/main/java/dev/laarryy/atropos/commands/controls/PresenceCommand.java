@@ -11,6 +11,7 @@ import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.core.object.presence.ClientActivity;
 import discord4j.core.object.presence.ClientPresence;
 import discord4j.core.object.presence.Status;
+import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
@@ -129,8 +130,12 @@ public class PresenceCommand implements Command {
                         default -> ClientActivity.watching(valueInput);
                     };
 
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("Done")
+                            .build();
 
-                    return client.updatePresence(ClientPresence.of(status, clientActivity)).then(event.reply("Done"));
+
+                    return client.updatePresence(ClientPresence.of(status, clientActivity)).then(Notifier.sendResultsEmbed(event, embed));
                 }).then();
     }
 }
