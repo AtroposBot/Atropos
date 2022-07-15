@@ -55,6 +55,7 @@ import discord4j.core.object.entity.channel.StoreChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.discordjson.json.AuditLogEntryData;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import org.apache.logging.log4j.LogManager;
@@ -221,17 +222,29 @@ public final class LogExecutor {
     public static Mono<Void> logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
         logger.info("Logging Message Delete");
         return event.getGuild().flatMap(guild -> guild.getAuditLog().withActionType(ActionType.MESSAGE_DELETE)
-                .flatMapIterable(AuditLogPart::getEntries)
-                .mapNotNull(entry -> {
-                    if (entry.getResponsibleUser().isPresent()
-                            && entry.getTargetId().isPresent()
-                            && entry.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15)))
-                    ) {
-                        return Optional.of(entry);
+                .flatMapIterable(queryFlux -> {
+                    logger.info("AuditLogPart:");
+                    logger.info(queryFlux);
+                    logger.info(queryFlux.getEntries());
+                    if (queryFlux.getEntries().isEmpty()) {
+                        return List.of(Optional.empty());
                     }
+                    return queryFlux.getEntries();
+                })
+                .map(entry -> {
+                    if (entry instanceof AuditLogEntry logEntry) {
+                        logger.info("Mappin'");
+                        if (logEntry.getResponsibleUser().isPresent()
+                                && logEntry.getTargetId().isPresent()
+                                && logEntry.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15)))
+                        ) {
+                            logger.info("Returning valid entry");
+                            return Optional.of(logEntry);
+                        }
+                    }
+                    logger.info("Returning empty optional");
                     return Optional.empty();
                 })
-                .takeWhile(Optional::isPresent)
                 .next()
                 .flatMap(recentDelete -> {
                     final Optional<Message> message = event.getMessage();
@@ -241,6 +254,7 @@ public final class LogExecutor {
                         logger.info("NULL LOG ENTRY");
                         responsibleUserDescriptor = Optional.empty();
                     } else {
+                        logger.info("VALID LOG ENTRY");
                         AuditLogEntry auditLogEntry = (AuditLogEntry) recentDelete.get();
                         String responsibleUserString = auditLogEntry.getResponsibleUser()
                                 .map(responsibleUser -> {
