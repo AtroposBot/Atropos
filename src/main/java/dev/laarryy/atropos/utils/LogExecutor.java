@@ -468,7 +468,7 @@ public final class LogExecutor {
 
                 return logChannel.createMessage(embed);
             }).then();
-        }).then();
+        }).flatMap(mono -> mono);
     }
 
     public static Mono<Void> logBulkDelete(MessageBulkDeleteEvent event, TextChannel logChannel) {
