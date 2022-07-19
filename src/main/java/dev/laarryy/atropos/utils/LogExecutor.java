@@ -65,6 +65,7 @@ import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -219,7 +220,124 @@ public final class LogExecutor {
         }).then();
     }
 
+    private static List<AuditLogEntry> getValidDeleteEntries(AuditLogPart auditLogPart) {
+        List<AuditLogEntry> entries = auditLogPart.getEntries();
+
+        List<AuditLogEntry> validEntries = new ArrayList<>();
+
+        for (AuditLogEntry entry : entries) {
+            if (entry.getResponsibleUser().isPresent()
+                    && entry.getTargetId().isPresent()
+                    && entry.getId().getTimestamp().isAfter(Instant.now().minus(Duration.ofSeconds(15)))) {
+                validEntries.add(entry);
+            }
+        }
+
+        return validEntries;
+    }
+
     public static Mono<Void> logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
+        logger.info("Logging Message Delete");
+        return event.getGuild().flatMap(guild -> {
+            final Optional<Message> message = event.getMessage();
+
+            return event.getChannel().flatMap(channel -> {
+
+                Mono<String> responsibleUserMono = guild.getAuditLog().withActionType(ActionType.MESSAGE_DELETE)
+                        .flatMapIterable(LogExecutor::getValidDeleteEntries)
+                        .collectList()
+                        .flatMap(entryList -> {
+                            if (entryList.isEmpty()) {
+                                return Mono.just("Unknown");
+                            }
+                            Optional<User> responsibleUser = entryList.get(0).getResponsibleUser();
+
+                            if (responsibleUser.isEmpty()) {
+                                return Mono.just("Unknown");
+                            } else {
+                                User theResponsibleUser = responsibleUser.get();
+                                long id = theResponsibleUser.getId().asLong();
+                                String username = theResponsibleUser.getUsername() + '#' + theResponsibleUser;
+                                return Mono.just("`%s`:`%d`:%s".formatted(username, id, theResponsibleUser.getMention()));
+                            }
+                        });
+
+                Mono<String> senderDescriptorMono = message.flatMap(Message::getAuthor).map(author -> {
+                    long id = author.getId().asLong();
+                    String username = author.getUsername() + '#' + author.getDiscriminator();
+                    return Mono.just("`%s`:`%d`:%s".formatted(username, id, author.getMention()));
+                }).orElseGet(() -> {
+                    DatabaseLoader.openConnectionIfClosed();
+                    ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
+                    DatabaseLoader.closeConnectionIfOpen();
+                    if (serverMessage != null) {
+                        long id = serverMessage.getUserSnowflake();
+                        return guild.getMemberById(Snowflake.of(id)).map(author -> {
+                            String username = author.getUsername() + '#' + author.getDiscriminator();
+                            return "`%s`:`%d`:%s".formatted(username, id, author.getMention());
+                        });
+                    } else {
+                        return Mono.just("Unknown");
+                    }
+                });
+
+                Optional<String> content;
+                if (message.isPresent()) {
+                    if (message.get().getContent().isEmpty()) {
+                        content = Optional.empty();
+                    } else {
+                        String string = message.get().getContent();
+                        content = Optional.of(getStringWithLegalLength(string, 4055));
+                    }
+                } else {
+                    DatabaseLoader.openConnectionIfClosed();
+                    ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
+                    DatabaseLoader.closeConnectionIfOpen();
+                    if (serverMessage != null) {
+                        content = Optional.of(getStringWithLegalLength(serverMessage.getContent(), 3055));
+                    } else {
+                        content = Optional.of("Unknown");
+                    }
+                }
+
+                Optional<String> embeds = message
+                        .map(Message::getEmbeds)
+                        .filter(embeds1 -> !embeds1.isEmpty())
+                        .map(LogExecutor::makeEmbedsEntries)
+                        .map(embedEntries -> getStringWithLegalLength(embedEntries, 1024));
+
+                Optional<String> attachmentURLs = message
+                        .stream()
+                        .map(Message::getAttachments)
+                        .flatMap(List::stream)
+                        .map(Attachment::getUrl)
+                        .reduce("%s%n%s"::formatted);
+
+                logger.info("Zipping!");
+
+                return Mono.zip(responsibleUserMono, senderDescriptorMono, (responsibleUserDescriptor, senderDescriptor) -> {
+                    String channelDescriptor = "`%d`:%s".formatted(channel.getId().asLong(), channel.getMention());
+
+                    EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                            .color(Color.JAZZBERRY_JAM)
+                            .title(EmojiManager.getMessageDelete() + " Message Deleted")
+                            .addField("Sent By", senderDescriptor, false)
+                            .addField("Channel", channelDescriptor, false)
+                            .addField("Deleted By", responsibleUserDescriptor, false)
+                            .timestamp(Instant.now());
+
+                    content.ifPresent(s -> embed.description("**Content:**%n%s".formatted(s)));
+                    attachmentURLs.ifPresent(s -> embed.addField("Attachments", s, false));
+                    embeds.ifPresent(s -> embed.addField("Embeds", s, false));
+
+                    logger.info("Creating Message in Channel: " + logChannel.getId().asString());
+                    return logChannel.createMessage(embed.build());
+                }).flatMap($ -> $);
+            });
+        }).then();
+    }
+
+    /*public static Mono<Void> logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
         logger.info("Logging Message Delete");
         return event.getGuild().flatMap(guild -> guild.getAuditLog().withActionType(ActionType.MESSAGE_DELETE)
                 .flatMapIterable(queryFlux -> {
@@ -340,7 +458,7 @@ public final class LogExecutor {
                     }).flatMap($ -> $);
                 }).then()
         );
-    }
+    }*/
 
     private static String getStringWithLegalLength(String string, int length) {
         String content;
