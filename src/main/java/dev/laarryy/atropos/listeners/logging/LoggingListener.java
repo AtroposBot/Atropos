@@ -156,12 +156,17 @@ public final class LoggingListener {
 
     @EventListener
     public Mono<Void> on(MessageUpdateEvent event) {
-        return event.getMessage()
+
+        return event.getGuild()
+                .flatMap(guild -> getLogChannel(guild, "message"))
+                .flatMap(channel -> LogExecutor.logMessageUpdate(event, channel));
+
+        /*return event.getMessage()
             .map(Message::getAuthor)
             .filter(author -> !(author.isPresent() && author.get().isBot()))    // ignore bot messages
             .flatMap($ -> event.getGuild())
             .flatMap(guild -> getLogChannel(guild, "message"))
-            .flatMap(channel -> LogExecutor.logMessageUpdate(event, channel));
+            .flatMap(channel -> LogExecutor.logMessageUpdate(event, channel));*/
     }
 
     @EventListener
