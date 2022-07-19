@@ -220,7 +220,7 @@ public final class LogExecutor {
         }).then();
     }
 
-    private static List<AuditLogEntry> getValidDeleteEntries(AuditLogPart auditLogPart) {
+    private static List<AuditLogEntry> getValidAuditEntries(AuditLogPart auditLogPart) {
         List<AuditLogEntry> entries = auditLogPart.getEntries();
 
         List<AuditLogEntry> validEntries = new ArrayList<>();
@@ -244,7 +244,7 @@ public final class LogExecutor {
             return event.getChannel().flatMap(channel -> {
 
                 Mono<String> responsibleUserMono = guild.getAuditLog().withActionType(ActionType.MESSAGE_DELETE)
-                        .flatMapIterable(LogExecutor::getValidDeleteEntries)
+                        .flatMapIterable(LogExecutor::getValidAuditEntries)
                         .collectList()
                         .flatMap(entryList -> {
                             if (entryList.isEmpty()) {
