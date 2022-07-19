@@ -307,6 +307,7 @@ public final class LogExecutor {
 
                     Optional<String> embeds = message
                             .map(Message::getEmbeds)
+                            .filter(embeds1 -> !embeds1.isEmpty())
                             .map(LogExecutor::makeEmbedsEntries)
                             .map(embedEntries -> getStringWithLegalLength(embedEntries, 1024));
 
@@ -400,18 +401,23 @@ public final class LogExecutor {
     }
 
     public static Mono<Void> logMessageUpdate(MessageUpdateEvent event, TextChannel logChannel) {
+        logger.debug("MESSAGE UPDATE");
         return Mono.zip(event.getGuild(), event.getMessage(), (guild, message) -> {
             String title = EmojiManager.getMessageEdit() + " Message Edit";
             String oldContent;
             String newContent;
+            logger.debug("Message Update");
             if (!event.isContentChanged()) {
+                logger.debug("Content not changed");
                 if (!event.isEmbedsChanged()) {
+                    logger.debug("Embeds not changed");
                     oldContent = "Unknown";
-                    newContent = "Unknown";
+                    newContent = getStringWithLegalLength(message.getContent(), 1000);
                 } else {
+                    logger.debug("Embeds changed");
                     oldContent = event.getOld()
                             .map(Message::getEmbeds)
-                            .filter(not(List::isEmpty))
+                            //.filter(not(List::isEmpty))
                             .map(LogExecutor::makeEmbedsEntries)
                             .orElse("Unknown embed(s)");
 
@@ -419,6 +425,7 @@ public final class LogExecutor {
                     newContent = makeEmbedsEntries(currentEmbeds.isEmpty() ? message.getEmbeds() : currentEmbeds);
                 }
             } else {
+                logger.debug("Content changed");
                 oldContent = event.getOld()
                         .map(oldMessage -> getStringWithLegalLength(oldMessage.getContent(), 1000))
                         .orElseGet(() -> {
@@ -444,6 +451,8 @@ public final class LogExecutor {
                     .map(author -> "`%s`:`%d`:%s".formatted(author.getUsername(), author.getId().asLong(), author.getMention()))
                     .orElse("Unknown");
 
+            logger.debug("Returning message to channel");
+
             return event.getChannel().flatMap(channel -> {
                 String channelDescriptor = "`%d`:%s".formatted(event.getChannelId().asLong(), channel.getMention());
 
@@ -457,6 +466,8 @@ public final class LogExecutor {
                         .addField("New", newContent, false)
                         .timestamp(Instant.now())
                         .build();
+
+                logger.debug("Creating message");
 
                 return logChannel.createMessage(embed);
             });
