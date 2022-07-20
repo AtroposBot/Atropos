@@ -220,6 +220,46 @@ public final class LogExecutor {
         }).then();
     }
 
+    private static Mono<String> getResponsibleUserMono(Guild guild, ActionType actionType) {
+        return guild.getAuditLog().withActionType(actionType)
+                .flatMapIterable(LogExecutor::getValidAuditEntries)
+                .collectList()
+                .flatMap(entryList -> {
+                    if (entryList.isEmpty()) {
+                        return Mono.just("Unknown");
+                    }
+                    Optional<User> responsibleUser = entryList.get(0).getResponsibleUser();
+
+                    if (responsibleUser.isEmpty()) {
+                        return Mono.just("Unknown");
+                    } else {
+                        User theResponsibleUser = responsibleUser.get();
+                        long id = theResponsibleUser.getId().asLong();
+                        String username = theResponsibleUser.getUsername() + '#' + theResponsibleUser;
+                        return Mono.just("`%s`:`%d`:%s".formatted(username, id, theResponsibleUser.getMention()));
+                    }
+                });
+    }
+
+    private static Mono<String> getAuditReasonMono(Guild guild, ActionType actionType) {
+        return guild.getAuditLog().withActionType(actionType)
+                .flatMapIterable(LogExecutor::getValidAuditEntries)
+                .collectList()
+                .flatMap(entryList -> {
+                    if (entryList.isEmpty()) {
+                        return Mono.empty();
+                    }
+                    Optional<String> reason = entryList.get(0).getReason();
+
+                    if (reason.isEmpty()) {
+                        return Mono.empty();
+                    } else {
+                        String theReason = reason.get();
+                        return Mono.just(theReason);
+                    }
+                });
+    }
+
     private static List<AuditLogEntry> getValidAuditEntries(AuditLogPart auditLogPart) {
         List<AuditLogEntry> entries = auditLogPart.getEntries();
 
@@ -236,6 +276,13 @@ public final class LogExecutor {
         return validEntries;
     }
 
+    private static Mono<String> getAuditReason(AuditLogEntry entry) {
+        if (entry.getReason().isPresent()) {
+            return Mono.just(entry.getReason().get());
+        }
+        return Mono.empty();
+    }
+
     public static Mono<Void> logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
         logger.info("Logging Message Delete");
         return event.getGuild().flatMap(guild -> {
@@ -243,24 +290,7 @@ public final class LogExecutor {
 
             return event.getChannel().flatMap(channel -> {
 
-                Mono<String> responsibleUserMono = guild.getAuditLog().withActionType(ActionType.MESSAGE_DELETE)
-                        .flatMapIterable(LogExecutor::getValidAuditEntries)
-                        .collectList()
-                        .flatMap(entryList -> {
-                            if (entryList.isEmpty()) {
-                                return Mono.just("Unknown");
-                            }
-                            Optional<User> responsibleUser = entryList.get(0).getResponsibleUser();
-
-                            if (responsibleUser.isEmpty()) {
-                                return Mono.just("Unknown");
-                            } else {
-                                User theResponsibleUser = responsibleUser.get();
-                                long id = theResponsibleUser.getId().asLong();
-                                String username = theResponsibleUser.getUsername() + '#' + theResponsibleUser;
-                                return Mono.just("`%s`:`%d`:%s".formatted(username, id, theResponsibleUser.getMention()));
-                            }
-                        });
+                Mono<String> responsibleUserMono = getResponsibleUserMono(guild, ActionType.MESSAGE_DELETE);
 
                 Mono<String> senderDescriptorMono = message.flatMap(Message::getAuthor).map(author -> {
                     long id = author.getId().asLong();
@@ -472,17 +502,9 @@ public final class LogExecutor {
     }
 
     public static Mono<Void> logBulkDelete(MessageBulkDeleteEvent event, TextChannel logChannel) {
-        return event.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.MESSAGE_BULK_DELETE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(bulkDelete -> {
-                    final User responsibleUser = bulkDelete.getResponsibleUser().get();
-                    long responsibleUserId = responsibleUser.getId().asLong();
-                    String username = responsibleUser.getUsername() + '#' + responsibleUser.getDiscriminator();
-                    String responsibleUserDescriptor = "`%s`:`%d`:%s".formatted(username, responsibleUserId, responsibleUser.getMention());
+        return event.getGuild().flatMap(guild -> {
+                    Mono<String> responsibleUserMono = getResponsibleUserMono(guild, ActionType.MESSAGE_BULK_DELETE);
+                    Mono<String> reasonMono = getAuditReasonMono(guild, ActionType.MESSAGE_BULK_DELETE);
 
                     final Set<Message> messageSet = event.getMessages();
                     final Set<Snowflake> snowflakes = event.getMessageIds();
@@ -537,7 +559,7 @@ public final class LogExecutor {
                     }
 
                     final String accumulatedMessages = messages;
-                    return event.getChannel().flatMap(channel -> {
+                    return Mono.zip(event.getChannel(), responsibleUserMono, (channel, responsibleUserDescriptor) -> {
                         String channelDescriptor = "`%d`:%s".formatted(channel.getId().asLong(), channel.getMention());
 
                         EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
@@ -548,9 +570,12 @@ public final class LogExecutor {
                                 .addField("Channel", channelDescriptor, false)
                                 .timestamp(Instant.now());
 
-                        bulkDelete.getReason().ifPresent(reason -> embed.addField("Reason", reason, false));
-                        return logChannel.createMessage(embed.build());
-                    });
+                        return reasonMono.switchIfEmpty(logChannel.createMessage(embed.build()).thenReturn(" "))
+                                .flatMap(reason -> {
+                                    embed.addField("Reason", reason, false);
+                                    return logChannel.createMessage(embed.build());
+                        });
+                    }).flatMap(mono -> mono);
                 }).then();
     }
 
