@@ -226,9 +226,7 @@ public class InfoCommand implements Command {
                                 StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
                                         .append("Profile: ").append(user.getMention()).append("\n")
                                         .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
-                                if (!LogExecutor.getBadges(member).get().equals("none")) {
-                                    field1Content.append("Badges: ").append(LogExecutor.getBadges(member)).append("\n");
-                                }
+                                LogExecutor.getBadges(member).ifPresent(badges -> field1Content.append("Badges: ").append(badges).append("\n"));
                                 field1Content.append("Created: ")
                                         .append(TimestampMaker.getTimestampFromEpochSecond(
                                                 userIdSnowflake.getTimestamp().getEpochSecond(),
