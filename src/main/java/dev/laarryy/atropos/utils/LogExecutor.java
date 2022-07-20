@@ -235,7 +235,7 @@ public final class LogExecutor {
                     } else {
                         User theResponsibleUser = responsibleUser.get();
                         long id = theResponsibleUser.getId().asLong();
-                        String username = theResponsibleUser.getUsername() + '#' + theResponsibleUser;
+                        String username = theResponsibleUser.getUsername() + '#' + theResponsibleUser.getDiscriminator();
                         return Mono.just("`%s`:`%d`:%s".formatted(username, id, theResponsibleUser.getMention()));
                     }
                 });
@@ -274,13 +274,6 @@ public final class LogExecutor {
         }
 
         return validEntries;
-    }
-
-    private static Mono<String> getAuditReason(AuditLogEntry entry) {
-        if (entry.getReason().isPresent()) {
-            return Mono.just(entry.getReason().get());
-        }
-        return Mono.empty();
     }
 
     public static Mono<Void> logMessageDelete(MessageDeleteEvent event, TextChannel logChannel) {
