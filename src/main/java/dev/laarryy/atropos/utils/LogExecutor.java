@@ -55,7 +55,6 @@ import discord4j.core.object.entity.channel.StoreChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.object.entity.channel.VoiceChannel;
 import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.discordjson.json.AuditLogEntryData;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import org.apache.logging.log4j.LogManager;
@@ -156,6 +155,7 @@ public final class LogExecutor {
                             "Blacklist ID #`" + blacklistId + "` was triggered and the message detected has been deleted. " +
                                     "A case has been opened for the user who triggered it with ID #`" + punishment.getPunishmentId() + '`'
                     ).addField("Content", getStringWithLegalLength(content, 1024), false)
+                    .addField("Responsible User", userInfo, false)
                     .footer("To see information about this blacklist entry, run /settings blacklist info " + blacklistId, "")
                     .timestamp(Instant.now());
 
@@ -220,7 +220,7 @@ public final class LogExecutor {
         }).then();
     }
 
-    private static Mono<String> getResponsibleUserMono(Guild guild, ActionType actionType) {
+    private static Mono<String> getResponsibleUserStringMono(Guild guild, ActionType actionType) {
         return guild.getAuditLog().withActionType(actionType)
                 .flatMapIterable(LogExecutor::getValidAuditEntries)
                 .collectList()
@@ -238,6 +238,19 @@ public final class LogExecutor {
                         String username = theResponsibleUser.getUsername() + '#' + theResponsibleUser.getDiscriminator();
                         return Mono.just("`%s`:`%d`:%s".formatted(username, id, theResponsibleUser.getMention()));
                     }
+                });
+    }
+
+    private static Mono<AuditLogEntry> getValidAuditEntryMono(Guild guild, ActionType actionType) {
+        return guild.getAuditLog().withActionType(actionType)
+                .flatMapIterable(LogExecutor::getValidAuditEntries)
+                .collectList()
+                .flatMap(entryList -> {
+                    if (entryList.isEmpty()) {
+                        return Mono.empty();
+                    }
+                    AuditLogEntry entry = entryList.get(0);
+                    return Mono.just(entry);
                 });
     }
 
@@ -283,7 +296,7 @@ public final class LogExecutor {
 
             return event.getChannel().flatMap(channel -> {
 
-                Mono<String> responsibleUserMono = getResponsibleUserMono(guild, ActionType.MESSAGE_DELETE);
+                Mono<String> responsibleUserMono = getResponsibleUserStringMono(guild, ActionType.MESSAGE_DELETE);
 
                 Mono<String> senderDescriptorMono = message.flatMap(Message::getAuthor).map(author -> {
                     long id = author.getId().asLong();
@@ -359,6 +372,7 @@ public final class LogExecutor {
             });
         }).then();
     }
+
     private static String getStringWithLegalLength(String string, int length) {
         String content;
         if (string.length() >= length) {
@@ -496,46 +510,29 @@ public final class LogExecutor {
 
     public static Mono<Void> logBulkDelete(MessageBulkDeleteEvent event, TextChannel logChannel) {
         return event.getGuild().flatMap(guild -> {
-                    Mono<String> responsibleUserMono = getResponsibleUserMono(guild, ActionType.MESSAGE_BULK_DELETE);
-                    Mono<String> reasonMono = getAuditReasonMono(guild, ActionType.MESSAGE_BULK_DELETE);
+            Mono<String> responsibleUserMono = getResponsibleUserStringMono(guild, ActionType.MESSAGE_BULK_DELETE);
+            Mono<String> reasonMono = getAuditReasonMono(guild, ActionType.MESSAGE_BULK_DELETE);
 
-                    final Set<Message> messageSet = event.getMessages();
-                    final Set<Snowflake> snowflakes = event.getMessageIds();
-                    String messages;
-                    DatabaseLoader.openConnectionIfClosed();
-                    if (messageSet.isEmpty() && snowflakes.isEmpty()) {
-                        messages = "Unknown";
-                    } else {
-                        final StringJoiner joiner = new StringJoiner("\n");
-                        joiner.add("```");
-                        if (!messageSet.isEmpty()) {
-                            for (Message message : messageSet) {
-                                if (!message.getContent().isEmpty()) {
-                                    if (message.getContent().length() > 17) {
-                                        joiner.add(message.getId().asLong() + " | " + message.getContent().substring(0, 17) + "...");
-                                    } else {
-                                        joiner.add(message.getId().asLong() + " | " + message.getContent());
-                                    }
-                                } else {
-                                    ServerMessage serverMessage = ServerMessage.findFirst("message_id_snowflake = ?", message.getId().asLong());
-                                    if (serverMessage != null) {
-                                        if (serverMessage.getContent().length() > 17) {
-                                            joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent().substring(0, 17) + "...");
-                                        } else {
-                                            joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent());
-                                        }
-                                    }
-                                }
+            final Set<Message> messageSet = event.getMessages();
+            final Set<Snowflake> snowflakes = event.getMessageIds();
+            String messages;
+            DatabaseLoader.openConnectionIfClosed();
+            if (messageSet.isEmpty() && snowflakes.isEmpty()) {
+                messages = "Unknown";
+            } else {
+                final StringJoiner joiner = new StringJoiner("\n");
+                joiner.add("```");
+                if (!messageSet.isEmpty()) {
+                    for (Message message : messageSet) {
+                        if (!message.getContent().isEmpty()) {
+                            if (message.getContent().length() > 17) {
+                                joiner.add(message.getId().asLong() + " | " + message.getContent().substring(0, 17) + "...");
+                            } else {
+                                joiner.add(message.getId().asLong() + " | " + message.getContent());
                             }
                         } else {
-                            DatabaseLoader.openConnectionIfClosed();
-                            List<ServerMessage> serverMessages = snowflakes.parallelStream()
-                                    .map(Snowflake::asLong)
-                                    .map(snowflake -> ServerMessage.<ServerMessage>findFirst("message_id_snowflake = ?", snowflake))
-                                    .filter(Objects::nonNull)
-                                    .toList();
-                            DatabaseLoader.closeConnectionIfOpen();
-                            for (ServerMessage serverMessage : serverMessages) {
+                            ServerMessage serverMessage = ServerMessage.findFirst("message_id_snowflake = ?", message.getId().asLong());
+                            if (serverMessage != null) {
                                 if (serverMessage.getContent().length() > 17) {
                                     joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent().substring(0, 17) + "...");
                                 } else {
@@ -543,33 +540,50 @@ public final class LogExecutor {
                                 }
                             }
                         }
-                        joiner.add("```");
-                        messages = joiner.toString();
                     }
-
-                    if (messages.length() >= 4000) {
-                        messages = messages.substring(0, 3950) + "...```\n[Content too large, has been limited]";
+                } else {
+                    DatabaseLoader.openConnectionIfClosed();
+                    List<ServerMessage> serverMessages = snowflakes.parallelStream()
+                            .map(Snowflake::asLong)
+                            .map(snowflake -> ServerMessage.<ServerMessage>findFirst("message_id_snowflake = ?", snowflake))
+                            .filter(Objects::nonNull)
+                            .toList();
+                    DatabaseLoader.closeConnectionIfOpen();
+                    for (ServerMessage serverMessage : serverMessages) {
+                        if (serverMessage.getContent().length() > 17) {
+                            joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent().substring(0, 17) + "...");
+                        } else {
+                            joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent());
+                        }
                     }
+                }
+                joiner.add("```");
+                messages = joiner.toString();
+            }
 
-                    final String accumulatedMessages = messages;
-                    return Mono.zip(event.getChannel(), responsibleUserMono, (channel, responsibleUserDescriptor) -> {
-                        String channelDescriptor = "`%d`:%s".formatted(channel.getId().asLong(), channel.getMention());
+            if (messages.length() >= 4000) {
+                messages = messages.substring(0, 3950) + "...```\n[Content too large, has been limited]";
+            }
 
-                        EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
-                                .title((EmojiManager.getMessageDelete() + ' ').repeat(3) + "Bulk Delete")
-                                .color(Color.JAZZBERRY_JAM)
-                                .description(accumulatedMessages)
-                                .addField("Responsible User", responsibleUserDescriptor, false)
-                                .addField("Channel", channelDescriptor, false)
-                                .timestamp(Instant.now());
+            final String accumulatedMessages = messages;
+            return Mono.zip(event.getChannel(), responsibleUserMono, (channel, responsibleUserDescriptor) -> {
+                String channelDescriptor = "`%d`:%s".formatted(channel.getId().asLong(), channel.getMention());
 
-                        return reasonMono.switchIfEmpty(logChannel.createMessage(embed.build()).thenReturn(" "))
-                                .flatMap(reason -> {
-                                    embed.addField("Reason", reason, false);
-                                    return logChannel.createMessage(embed.build());
+                EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                        .title((EmojiManager.getMessageDelete() + ' ').repeat(3) + "Bulk Delete")
+                        .color(Color.JAZZBERRY_JAM)
+                        .description(accumulatedMessages)
+                        .addField("Responsible User", responsibleUserDescriptor, false)
+                        .addField("Channel", channelDescriptor, false)
+                        .timestamp(Instant.now());
+
+                return reasonMono.switchIfEmpty(logChannel.createMessage(embed.build()).thenReturn(" "))
+                        .flatMap(reason -> {
+                            embed.addField("Reason", reason, false);
+                            return logChannel.createMessage(embed.build());
                         });
-                    }).flatMap(mono -> mono);
-                }).then();
+            }).flatMap(mono -> mono);
+        }).then();
     }
 
     public static Mono<Void> logMemberJoin(MemberJoinEvent event, TextChannel logChannel) {
@@ -847,66 +861,51 @@ public final class LogExecutor {
 
     public static Mono<Void> logNewsCreate(NewsChannelCreateEvent event, TextChannel logChannel) {
         final NewsChannel channel = event.getChannel();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_CREATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(newsCreate -> {
-                    String responsibleUserId = getAuditResponsibleUser(newsCreate);
-                    long channelId = channel.getId().asLong();
-                    String name = channel.getName();
-                    String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
+        return channel.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_CREATE);
+            long channelId = channel.getId().asLong();
+            String name = channel.getName();
+            String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getNewsChannel() + " News Channel Created")
+                        .color(Color.SEA_GREEN)
+                        .addField("Channel", channelDescriptor, false)
+                        .addField("Created By", responsibleUser, false)
+                        .timestamp(Instant.now())
+                        .build();
 
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getNewsChannel() + " News Channel Created")
-                            .color(Color.SEA_GREEN)
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Created By", responsibleUserId, false)
-                            .timestamp(Instant.now())
-                            .build();
-
-                    return logChannel.createMessage(embed);
-                }).then();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static Mono<Void> logNewsDelete(NewsChannelDeleteEvent event, TextChannel logChannel) {
         final NewsChannel channel = event.getChannel();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_DELETE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(newsDelete -> {
-                    String responsibleUserId = getAuditResponsibleUser(newsDelete);
-                    long channelId = channel.getId().asLong();
-                    String name = channel.getName();
-                    String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
+        return channel.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_DELETE);
+            long channelId = channel.getId().asLong();
+            String name = channel.getName();
+            String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
 
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getNewsChannel() + " News Channel Deleted")
-                            .color(Color.JAZZBERRY_JAM)
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Deleted By", responsibleUserId, false)
-                            .timestamp(Instant.now())
-                            .build();
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getNewsChannel() + " News Channel Deleted")
+                        .color(Color.JAZZBERRY_JAM)
+                        .addField("Channel", channelDescriptor, false)
+                        .addField("Deleted By", responsibleUser, false)
+                        .timestamp(Instant.now())
+                        .build();
 
-                    return logChannel.createMessage(embed);
-                }).then();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static Mono<Void> logNewsUpdate(NewsChannelUpdateEvent event, TextChannel logChannel) {
         final GuildMessageChannel currentChannel = event.getCurrent();
-        return currentChannel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_UPDATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(newsUpdate -> {
-                    String responsibleUserId = getAuditResponsibleUser(newsUpdate);
+        return currentChannel.getGuild().flatMap(guild -> {
+                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_UPDATE);
 
                     long channelId = currentChannel.getId().asLong();
                     String name = currentChannel.getName();
@@ -917,15 +916,18 @@ public final class LogExecutor {
                                     .map(newsChannel -> getNewsChannelDiff(oldChannel, newsChannel)))
                             .orElse(Mono.empty());
 
-                    EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getNewsChannel() + " News Channel Updated")
-                            .addField("Channel", channel, false)
-                            .addField("Updated By", responsibleUserId, false)
-                            .color(Color.ENDEAVOUR)
-                            .timestamp(Instant.now())
-                            .footer("Check your server's audit log for more information", "");
-                    return information.doOnNext(embed::description).thenReturn(embed);
-                }).map(EmbedCreateSpec.Builder::build)
+                    return responsibleUserId.flatMap(responsibleUser -> {
+                        EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                                .title(EmojiManager.getNewsChannel() + " News Channel Updated")
+                                .addField("Channel", channel, false)
+                                .addField("Updated By", responsibleUser, false)
+                                .color(Color.ENDEAVOUR)
+                                .timestamp(Instant.now())
+                                .footer("Check your server's audit log for more information", "");
+                        return information.doOnNext(embed::description).thenReturn(embed);
+                    });
+                })
+                .map(EmbedCreateSpec.Builder::build)
                 .flatMap(logChannel::createMessage)
                 .then();
     }
@@ -936,68 +938,51 @@ public final class LogExecutor {
 
     public static Mono<Void> logStoreCreate(StoreChannelCreateEvent event, TextChannel logChannel) {
         final StoreChannel channel = event.getChannel();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_CREATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(storeCreate -> {
-                    String responsibleUserId = getAuditResponsibleUser(storeCreate);
+        return channel.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_CREATE);
+            long channelId = channel.getId().asLong();
+            String name = channel.getName();
+            String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getStoreChannel() + " Store Channel Created")
+                        .color(Color.SEA_GREEN)
+                        .addField("Channel", channelDescriptor, false)
+                        .addField("Created By", responsibleUser, false)
+                        .timestamp(Instant.now())
+                        .build();
 
-                    long channelId = channel.getId().asLong();
-                    String name = channel.getName();
-                    String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
-
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getStoreChannel() + " Store Channel Created")
-                            .color(Color.SEA_GREEN)
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Created By", responsibleUserId, false)
-                            .timestamp(Instant.now())
-                            .build();
-
-                    return logChannel.createMessage(embed);
-                }).then();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static Mono<Void> logStoreDelete(StoreChannelDeleteEvent event, TextChannel logChannel) {
         final StoreChannel channel = event.getChannel();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_DELETE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(storeDelete -> {
-                    String responsibleUserId = getAuditResponsibleUser(storeDelete);
+        return channel.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_DELETE);
+            long channelId = channel.getId().asLong();
+            String name = channel.getName();
+            String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
 
-                    long channelId = channel.getId().asLong();
-                    String name = channel.getName();
-                    String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getStoreChannel() + " Store Channel Deleted")
+                        .color(Color.JAZZBERRY_JAM)
+                        .addField("Channel", channelDescriptor, false)
+                        .addField("Deleted By", responsibleUser, false)
+                        .timestamp(Instant.now())
+                        .build();
 
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getStoreChannel() + " Store Channel Deleted")
-                            .color(Color.JAZZBERRY_JAM)
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Deleted By", responsibleUserId, false)
-                            .timestamp(Instant.now())
-                            .build();
-
-                    return logChannel.createMessage(embed);
-                }).then();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static Mono<Void> logStoreUpdate(StoreChannelUpdateEvent event, TextChannel logChannel) {
         final StoreChannel channel = event.getCurrent();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_UPDATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(storeUpdate -> {
-                    String responsibleUserId = getAuditResponsibleUser(storeUpdate);
+        return channel.getGuild().flatMap(guild -> {
+                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_UPDATE);
 
                     long channelId = channel.getId().asLong();
                     String name = channel.getName();
@@ -1007,16 +992,19 @@ public final class LogExecutor {
                             .map(oldChannel -> getStoreChannelDiff(oldChannel, channel))
                             .orElse(Mono.empty());
 
-                    EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getStoreChannel() + " Store Channel Updated")
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Updated By", responsibleUserId, false)
-                            .color(Color.ENDEAVOUR)
-                            .timestamp(Instant.now())
-                            .footer("Check your server's audit log for more information", "");
+                    return responsibleUserId.flatMap(responsibleUser -> {
+                        EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                                .title(EmojiManager.getStoreChannel() + " Store Channel Updated")
+                                .addField("Channel", channelDescriptor, false)
+                                .addField("Updated By", responsibleUser, false)
+                                .color(Color.ENDEAVOUR)
+                                .timestamp(Instant.now())
+                                .footer("Check your server's audit log for more information", "");
 
-                    return information.doOnNext(embed::description).thenReturn(embed);
-                }).map(EmbedCreateSpec.Builder::build)
+                        return information.doOnNext(embed::description).thenReturn(embed);
+                    });
+                })
+                .map(EmbedCreateSpec.Builder::build)
                 .flatMap(logChannel::createMessage)
                 .then();
     }
@@ -1027,68 +1015,51 @@ public final class LogExecutor {
 
     public static Mono<Void> logVoiceCreate(VoiceChannelCreateEvent event, TextChannel logChannel) {
         final VoiceChannel channel = event.getChannel();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_CREATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(voiceCreate -> {
-                    String responsibleUserId = getAuditResponsibleUser(voiceCreate);
+        return channel.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_CREATE);
+            long channelId = channel.getId().asLong();
+            String name = channel.getName();
+            String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getVoiceChannel() + " Voice Channel Created")
+                        .color(Color.SEA_GREEN)
+                        .addField("Channel", channelDescriptor, false)
+                        .addField("Created By", responsibleUser, false)
+                        .timestamp(Instant.now())
+                        .build();
 
-                    long channelId = channel.getId().asLong();
-                    String name = channel.getName();
-                    String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
-
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getVoiceChannel() + " Voice Channel Created")
-                            .color(Color.SEA_GREEN)
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Created By", responsibleUserId, false)
-                            .timestamp(Instant.now())
-                            .build();
-
-                    return logChannel.createMessage(embed);
-                }).then();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static Mono<Void> logVoiceDelete(VoiceChannelDeleteEvent event, TextChannel logChannel) {
         final VoiceChannel channel = event.getChannel();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_DELETE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(voiceDelete -> {
-                    String responsibleUserId = getAuditResponsibleUser(voiceDelete);
+        return channel.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_DELETE);
+            long channelId = channel.getId().asLong();
+            String name = channel.getName();
+            String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
 
-                    long channelId = channel.getId().asLong();
-                    String name = channel.getName();
-                    String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getVoiceChannel() + " Voice Channel Deleted")
+                        .color(Color.JAZZBERRY_JAM)
+                        .addField("Channel", channelDescriptor, false)
+                        .addField("Deleted By", responsibleUser, false)
+                        .timestamp(Instant.now())
+                        .build();
 
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getVoiceChannel() + " Voice Channel Deleted")
-                            .color(Color.JAZZBERRY_JAM)
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Deleted By", responsibleUserId, false)
-                            .timestamp(Instant.now())
-                            .build();
-
-                    return logChannel.createMessage(embed);
-                }).then();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static Mono<Void> logVoiceUpdate(VoiceChannelUpdateEvent event, TextChannel logChannel) {
         final VoiceChannel channel = event.getCurrent();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_UPDATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(voiceUpdate -> {
-                    String responsibleUserId = getAuditResponsibleUser(voiceUpdate);
+        return channel.getGuild().flatMap(guild -> {
+                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_UPDATE);
 
                     long channelId = channel.getId().asLong();
                     String name = channel.getName();
@@ -1098,16 +1069,19 @@ public final class LogExecutor {
                             .map(oldChannel -> getVoiceChannelDiff(oldChannel, channel))
                             .orElse(Mono.empty());
 
-                    EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getVoiceChannel() + " Voice Channel Updated")
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Updated By", responsibleUserId, false)
-                            .color(Color.ENDEAVOUR)
-                            .timestamp(Instant.now())
-                            .footer("Check your server's audit log for more information", "");
+                    return responsibleUserId.flatMap(responsibleUser -> {
+                        EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                                .title(EmojiManager.getVoiceChannel() + " Voice Channel Updated")
+                                .addField("Channel", channelDescriptor, false)
+                                .addField("Updated By", responsibleUser, false)
+                                .color(Color.ENDEAVOUR)
+                                .timestamp(Instant.now())
+                                .footer("Check your server's audit log for more information", "");
 
-                    return information.doOnNext(embed::description).thenReturn(embed);
-                }).map(EmbedCreateSpec.Builder::build)
+                        return information.doOnNext(embed::description).thenReturn(embed);
+                    });
+                })
+                .map(EmbedCreateSpec.Builder::build)
                 .flatMap(logChannel::createMessage)
                 .then();
     }
@@ -1118,29 +1092,23 @@ public final class LogExecutor {
 
     public static Mono<Void> logTextCreate(TextChannelCreateEvent event, TextChannel logChannel) {
         final TextChannel channel = event.getChannel();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_CREATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(textCreate -> {
-                    String responsibleUserId = getAuditResponsibleUser(textCreate);
+        return channel.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_CREATE);
+            long channelId = channel.getId().asLong();
+            String name = channel.getName();
+            String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getTextChannel() + " Text Channel Created")
+                        .color(Color.SEA_GREEN)
+                        .addField("Channel", channelDescriptor, false)
+                        .addField("Created By", responsibleUser, false)
+                        .timestamp(Instant.now())
+                        .build();
 
-                    long channelId = channel.getId().asLong();
-                    String name = channel.getName();
-                    String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
-
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getTextChannel() + " Text Channel Created")
-                            .color(Color.SEA_GREEN)
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Created By", responsibleUserId, false)
-                            .timestamp(Instant.now())
-                            .build();
-
-                    return logChannel.createMessage(embed);
-                }).then();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     private static String getAuditResponsibleUser(AuditLogEntry aud) {
@@ -1156,54 +1124,32 @@ public final class LogExecutor {
         return responsibleUserId;
     }
 
-    private static String getAuditTargetUser(AuditLogEntry aud) {
-        String responsibleUserId;
-        if (aud == null || aud.getTargetId().isEmpty() || aud.getId().getTimestamp().isBefore(Instant.now().minus(Duration.ofSeconds(15)))) {
-            responsibleUserId = "Unknown";
-        } else {
-            String id = aud.getTargetId().get().asString();
-            responsibleUserId = "`" + id + "`:<@" + id + ">";
-        }
-        return responsibleUserId;
-    }
-
     public static Mono<Void> logTextDelete(TextChannelDeleteEvent event, TextChannel logChannel) {
         final TextChannel channel = event.getChannel();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_DELETE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(textDelete -> {
-                    String responsibleUserId = getAuditResponsibleUser(textDelete);
+        return channel.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_DELETE);
+            long channelId = channel.getId().asLong();
+            String name = channel.getName();
+            String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
 
-                    long channelId = channel.getId().asLong();
-                    String name = channel.getName();
-                    String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getTextChannel() + " Text Channel Deleted")
+                        .color(Color.JAZZBERRY_JAM)
+                        .addField("Channel", channelDescriptor, false)
+                        .addField("Deleted By", responsibleUser, false)
+                        .timestamp(Instant.now())
+                        .build();
 
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getTextChannel() + " Text Channel Deleted")
-                            .color(Color.JAZZBERRY_JAM)
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Deleted By", responsibleUserId, false)
-                            .timestamp(Instant.now())
-                            .build();
-
-                    return logChannel.createMessage(embed);
-                }).then();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static Mono<Void> logTextUpdate(TextChannelUpdateEvent event, TextChannel logChannel) {
         final GuildMessageChannel channel = event.getCurrent();
-        return channel.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.CHANNEL_UPDATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(textUpdate -> {
-                    String responsibleUserId = getAuditResponsibleUser(textUpdate);
+        return channel.getGuild().flatMap(guild -> {
+                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_UPDATE);
 
                     long channelId = channel.getId().asLong();
                     String name = channel.getName();
@@ -1214,16 +1160,19 @@ public final class LogExecutor {
                                     .map(newChannel -> getTextChannelDiff(oldChannel, newChannel)))
                             .orElse(Mono.empty());
 
-                    EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getTextChannel() + " Text Channel Updated")
-                            .addField("Channel", channelDescriptor, false)
-                            .addField("Updated By", responsibleUserId, false)
-                            .color(Color.ENDEAVOUR)
-                            .timestamp(Instant.now())
-                            .footer("Check your server's audit log for more information", "");
+                    return responsibleUserId.flatMap(responsibleUser -> {
+                        EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                                .title(EmojiManager.getTextChannel() + " Text Channel Updated")
+                                .addField("Channel", channelDescriptor, false)
+                                .addField("Updated By", responsibleUser, false)
+                                .color(Color.ENDEAVOUR)
+                                .timestamp(Instant.now())
+                                .footer("Check your server's audit log for more information", "");
 
-                    return information.doOnNext(embed::description).thenReturn(embed);
-                }).map(EmbedCreateSpec.Builder::build)
+                        return information.doOnNext(embed::description).thenReturn(embed);
+                    });
+                })
+                .map(EmbedCreateSpec.Builder::build)
                 .flatMap(logChannel::createMessage)
                 .then();
     }
@@ -1253,161 +1202,146 @@ public final class LogExecutor {
     }
 
     public static Mono<Void> logBan(BanEvent event, TextChannel logChannel) {
-        return event.getGuild().flatMap(guild -> guild.getAuditLog().withActionType(ActionType.MEMBER_BAN_ADD)
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .filter(entry -> entry.getTargetId().isPresent())
-                .next()
-                .zipWith(event.getClient().getSelf())
-                .flatMap(tuple -> {
-                    final AuditLogEntry userBan = tuple.getT1();
-                    final User self = tuple.getT2();
+        return event.getGuild().flatMap(guild -> {
 
-                    String responsibleUserId = getAuditResponsibleUser(userBan);
-                    long targetUserId = event.getUser().getId().asLong();
-                    String reason = userBan.getReason().orElse("No reason provided.");
+                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.MEMBER_BAN_ADD);
 
-                    Optional<String> caseId = userBan.getResponsibleUser()
-                            .filter(not(self::equals))
-                            .filter($ -> !reason.equalsIgnoreCase("Mass API banned by staff."))
-                            .map(responsibleUser -> {
-                                DatabaseLoader.openConnectionIfClosed();
-                                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-                                DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", responsibleUser.getId().asLong());
-                                DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", userBan.getTargetId().get().asLong());
-                                Punishment punishment = Punishment.create(
-                                        "user_id_punished", punished.getUserId(),
-                                        "user_id_punisher", punisher.getUserId(),
-                                        "server_id", discordServer.getServerId(),
-                                        "punishment_type", "ban",
-                                        "punishment_date", Instant.now().toEpochMilli(),
-                                        "punishment_message", reason
-                                );
-                                punishment.save();
-                                punishment.refresh();
-                                DatabaseLoader.closeConnectionIfOpen();
-                                return String.valueOf(punishment.getPunishmentId());
-                            });
+                    return Mono.zip(responsibleUserId, event.getClient().getSelf(), (responsibleUserName, self) -> {
 
-                    EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getUserBan() + " User Banned")
-                            .color(Color.JAZZBERRY_JAM)
-                            .addField("Punished User", String.valueOf(targetUserId), false)
-                            .addField("Punishing User", responsibleUserId, false)
-                            .addField("Reason", reason, false)
-                            .timestamp(Instant.now());
+                        long targetUserId = event.getUser().getId().asLong();
+                        Mono<String> reasonMono = getResponsibleUserStringMono(guild, ActionType.MEMBER_BAN_ADD);
+                        Mono<AuditLogEntry> entryMono = getValidAuditEntryMono(guild, ActionType.MEMBER_BAN_ADD);
 
-                    caseId.ifPresent(s -> embed.addField("Case ID", '#' + s, false));
-                    return logChannel.createMessage(embed.build());
-                }).then()
-        );
+                        return reasonMono.flatMap(reason -> entryMono.flatMap(entry -> {
+
+                            Optional<String> caseId = entry.getResponsibleUser()
+                                    .filter(not(self::equals))
+                                    .filter($ -> !reason.equalsIgnoreCase("Mass API banned by staff.") && entry.getTargetId().isPresent())
+                                    .map(responsibleUser -> {
+                                        DatabaseLoader.openConnectionIfClosed();
+                                        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                                        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", responsibleUser.getId().asLong());
+                                        DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", entry.getTargetId().get().asLong());
+                                        Punishment punishment = Punishment.create(
+                                                "user_id_punished", punished.getUserId(),
+                                                "user_id_punisher", punisher.getUserId(),
+                                                "server_id", discordServer.getServerId(),
+                                                "punishment_type", "ban",
+                                                "punishment_date", Instant.now().toEpochMilli(),
+                                                "punishment_message", reason
+                                        );
+                                        punishment.save();
+                                        punishment.refresh();
+                                        DatabaseLoader.closeConnectionIfOpen();
+                                        return String.valueOf(punishment.getPunishmentId());
+                                    });
+
+                            EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                                    .title(EmojiManager.getUserBan() + " User Banned")
+                                    .color(Color.JAZZBERRY_JAM)
+                                    .addField("Punished User", String.valueOf(targetUserId), false)
+                                    .addField("Punishing User", responsibleUserName, false)
+                                    .addField("Reason", reason, false)
+                                    .timestamp(Instant.now());
+
+                            caseId.ifPresent(s -> embed.addField("Case ID", '#' + s, false));
+                            return logChannel.createMessage(embed.build());
+                        }));
+                    }).flatMap(mono -> mono);
+                })
+                .then();
     }
 
     public static Mono<Void> logUnban(UnbanEvent event, TextChannel logChannel) {
-        return event.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.MEMBER_BAN_REMOVE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(userUnban -> {
-                    String responsibleUserId = getAuditResponsibleUser(userUnban);
+        return event.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.MEMBER_BAN_REMOVE);
 
-                    final User user = event.getUser();
-                    long userId = user.getId().asLong();
-                    String username = user.getUsername() + '#' + user.getDiscriminator();
-                    String userDescriptor = "`%s`:`%d`:%s".formatted(username, userId, user.getMention());
+            final User user = event.getUser();
+            long userId = user.getId().asLong();
+            String username = user.getUsername() + '#' + user.getDiscriminator();
+            String userDescriptor = "`%s`:`%d`:%s".formatted(username, userId, user.getMention());
 
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getUserBan() + " User Unbanned")
-                            .color(Color.SEA_GREEN)
-                            .addField("User", userDescriptor, false)
-                            .addField("Unbanned By", responsibleUserId, false)
-                            .timestamp(Instant.now())
-                            .build();
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getUserBan() + " User Unbanned")
+                        .color(Color.SEA_GREEN)
+                        .addField("User", userDescriptor, false)
+                        .addField("Unbanned By", responsibleUser, false)
+                        .timestamp(Instant.now())
+                        .build();
 
-                    return logChannel.createMessage(embed);
-                }).then();
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static Mono<Void> logRoleCreate(RoleCreateEvent event, TextChannel logChannel) {
-        return event.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.ROLE_CREATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(roleCreate -> {
-                    String responsibleUserId = getAuditResponsibleUser(roleCreate);
+        return event.getGuild().flatMap(guild -> {
+                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.ROLE_CREATE);
 
                     final Role role = event.getRole();
                     long roleId = role.getId().asLong();
                     String roleName = role.getName();
                     String roleDescriptor = "`%s`:`%d`:%s".formatted(roleName, roleId, role.getMention());
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getServerRole() + " Role Created")
-                            .color(Color.ENDEAVOUR)
-                            .addField("User", responsibleUserId, false)
-                            .addField("Role", roleDescriptor, false)
-                            .timestamp(Instant.now())
-                            .build();
 
-                    return logChannel.createMessage(embed);
-                }).then();
+                    return responsibleUserId.flatMap(responsibleUser -> {
+                        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                                .title(EmojiManager.getServerRole() + " Role Created")
+                                .color(Color.ENDEAVOUR)
+                                .addField("User", responsibleUser, false)
+                                .addField("Role", roleDescriptor, false)
+                                .timestamp(Instant.now())
+                                .build();
+
+                        return logChannel.createMessage(embed);
+                    });
+                })
+                .then();
     }
 
     public static Mono<Void> logRoleDelete(RoleDeleteEvent event, TextChannel logChannel) {
-        return event.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.ROLE_DELETE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(roleDelete -> {
-                    String responsibleUserId = getAuditResponsibleUser(roleDelete);
-                    String roleDescriptor = event.getRole().map(role -> {
-                        long roleId = role.getId().asLong();
-                        String roleName = role.getName();
-                        return "`%s`:`%d`:%s".formatted(roleName, roleId, role.getMention());
-                    }).orElse("Unknown");
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getServerRole() + " Role Deleted")
-                            .color(Color.JAZZBERRY_JAM)
-                            .addField("User", responsibleUserId, false)
-                            .addField("Role", roleDescriptor, false)
-                            .timestamp(Instant.now())
-                            .build();
+        return event.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.ROLE_DELETE);
+            String roleDescriptor = event.getRole().map(role -> {
+                long roleId = role.getId().asLong();
+                String roleName = role.getName();
+                return "`%s`:`%d`:%s".formatted(roleName, roleId, role.getMention());
+            }).orElse("Unknown");
 
-                    return logChannel.createMessage(embed);
-                }).then();
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getServerRole() + " Role Deleted")
+                        .color(Color.JAZZBERRY_JAM)
+                        .addField("User", responsibleUser, false)
+                        .addField("Role", roleDescriptor, false)
+                        .timestamp(Instant.now())
+                        .build();
+
+                return logChannel.createMessage(embed);
+            });
+        }).then();
     }
 
     public static Mono<Void> logRoleUpdate(RoleUpdateEvent event, TextChannel logChannel) {
         final Role role = event.getCurrent();
-        return role.getGuild()
-                .map(Guild::getAuditLog)
-                .flatMapMany(auditLog -> auditLog.withActionType(ActionType.ROLE_UPDATE))
-                .flatMapIterable(AuditLogPart::getEntries)
-                .filter(entry -> entry.getResponsibleUser().isPresent())
-                .next()
-                .flatMap(roleUpdate -> {
-                    String responsibleUser = getAuditResponsibleUser(roleUpdate);
-                    Mono<String> roleInfo = Mono.justOrEmpty(event.getOld()).flatMap(oldRole -> getRoleDiff(oldRole, role));
-                    long roleId = role.getId().asLong();
-                    String roleDescriptor = "`%s`:`%d`:%s".formatted(role.getName(), roleId, role.getMention());
+        return role.getGuild().flatMap(guild -> {
+            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.ROLE_UPDATE);
+            Mono<String> roleInfo = Mono.justOrEmpty(event.getOld()).flatMap(oldRole -> getRoleDiff(oldRole, role));
+            long roleId = role.getId().asLong();
+            String roleDescriptor = "`%s`:`%d`:%s".formatted(role.getName(), roleId, role.getMention());
 
-                    EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
-                            .title(EmojiManager.getServerRole() + "  Role Updated")
-                            .color(Color.ENDEAVOUR)
-                            .addField("Responsible User", responsibleUser, false)
-                            .addField("Role", roleDescriptor, false)
-                            .footer("Check your server's audit log for more information", "")
-                            .timestamp(Instant.now());
+            return responsibleUserId.flatMap(responsibleUser -> {
+                EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getServerRole() + "  Role Updated")
+                        .color(Color.ENDEAVOUR)
+                        .addField("Responsible User", responsibleUser, false)
+                        .addField("Role", roleDescriptor, false)
+                        .footer("Check your server's audit log for more information", "")
+                        .timestamp(Instant.now());
 
-                    return roleInfo.doOnNext(embed::description).thenReturn(embed);
-                }).map(EmbedCreateSpec.Builder::build)
-                .flatMap(logChannel::createMessage)
-                .then();
+                return roleInfo.doOnNext(embed::description).thenReturn(embed);
+            });
+        }).map(EmbedCreateSpec.Builder::build).flatMap(logChannel::createMessage).then();
     }
 
     public static Mono<String> getRoleDiff(Role oldRole, Role newRole) {
