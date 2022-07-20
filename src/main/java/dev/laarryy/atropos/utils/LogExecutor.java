@@ -220,7 +220,7 @@ public final class LogExecutor {
         }).then();
     }
 
-    private static Mono<String> getResponsibleUserStringMono(Guild guild, ActionType actionType) {
+    private static Mono<String> getResponsibleUserIdMono(Guild guild, ActionType actionType) {
         return guild.getAuditLog().withActionType(actionType)
                 .flatMapIterable(LogExecutor::getValidAuditEntries)
                 .collectList()
@@ -296,7 +296,7 @@ public final class LogExecutor {
 
             return event.getChannel().flatMap(channel -> {
 
-                Mono<String> responsibleUserMono = getResponsibleUserStringMono(guild, ActionType.MESSAGE_DELETE);
+                Mono<String> responsibleUserMono = getResponsibleUserIdMono(guild, ActionType.MESSAGE_DELETE);
 
                 Mono<String> senderDescriptorMono = message.flatMap(Message::getAuthor).map(author -> {
                     long id = author.getId().asLong();
@@ -510,7 +510,7 @@ public final class LogExecutor {
 
     public static Mono<Void> logBulkDelete(MessageBulkDeleteEvent event, TextChannel logChannel) {
         return event.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserMono = getResponsibleUserStringMono(guild, ActionType.MESSAGE_BULK_DELETE);
+            Mono<String> responsibleUserMono = getResponsibleUserIdMono(guild, ActionType.MESSAGE_BULK_DELETE);
             Mono<String> reasonMono = getAuditReasonMono(guild, ActionType.MESSAGE_BULK_DELETE);
 
             final Set<Message> messageSet = event.getMessages();
@@ -862,7 +862,7 @@ public final class LogExecutor {
     public static Mono<Void> logNewsCreate(NewsChannelCreateEvent event, TextChannel logChannel) {
         final NewsChannel channel = event.getChannel();
         return channel.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_CREATE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_CREATE);
             long channelId = channel.getId().asLong();
             String name = channel.getName();
             String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
@@ -883,7 +883,7 @@ public final class LogExecutor {
     public static Mono<Void> logNewsDelete(NewsChannelDeleteEvent event, TextChannel logChannel) {
         final NewsChannel channel = event.getChannel();
         return channel.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_DELETE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_DELETE);
             long channelId = channel.getId().asLong();
             String name = channel.getName();
             String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
@@ -905,7 +905,7 @@ public final class LogExecutor {
     public static Mono<Void> logNewsUpdate(NewsChannelUpdateEvent event, TextChannel logChannel) {
         final GuildMessageChannel currentChannel = event.getCurrent();
         return currentChannel.getGuild().flatMap(guild -> {
-                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_UPDATE);
+                    Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_UPDATE);
 
                     long channelId = currentChannel.getId().asLong();
                     String name = currentChannel.getName();
@@ -939,7 +939,7 @@ public final class LogExecutor {
     public static Mono<Void> logStoreCreate(StoreChannelCreateEvent event, TextChannel logChannel) {
         final StoreChannel channel = event.getChannel();
         return channel.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_CREATE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_CREATE);
             long channelId = channel.getId().asLong();
             String name = channel.getName();
             String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
@@ -960,7 +960,7 @@ public final class LogExecutor {
     public static Mono<Void> logStoreDelete(StoreChannelDeleteEvent event, TextChannel logChannel) {
         final StoreChannel channel = event.getChannel();
         return channel.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_DELETE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_DELETE);
             long channelId = channel.getId().asLong();
             String name = channel.getName();
             String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
@@ -982,7 +982,7 @@ public final class LogExecutor {
     public static Mono<Void> logStoreUpdate(StoreChannelUpdateEvent event, TextChannel logChannel) {
         final StoreChannel channel = event.getCurrent();
         return channel.getGuild().flatMap(guild -> {
-                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_UPDATE);
+                    Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_UPDATE);
 
                     long channelId = channel.getId().asLong();
                     String name = channel.getName();
@@ -1016,7 +1016,7 @@ public final class LogExecutor {
     public static Mono<Void> logVoiceCreate(VoiceChannelCreateEvent event, TextChannel logChannel) {
         final VoiceChannel channel = event.getChannel();
         return channel.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_CREATE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_CREATE);
             long channelId = channel.getId().asLong();
             String name = channel.getName();
             String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
@@ -1037,7 +1037,7 @@ public final class LogExecutor {
     public static Mono<Void> logVoiceDelete(VoiceChannelDeleteEvent event, TextChannel logChannel) {
         final VoiceChannel channel = event.getChannel();
         return channel.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_DELETE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_DELETE);
             long channelId = channel.getId().asLong();
             String name = channel.getName();
             String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
@@ -1059,7 +1059,7 @@ public final class LogExecutor {
     public static Mono<Void> logVoiceUpdate(VoiceChannelUpdateEvent event, TextChannel logChannel) {
         final VoiceChannel channel = event.getCurrent();
         return channel.getGuild().flatMap(guild -> {
-                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_UPDATE);
+                    Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_UPDATE);
 
                     long channelId = channel.getId().asLong();
                     String name = channel.getName();
@@ -1093,7 +1093,7 @@ public final class LogExecutor {
     public static Mono<Void> logTextCreate(TextChannelCreateEvent event, TextChannel logChannel) {
         final TextChannel channel = event.getChannel();
         return channel.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_CREATE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_CREATE);
             long channelId = channel.getId().asLong();
             String name = channel.getName();
             String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
@@ -1127,7 +1127,7 @@ public final class LogExecutor {
     public static Mono<Void> logTextDelete(TextChannelDeleteEvent event, TextChannel logChannel) {
         final TextChannel channel = event.getChannel();
         return channel.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_DELETE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_DELETE);
             long channelId = channel.getId().asLong();
             String name = channel.getName();
             String channelDescriptor = "`%d`:`%s`:%s".formatted(channelId, name, channel.getMention());
@@ -1149,7 +1149,7 @@ public final class LogExecutor {
     public static Mono<Void> logTextUpdate(TextChannelUpdateEvent event, TextChannel logChannel) {
         final GuildMessageChannel channel = event.getCurrent();
         return channel.getGuild().flatMap(guild -> {
-                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.CHANNEL_UPDATE);
+                    Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.CHANNEL_UPDATE);
 
                     long channelId = channel.getId().asLong();
                     String name = channel.getName();
@@ -1204,12 +1204,12 @@ public final class LogExecutor {
     public static Mono<Void> logBan(BanEvent event, TextChannel logChannel) {
         return event.getGuild().flatMap(guild -> {
 
-                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.MEMBER_BAN_ADD);
+                    Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.MEMBER_BAN_ADD);
 
                     return Mono.zip(responsibleUserId, event.getClient().getSelf(), (responsibleUserName, self) -> {
 
                         long targetUserId = event.getUser().getId().asLong();
-                        Mono<String> reasonMono = getResponsibleUserStringMono(guild, ActionType.MEMBER_BAN_ADD);
+                        Mono<String> reasonMono = getResponsibleUserIdMono(guild, ActionType.MEMBER_BAN_ADD);
                         Mono<AuditLogEntry> entryMono = getValidAuditEntryMono(guild, ActionType.MEMBER_BAN_ADD);
 
                         return reasonMono.flatMap(reason -> entryMono.flatMap(entry -> {
@@ -1254,7 +1254,7 @@ public final class LogExecutor {
 
     public static Mono<Void> logUnban(UnbanEvent event, TextChannel logChannel) {
         return event.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.MEMBER_BAN_REMOVE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.MEMBER_BAN_REMOVE);
 
             final User user = event.getUser();
             long userId = user.getId().asLong();
@@ -1277,7 +1277,7 @@ public final class LogExecutor {
 
     public static Mono<Void> logRoleCreate(RoleCreateEvent event, TextChannel logChannel) {
         return event.getGuild().flatMap(guild -> {
-                    Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.ROLE_CREATE);
+                    Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.ROLE_CREATE);
 
                     final Role role = event.getRole();
                     long roleId = role.getId().asLong();
@@ -1301,7 +1301,7 @@ public final class LogExecutor {
 
     public static Mono<Void> logRoleDelete(RoleDeleteEvent event, TextChannel logChannel) {
         return event.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.ROLE_DELETE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.ROLE_DELETE);
             String roleDescriptor = event.getRole().map(role -> {
                 long roleId = role.getId().asLong();
                 String roleName = role.getName();
@@ -1325,7 +1325,7 @@ public final class LogExecutor {
     public static Mono<Void> logRoleUpdate(RoleUpdateEvent event, TextChannel logChannel) {
         final Role role = event.getCurrent();
         return role.getGuild().flatMap(guild -> {
-            Mono<String> responsibleUserId = getResponsibleUserStringMono(guild, ActionType.ROLE_UPDATE);
+            Mono<String> responsibleUserId = getResponsibleUserIdMono(guild, ActionType.ROLE_UPDATE);
             Mono<String> roleInfo = Mono.justOrEmpty(event.getOld()).flatMap(oldRole -> getRoleDiff(oldRole, role));
             long roleId = role.getId().asLong();
             String roleDescriptor = "`%s`:`%d`:%s".formatted(role.getName(), roleId, role.getMention());
