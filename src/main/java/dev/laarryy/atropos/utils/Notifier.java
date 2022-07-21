@@ -1,16 +1,23 @@
 package dev.laarryy.atropos.utils;
 
+import dev.laarryy.atropos.models.guilds.DiscordServer;
+import dev.laarryy.atropos.models.guilds.ServerMessage;
 import dev.laarryy.atropos.models.users.DiscordUser;
 import dev.laarryy.atropos.models.users.Punishment;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import discord4j.core.object.Embed;
+import discord4j.core.object.component.ActionRow;
+import discord4j.core.object.component.Button;
+import discord4j.core.object.entity.Attachment;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.core.spec.InteractionFollowupCreateSpec;
+import discord4j.discordjson.json.MessageData;
 import discord4j.discordjson.json.WebhookExecuteRequest;
 import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
@@ -60,11 +67,49 @@ public final class Notifier {
     }
 
     private static Mono<Void> replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
+        Button deEphemeralize = Button.primary("deephemeralize", "Display Non-Ephemerally");
+
         return event.getInteractionResponse().editInitialResponse(
                 WebhookMessageEditRequest
                         .builder()
                         .addEmbed(embed.asRequest())
-                        .build()).then();
+                        .addComponent(ActionRow.of(deEphemeralize).getData())
+                        .build())
+                .flatMap(messageData -> {
+                    DatabaseLoader.openConnectionIfClosed();
+
+                    long messageIdSnowflake = messageData.id().asLong();
+                    long userIdSnowflake = messageData.author().id().asLong();
+
+                    int serverId = 0;
+
+                    DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+
+                    if (user == null) {
+                        user = DiscordUser.createIt("user_id_snowflake", userIdSnowflake, "date", Instant.now().toEpochMilli());
+                    }
+
+                    int userId = user.getUserId();
+                    user.save();
+                    user.refresh();
+
+                    // Create message row in the table
+                    ServerMessage message = ServerMessage.findOrCreateIt("message_id_snowflake", messageIdSnowflake, "server_id", serverId, "user_id", userId);
+
+                    // Populate it
+
+                    message.setServerId(serverId);
+                    message.setUserId(userId);
+                    message.setUserSnowflake(userIdSnowflake);
+                    message.setDateEpochMilli(Instant.now().toEpochMilli());
+                    message.setMessageData(messageData);
+                    message.setDeleted(false);
+
+                    message.save();
+
+                    DatabaseLoader.closeConnectionIfOpen();
+                    return Mono.empty();
+                }).then();
     }
 
     public static Mono<Void> notifyPunisherForcebanComplete(ChatInputInteractionEvent event, String idInput) {

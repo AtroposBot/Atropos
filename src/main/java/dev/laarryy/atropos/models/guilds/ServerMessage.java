@@ -1,7 +1,10 @@
 package dev.laarryy.atropos.models.guilds;
 
+import discord4j.discordjson.json.MessageData;
 import org.javalite.activejdbc.Model;
 import org.javalite.activejdbc.annotations.Table;
+
+import java.sql.Clob;
 
 @Table("server_messages")
 public class ServerMessage extends Model {
@@ -64,6 +67,14 @@ public class ServerMessage extends Model {
 
     public void setContent(String content) {
         setString("content", content);
+    }
+
+    public MessageData getMessageData() {
+        return (MessageData) get("message_data");
+    }
+
+    public void setMessageData(MessageData data) {
+        set("message_data", data);
     }
 
     public boolean getDeleted() {

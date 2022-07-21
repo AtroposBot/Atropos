@@ -12,6 +12,7 @@ import dev.laarryy.atropos.managers.LoggingListenerManager;
 import dev.laarryy.atropos.managers.PunishmentManagerManager;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
+import dev.laarryy.atropos.models.guilds.ServerMessage;
 import dev.laarryy.atropos.models.users.DiscordUser;
 import dev.laarryy.atropos.models.users.Punishment;
 import dev.laarryy.atropos.storage.DatabaseLoader;
@@ -25,11 +26,24 @@ import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
+import discord4j.core.object.entity.Message;
+import discord4j.core.object.entity.User;
+import discord4j.core.object.entity.channel.MessageChannel;
+import discord4j.core.spec.EmbedCreateFields;
+import discord4j.core.spec.EmbedCreateSpec;
+import discord4j.core.spec.MessageCreateSpec;
+import discord4j.discordjson.json.EmbedData;
+import discord4j.discordjson.json.EmbedFieldData;
+import discord4j.discordjson.json.MessageData;
+import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,6 +59,8 @@ public class ButtonUseListener {
     private static final Pattern BAN = Pattern.compile("(.*)-atropos-ban-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
     private static final Pattern UNMUTE = Pattern.compile("(.*)-atropos-unmute-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
     private static final Pattern KICK = Pattern.compile("(.*)-atropos-kick-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
+
+    private static final Pattern DE_EPHEMERALIZE = Pattern.compile("deephemeralize", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
 
 
     @EventListener
@@ -65,6 +81,11 @@ public class ButtonUseListener {
             Matcher ban = BAN.matcher(id);
             Matcher kick = KICK.matcher(id);
             Matcher unmute = UNMUTE.matcher(id);
+            Matcher deEphemeralize = DE_EPHEMERALIZE.matcher(id);
+
+            if (deEphemeralize.matches()) {
+                return sendMessageNonEphemerally(event);
+            }
 
 
             if (ban.matches()) {
@@ -91,6 +112,58 @@ public class ButtonUseListener {
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         });
+    }
+
+    private MessageCreateSpec specFromData(MessageData data) {
+
+        EmbedData embedData = data.embeds().get(0);
+        EmbedCreateSpec.Builder spec = EmbedCreateSpec.builder();
+
+        embedData.title().toOptional().ifPresent(spec::title);
+        embedData.author().toOptional().ifPresent(a -> spec.author(a.name().toOptional().orElse(""), a.url().toOptional().orElse(""), a.iconUrl().toOptional().orElse("")));
+        embedData.color().toOptional().ifPresent(c -> spec.color(Color.of(c)));
+        embedData.description().toOptional().ifPresent(spec::description);
+        embedData.fields().toOptional().ifPresent(fields -> {
+            for (EmbedFieldData fieldData : fields) {
+                EmbedCreateFields.Field field = EmbedCreateFields.Field.of(fieldData.name(), fieldData.value(), fieldData.inline().toOptional().orElse(false));
+                spec.addField(field);
+            }
+        });
+        embedData.image().toOptional().ifPresent(i -> spec.image(i.url().toOptional().orElse(i.proxyUrl().toOptional().orElse(""))));
+        embedData.thumbnail().toOptional().ifPresent(t -> spec.thumbnail(t.url().toOptional().orElse(t.proxyUrl().toOptional().orElse(""))));
+        embedData.footer().toOptional().ifPresent(f -> spec.footer(f.text(), f.iconUrl().toOptional().orElse(f.proxyIconUrl().toOptional().orElse(""))));
+        embedData.timestamp().toOptional().ifPresent(t -> spec.timestamp(Instant.parse(t)));
+        embedData.url().toOptional().ifPresent(spec::url);
+
+        return MessageCreateSpec.builder()
+                .embeds(Collections.singleton(spec.build()))
+                .build();
+    }
+
+    private Mono<Void> sendMessageNonEphemerally(ButtonInteractionEvent event) {
+        Mono<User> selfUserMono = event.getClient().getSelf();
+        Mono<MessageChannel> messageChannelMono = event.getInteraction().getChannel();
+
+        return Mono.zip(messageChannelMono, selfUserMono, (messageChannel, self) -> {
+            DatabaseLoader.openConnectionIfClosed();
+                    ServerMessage serverMessage = ServerMessage.findFirst("message_id_snowflake = ?", event.getMessageId().asString());
+                    if (serverMessage != null) {
+                        MessageData messageData = serverMessage.getMessageData();
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return messageChannel.createMessage(specFromData(messageData));
+
+                    } else {
+                        EmbedCreateSpec spec = EmbedCreateSpec.builder()
+                                .color(Color.JAZZBERRY_JAM)
+                                .title("Unable to display this message. Sorry!")
+                                .build();
+
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return event.reply().withEmbeds(spec).withEphemeral(true);
+                    }
+
+        }).flatMap($ -> $)
+                .then();
     }
 
     private Mono<Void> banUser(String punishmentId, String userId, Guild guild, Member mod, ButtonInteractionEvent event) {
