@@ -57,11 +57,11 @@ public class WipeCommand implements Command {
         Mono<Void> deferMono = event.deferReply().withEphemeral(true);
 
         if (event.getOption("guild").isPresent()) {
-            return Mono.just(event).flatMap(event1 -> Mono.from(deferMono).flatMap(v -> this.wipeGuild(event1)));
+            return this.wipeGuild(event);
         }
 
         if (event.getOption("user").isPresent()) {
-            return Mono.just(event).flatMap(event1 -> Mono.from(deferMono).flatMap(v -> this.wipeUser(event1)));
+            return this.wipeUser(event);
         }
 
         return Mono.empty();
@@ -75,18 +75,18 @@ public class WipeCommand implements Command {
                 .onErrorResume(Mono::error)
                 .filter(Objects::nonNull)
                 .filterWhen(guild -> permissionChecker.checkIsAdministrator(event.getInteraction().getMember().get()))
-                .flatMap(guild -> Mono.from(event.getInteraction().getChannel()).flatMap(messageChannel -> {
+                .flatMap(guild -> event.getInteraction().getChannel().flatMap(messageChannel -> {
                     DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
-                    if (discordServer == null) {
+                    if (discordServer == null || discordServer.getServerId() == 0) {
                         return Mono.error(new NullServerException("No Server"));
                     }
 
-                    return Mono.from(messageChannel.createMessage("Administrator Server Wipe Activated. Farewell!").flatMap(message -> {
+                    return messageChannel.createMessage("Administrator Server Wipe Activated. Farewell!").flatMap(message -> {
                         discordServer.delete();
                         DatabaseLoader.closeConnectionIfOpen();
                         return Mono.from(guild.leave().retry(10));
-                    }));
+                    });
                 }));
     }
 

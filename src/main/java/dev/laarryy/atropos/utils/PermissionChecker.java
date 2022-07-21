@@ -27,8 +27,10 @@ public final class PermissionChecker {
      * @param guild Guild to check permission in
      * @param user User to check permissions of
      * @param requestName Command name to check permission of
-     * @return a true {@link Mono<Boolean>} if user has permission in guild, or an error signal indicating no permission.
+     * @return a true {@link Mono}<{@link Boolean}> if user has permission in guild, or an error signal indicating no permission.
      */
+
+    // WHO WROTE THESE LOVELY DOCS WTF
 
     public Mono<Boolean> checkPermission(Guild guild, User user, String requestName) {
         Snowflake guildIdSnowflake = guild.getId();

@@ -9,6 +9,7 @@ import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.Embed;
+import discord4j.core.object.command.ApplicationCommandInteraction;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.Attachment;
@@ -32,8 +33,6 @@ import java.time.Instant;
 public final class Notifier {
     private Notifier() {
     }
-
-    //TODO: Do notifications on COMPLETE so the error stream lines up
 
     private final Logger logger = LogManager.getLogger(this);
 
@@ -76,6 +75,13 @@ public final class Notifier {
                         .addComponent(ActionRow.of(deEphemeralize).getData())
                         .build())
                 .flatMap(messageData -> {
+
+                    String commandName = event.getInteraction().getCommandInteraction().flatMap(ApplicationCommandInteraction::getName).orElse("unknown");
+
+                    if (commandName.equals("wipe")) {
+                        return Mono.empty();
+                    }
+
                     DatabaseLoader.openConnectionIfClosed();
 
                     long messageIdSnowflake = messageData.id().asLong();

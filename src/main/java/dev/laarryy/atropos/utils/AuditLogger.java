@@ -20,6 +20,13 @@ public final class AuditLogger {
 
     private AuditLogger() {}
 
+    /**
+     *
+     * @param event {@link ChatInputInteractionEvent} to add command use to audit database
+     * @param success Whether the command use was successful or not
+     * @return a {@link Mono}<{@link Void}> on completion or if unable to complete
+     */
+
     public static Mono<Void> addCommandToDB(ChatInputInteractionEvent event, boolean success) {
         return Mono.defer(() -> {
             DatabaseLoader.openConnectionIfClosed();
@@ -53,6 +60,14 @@ public final class AuditLogger {
                     .then();
         });
     }
+
+    /**
+     *
+     * @param event {@link ButtonInteractionEvent} to add button interaction to audit database
+     * @param entry The button interaction's content to be added
+     * @param success Whether the button interaction was successful or not
+     * @return a {@link Mono}<{@link Void}> on completion or if unable to complete
+     */
 
     public static Mono<Void> addCommandToDB(ButtonInteractionEvent event, String entry, boolean success) {
         return Mono.fromRunnable(() -> {

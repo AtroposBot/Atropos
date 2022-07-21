@@ -11,6 +11,12 @@ public class CommandChecks {
 
     static final PermissionChecker permissionChecker = new PermissionChecker();
 
+    /**
+     *
+     * @param event {@link ChatInputInteractionEvent} to check command validity and permissions for
+     * @param requestName Command name to check validity and permission of
+     * @return a true {@link Mono}<{@link Boolean}> if command is permitted in event's guild, or an error signal indicating no permission.
+     */
 
     public static Mono<Boolean> commandChecks(ChatInputInteractionEvent event, String requestName) {
 
@@ -30,6 +36,13 @@ public class CommandChecks {
                             });
                 });
     }
+
+    /**
+     *
+     * @param event {@link ButtonInteractionEvent} to check button-use command validity and permissions for
+     * @param requestName Command name to check validity and permission of
+     * @return a true {@link Mono}<{@link Boolean}> if button-use command is permitted in event's guild, or an error signal indicating no permission.
+     */
 
     public static Mono<Boolean> commandChecks(ButtonInteractionEvent event, String requestName) {
 
