@@ -145,24 +145,26 @@ public class ButtonUseListener {
         Mono<MessageChannel> messageChannelMono = event.getInteraction().getChannel();
 
         return Mono.zip(messageChannelMono, selfUserMono, (messageChannel, self) -> {
-            DatabaseLoader.openConnectionIfClosed();
+                    DatabaseLoader.openConnectionIfClosed();
                     ServerMessage serverMessage = ServerMessage.findFirst("message_id_snowflake = ?", event.getMessageId().asString());
                     if (serverMessage != null) {
                         MessageData messageData = serverMessage.getMessageData();
+
+                        if (messageData == null) {
+                            DatabaseLoader.closeConnectionIfOpen();
+                            return event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("no-work", "Unable to Display").disabled()));
+                        }
+
                         DatabaseLoader.closeConnectionIfOpen();
-                        return messageChannel.createMessage(specFromData(messageData));
+                        return messageChannel.createMessage(specFromData(messageData))
+                                .then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "Done!").disabled())));
 
                     } else {
-                        EmbedCreateSpec spec = EmbedCreateSpec.builder()
-                                .color(Color.JAZZBERRY_JAM)
-                                .title("Unable to display this message. Sorry!")
-                                .build();
-
                         DatabaseLoader.closeConnectionIfOpen();
-                        return event.reply().withEmbeds(spec).withEphemeral(true);
+                        return event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("no-work", "Unable to Display").disabled()));
                     }
 
-        }).flatMap($ -> $)
+                }).flatMap($ -> $)
                 .then();
     }
 
