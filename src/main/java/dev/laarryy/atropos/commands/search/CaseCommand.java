@@ -36,9 +36,13 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.time.format.FormatStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -298,7 +302,7 @@ public class CaseCommand implements Command {
                     .build();
 
             DatabaseLoader.closeConnectionIfOpen();
-            return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event,true));
+            return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
         });
     }
 
@@ -630,35 +634,38 @@ public class CaseCommand implements Command {
     }
 
     private Mono<String> createFormattedRecentPunishmentsTable(LazyList<Punishment> punishmentLazyList, Guild guild) {
-        List<String> rows = new ArrayList<>();
-        rows.add("```");
-        rows.add(String.format("| %-6s | %-8s | %-30s |\n", "ID", "Type", "Punished User"));
-        rows.add("------------------------------------------------------\n");
+        List<String> rowList = new ArrayList<>();
 
-        Mono<Void> populateTable = Flux.fromIterable(punishmentLazyList)
+        Mono<List<String>> populateTable = Flux.fromIterable(punishmentLazyList)
                 .filter(Objects::nonNull)
                 .flatMap(p -> {
                     DiscordUser punishedUser = DiscordUser.findFirst("id = ?", p.getPunishedUserId());
                     int id = p.getPunishmentId();
+                    return guild.getMemberById(Snowflake.of(punishedUser.getUserIdSnowflake()))
+                            .map(member -> {
 
-                    return guild.getMemberById(Snowflake.of(punishedUser.getUserIdSnowflake())).flatMap(member -> {
-                        String punished = getUsernameDefaultID(punishedUser, member, 30);
+                                String punished = getUsernameDefaultID(punishedUser, member, 30);
 
-                        String type = p.getPunishmentType();
-                        rows.add(String.format("| %-6s | %-8s | %-30s |\n", id, type, punished));
-                        return Mono.empty();
-                    });
-                }).then();
+                                String type = p.getPunishmentType();
+                                return String.format("| %-6s | %-8s | %-30s |\n", id, type, punished);
+                            });
+                }).collectList();
 
-        return Mono.from(populateTable).flatMap(unused -> {
+
+        return Mono.just(rowList).flatMap(rows -> {
             rows.add("```");
+            rows.add(String.format("| %-6s | %-8s | %-30s |\n", "ID", "Type", "Punished User"));
+            rows.add("------------------------------------------------------\n");
+            return populateTable.flatMap(stringList -> {
+                rows.addAll(stringList);
+                rows.add("```");
+                StringBuilder stringBuffer = new StringBuilder();
+                for (String row : rows) {
+                    stringBuffer.append(row);
+                }
 
-            StringBuilder stringBuffer = new StringBuilder();
-            for (String row : rows) {
-                stringBuffer.append(row);
-            }
-
-            return Mono.just(stringBuffer.toString());
+                return Mono.just(stringBuffer.toString());
+            });
         });
     }
 

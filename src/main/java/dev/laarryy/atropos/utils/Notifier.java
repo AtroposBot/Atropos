@@ -117,12 +117,7 @@ public final class Notifier {
     }
 
     public static Mono<Void> notifyPunisher(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
-
-        if (punishment.getPunishmentType().equals("note")) {
-            return event.deferReply().withEphemeral(true).then(handlePunisherNotification(event, punishment, punishmentReason));
-        } else {
-            return event.deferReply().then(handlePunisherNotification(event, punishment, punishmentReason));
-        }
+            return handlePunisherNotification(event, punishment, punishmentReason);
     }
 
     public static Mono<Void> handlePunisherNotification(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
