@@ -285,14 +285,9 @@ public class AuditCommand implements Command {
     }
 
     private Mono<String> createFormattedAuditTable(LazyList<CommandUse> commandUseLazyList, Guild guild) {
-        List<String> rows = new ArrayList<>();
-        rows.add("```");
-        rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", "ID", "Date", "User", "Preview"));
-        rows.add("---------------------------------------------------------\n");
+        List<String> rowList = new ArrayList<>();
 
-        logger.info("Building rows");
-
-        Mono<Void> populateTable = Flux.fromIterable(commandUseLazyList)
+        Mono<List<String>> populateTable = Flux.fromIterable(commandUseLazyList)
                 .filter(Objects::nonNull)
                 .flatMap(c -> {
                     DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
@@ -311,27 +306,25 @@ public class AuditCommand implements Command {
                                     preview = c.getCommandContents().substring(0, 7) + "...";
                                 } else preview = c.getCommandContents();
 
-                                logger.info("One more row: " + auditId);
-
-                                return rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
+                                return String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview);
                             });
-                }).then();
+                }).collectList();
 
 
-
-        return populateTable.flatMap(unused -> {
+        return Mono.just(rowList).flatMap(rows -> {
             rows.add("```");
-            logger.info("Rows: " + rows);
+            rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", "ID", "Date", "User", "Preview"));
+            rows.add("---------------------------------------------------------\n");
+            return populateTable.flatMap(stringList -> {
+                rows.addAll(stringList);
+                rows.add("```");
+                StringBuilder stringBuffer = new StringBuilder();
+                for (String row : rows) {
+                    stringBuffer.append(row);
+                }
 
-            StringBuilder stringBuffer = new StringBuilder();
-            for (String row : rows) {
-                stringBuffer.append(row);
-            }
-
-            logger.info("returning mono");
-            logger.info(stringBuffer.toString());
-
-            return Mono.just(stringBuffer.toString());
+                return Mono.just(stringBuffer.toString());
+            });
         });
     }
 }
