@@ -117,7 +117,6 @@ public class Atropos {
                 .onErrorContinue((throwable, o) -> {
                     logger.error("-- Error in Bot --");
                     logger.error("stinky", throwable);
-                    logger.error("Error while processing {}. Cause: {}", o, throwable.getMessage());
                 })
                 .block();
     }

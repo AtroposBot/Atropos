@@ -174,7 +174,7 @@ public class AuditCommand implements Command {
 
     private Mono<Void> recentAudits(ChatInputInteractionEvent event) {
 
-        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+        return event.getInteraction().getGuild().flatMap(guild -> {
             DatabaseLoader.openConnectionIfClosed();
 
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
@@ -184,7 +184,10 @@ public class AuditCommand implements Command {
 
             LazyList<CommandUse> commandUseLazyList = CommandUse.where("server_id = ? and date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
 
+            logger.info("Got the list");
+
             if (commandUseLazyList.isEmpty()) {
+                logger.info("List is empty");
                 EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                         .color(Color.ENDEAVOUR)
                         .title("Recent Commands")
@@ -194,10 +197,14 @@ public class AuditCommand implements Command {
                         .build();
 
                 DatabaseLoader.closeConnectionIfOpen();
+                logger.info("Sending results");
                 return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
             }
 
+            logger.info("List not empty");
+
             return createFormattedAuditTable(commandUseLazyList, guild).flatMap(results -> {
+                logger.info("List is populated");
                 EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                         .color(Color.ENDEAVOUR)
                         .title("Recent Commands")
@@ -207,6 +214,7 @@ public class AuditCommand implements Command {
                         .build();
 
                 DatabaseLoader.closeConnectionIfOpen();
+                logger.info("Sending results");
                 return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
             });
         });
@@ -282,13 +290,15 @@ public class AuditCommand implements Command {
         rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", "ID", "Date", "User", "Preview"));
         rows.add("---------------------------------------------------------\n");
 
+        logger.info("Building rows");
+
         Mono<Void> populateTable = Flux.fromIterable(commandUseLazyList)
                 .filter(Objects::nonNull)
                 .flatMap(c -> {
                     DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
                     String userId = discordUser.getUserIdSnowflake().toString();
-                    return Mono.from(guild.getClient().getUserById(Snowflake.of(userId)))
-                            .flatMap(member -> {
+                    return guild.getClient().getUserById(Snowflake.of(userId))
+                            .map(member -> {
                                 String username = member.getTag();
                                 if (username.length() > 15) {
                                     username = username.substring(0, 12) + "...";
@@ -301,18 +311,25 @@ public class AuditCommand implements Command {
                                     preview = c.getCommandContents().substring(0, 7) + "...";
                                 } else preview = c.getCommandContents();
 
-                                rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
-                                return Mono.empty();
+                                logger.info("One more row: " + auditId);
+
+                                return rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview));
                             });
                 }).then();
 
-        return Mono.from(populateTable).flatMap(unused -> {
-            rows.add("```");
 
-            StringBuffer stringBuffer = new StringBuffer();
+
+        return populateTable.flatMap(unused -> {
+            rows.add("```");
+            logger.info("Rows: " + rows);
+
+            StringBuilder stringBuffer = new StringBuilder();
             for (String row : rows) {
                 stringBuffer.append(row);
             }
+
+            logger.info("returning mono");
+            logger.info(stringBuffer.toString());
 
             return Mono.just(stringBuffer.toString());
         });

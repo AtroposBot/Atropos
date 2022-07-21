@@ -152,16 +152,17 @@ public class ButtonUseListener {
 
                         if (messageData == null) {
                             DatabaseLoader.closeConnectionIfOpen();
-                            return event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("no-work", "Unable to Display").disabled()));
+                            return event.edit().withComponents(ActionRow.of(Button.danger("no-work", "Unable to Display").disabled()));
                         }
 
                         DatabaseLoader.closeConnectionIfOpen();
-                        return messageChannel.createMessage(specFromData(messageData))
-                                .then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "Done!").disabled())));
+                        return messageChannel.createMessage(specFromData(messageData).withContent("Made visible by " + event.getInteraction().getUser().getMention() + ":"))
+                                .then(event.edit().withComponents(ActionRow.of(Button.success("it-worked", "Done!").disabled())));
+                                //.then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "Done!").disabled())));
 
                     } else {
                         DatabaseLoader.closeConnectionIfOpen();
-                        return event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("no-work", "Unable to Display").disabled()));
+                        return event.edit().withComponents(ActionRow.of(Button.danger("no-work", "Unable to Display").disabled()));
                     }
 
                 }).flatMap($ -> $)
