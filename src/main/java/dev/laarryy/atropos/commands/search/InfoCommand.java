@@ -405,31 +405,31 @@ public class InfoCommand implements Command {
 
     private Mono<Long> voiceCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_CATEGORY))
+                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_VOICE))
                 .count();
     }
 
     private Mono<Long> textCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_CATEGORY))
+                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_TEXT))
                 .count();
     }
 
     private Mono<Long> stageCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_CATEGORY))
+                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_STAGE_VOICE))
                 .count();
     }
 
     private Mono<Long> storeCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_CATEGORY))
+                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_STORE))
                 .count();
     }
 
     private Mono<Long> newsCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_CATEGORY))
+                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_NEWS))
                 .count();
     }
     private Mono<Long> roleCount(Guild guild) {

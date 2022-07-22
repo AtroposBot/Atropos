@@ -130,7 +130,7 @@ public final class Notifier {
             return handlePunisherNotification(event, punishment, punishmentReason);
     }
 
-    public static Mono<Void> handlePunisherNotification(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
+    private static Mono<Void> handlePunisherNotification(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
         String punishmentEnd;
         if (punishment.getEndDate() != null) {
             Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());

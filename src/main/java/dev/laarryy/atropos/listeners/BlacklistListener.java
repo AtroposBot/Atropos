@@ -43,7 +43,7 @@ public class BlacklistListener {
             }
 
             if (event.getMember().isEmpty() || event.getMessage().getAuthor().isEmpty() || event.getMessage().getAuthor().get().isBot()) {
-                return Mono.error(new NotFoundException("404 Member Not Found"));
+                return Mono.empty();
             }
 
             return guild.getSelfMember().flatMap(selfMember -> {

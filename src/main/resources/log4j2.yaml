@@ -37,14 +37,14 @@ Configuration:
     logger:
       -
         name: dev.laarryy.atropos
-        level: info
+        level: debug
         additivity: false
         AppenderRef:
           - ref: Console
           - ref: File
       -
         name: discord4j.rest
-        level: debug
+        level: error
         additivity: false
         AppenderRef:
           ref: Console

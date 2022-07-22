@@ -346,23 +346,23 @@ public class PunishmentManager {
         return Mono.just(punishment.getPunishmentType()).flatMap(typeString -> {
             switch (punishment.getPunishmentType()) {
                 case "mute" -> {
-                    return discordMuteUser(guild, punished.getUserIdSnowflake()).flatMap(unused ->
-                            loggingListener.onPunishment(event, punishment)
-                                    .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
-                                    .then(AuditLogger.addCommandToDB(event, true)));
+                    return discordMuteUser(guild, punished.getUserIdSnowflake())
+                            .then(loggingListener.onPunishment(event, punishment))
+                            .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
+                            .then(AuditLogger.addCommandToDB(event, true));
                 }
                 case "ban" -> {
-                    return discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason).flatMap(unused ->
-                            loggingListener.onPunishment(event, punishment)
-                                    .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
-                                    .then(AuditLogger.addCommandToDB(event, true)));
+                    return discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason)
+                            .then(loggingListener.onPunishment(event, punishment))
+                            .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
+                            .then(AuditLogger.addCommandToDB(event, true));
 
                 }
                 case "kick" -> {
-                    return discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason).flatMap(unused ->
-                            loggingListener.onPunishment(event, punishment)
-                                    .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
-                                    .then(AuditLogger.addCommandToDB(event, true)));
+                    return discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason)
+                            .then(loggingListener.onPunishment(event, punishment))
+                            .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
+                            .then(AuditLogger.addCommandToDB(event, true));
                 }
                 case "warn", "note" -> {
                     return loggingListener.onPunishment(event, punishment)

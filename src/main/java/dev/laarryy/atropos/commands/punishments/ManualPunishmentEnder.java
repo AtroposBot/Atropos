@@ -71,7 +71,7 @@ public final class ManualPunishmentEnder {
                                 .flatMap(member ->
                                         Mono.just(member).flatMap(member1 ->
                                                 Mono.when(discordUnmute(member1, event, reason),
-                                                databaseEndPunishment(member.getId().asLong(), guild, event.getCommandName(), reason, event.getInteraction().getUser(), member))));
+                                                        databaseEndPunishment(member.getId().asLong(), guild, event.getCommandName(), reason, event.getInteraction().getUser(), member))));
                     }
 
 
@@ -86,28 +86,27 @@ public final class ManualPunishmentEnder {
         if (mutedRoleId == null) {
             return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoMutedRoleException("No Muted Role")));
         }
-        Mono<Role> mutedRole;
 
-            mutedRole = event.getInteraction().getGuild().flatMap(guild -> guild.getRoleById(Snowflake.of(mutedRoleId)));
+        Mono<Role> mutedRole = event.getInteraction().getGuild().flatMap(guild -> guild.getRoleById(Snowflake.of(mutedRoleId)));
 
-            return mutedRole
-                            .flatMap(role -> {
-                                if (role == null) {
-                                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoMutedRoleException("No Muted Role")));
-                                } else {
-                                    return member.getRoles().any(arole -> arole.equals(role))
-                                            .flatMap(aBoolean -> {
+        return mutedRole.flatMap(role -> {
+            if (role == null) {
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoMutedRoleException("No Muted Role")));
+            } else {
+                return member.getRoles().any(arole -> arole.equals(role))
+                        .flatMap(aBoolean -> {
 
-                                                if (!aBoolean) {
-                                                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new UserNotMutedException("User Not Muted")));
-                                                }
-                                                return member.removeRole(Snowflake.of(mutedRoleId))
-                                                        .then(Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason)).then(AuditLogger.addCommandToDB(event, true));
-                                            })
-                                            .thenReturn(true)
-                                            .onErrorReturn(Exception.class, false);
-                                }
-                            });
+                            if (!aBoolean) {
+                                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new UserNotMutedException("User Not Muted")));
+                            }
+                            return member.removeRole(Snowflake.of(mutedRoleId))
+                                    .then(Notifier.notifyModOfUnmute(event, member.getDisplayName(), reason))
+                                    .then(AuditLogger.addCommandToDB(event, true));
+                        })
+                        .thenReturn(true)
+                        .onErrorReturn(Exception.class, false);
+            }
+        });
     }
 
     public Mono<Void> databaseEndPunishment(Long userIdSnowflake, Guild guild, String commandName, String reason, User punishmentEnder, User punishedUser) {

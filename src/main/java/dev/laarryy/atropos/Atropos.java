@@ -111,13 +111,14 @@ public class Atropos {
                         listenerRegistration,
                         scheduledTaskDoer,
                         startCacheRefresh,
-                        addServersToDB,
-                        client.onDisconnect()
+                        addServersToDB
                 )
                 .onErrorContinue((throwable, o) -> {
                     logger.error("-- Error in Bot --");
                     logger.error("stinky", throwable);
                 })
-                .block();
+                .subscribe();
+
+        client.onDisconnect().block();
     }
 }

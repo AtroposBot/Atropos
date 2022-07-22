@@ -239,6 +239,8 @@ public class ErrorHandler {
     public static Mono<Void> handleListenerError(Throwable error, Event event) {
         logger.error(error);
 
+        logger.error("stinky!!", error);
+
         if (event instanceof ButtonInteractionEvent) {
             if (error instanceof NoUserException) {
                 return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(noUserEmbed()).build()).then();
