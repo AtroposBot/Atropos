@@ -183,9 +183,10 @@ public class CaseCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
+        // Have to do CommandChecks here because permissions are too granular - there is one for each type of case command instead of one for the entire case command
 
         if (event.getOption("delete").isPresent()) {
-            return Mono.from(CommandChecks.commandChecks(event, "casedelete")).flatMap(aBoolean -> {
+            return CommandChecks.commandChecks(event, "casedelete").flatMap(aBoolean -> {
                 if (!aBoolean) {
                     return Mono.error(new NoPermissionsException("No Permission"));
                 }
@@ -194,7 +195,7 @@ public class CaseCommand implements Command {
         }
 
         if (event.getOption("update").isPresent()) {
-            return Mono.from(CommandChecks.commandChecks(event, "caseupdate")).flatMap(aBoolean -> {
+            return CommandChecks.commandChecks(event, "caseupdate").flatMap(aBoolean -> {
                 if (!aBoolean) {
                     return Mono.error(new NoPermissionsException("No Permission"));
                 }
@@ -202,7 +203,7 @@ public class CaseCommand implements Command {
             });
         }
         if (event.getOption("search").isPresent()) {
-            return Mono.from(CommandChecks.commandChecks(event, "casesearch")).flatMap(aBoolean -> {
+            return CommandChecks.commandChecks(event, "casesearch").flatMap(aBoolean -> {
                 if (!aBoolean) {
                     return Mono.error(new NoPermissionsException("No Permission"));
                 }
@@ -225,7 +226,7 @@ public class CaseCommand implements Command {
     }
 
     private Mono<Void> deletePunishment(ChatInputInteractionEvent event) {
-        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+        return event.getInteraction().getGuild().flatMap(guild -> {
             if (event.getOption("delete").get().getOption("id").isEmpty()) {
                 return Mono.error(new MalformedInputException("Malformed Input"));
             }
@@ -262,7 +263,7 @@ public class CaseCommand implements Command {
     private Mono<Void> recentCases(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
 
-        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+        return event.getInteraction().getGuild().flatMap(guild -> {
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
             Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
             long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
@@ -279,7 +280,7 @@ public class CaseCommand implements Command {
             if (punishmentLazyList == null || punishmentLazyList.isEmpty()) {
                 results = "Nothing found in the past 10 days";
             } else {
-                return Mono.from(createFormattedRecentPunishmentsTable(punishmentLazyList, guild)).flatMap(populatedResults -> {
+                return createFormattedRecentPunishmentsTable(punishmentLazyList, guild).flatMap(populatedResults -> {
                     EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                             .color(Color.ENDEAVOUR)
                             .title("Recent Cases")
@@ -473,7 +474,7 @@ public class CaseCommand implements Command {
 
     private Mono<Void> searchPunishments(ChatInputInteractionEvent event) {
 
-        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+        return event.getInteraction().getGuild().flatMap(guild -> {
             long userIdSnowflake;
             if (event.getOption("search").get().getOption("user").isPresent()
                     && event.getOption("search").get().getOption("user").get().getOption("snowflake").isPresent()
@@ -490,7 +491,7 @@ public class CaseCommand implements Command {
                     && event.getOption("search").get().getOption("user").get().getOption("mention").isPresent()
                     && event.getOption("search").get().getOption("user").get().getOption("mention").get().getValue().isPresent()) {
 
-                return Mono.from(event.getOption("search").get().getOption("user").get().getOption("mention").get().getValue().get().asUser()).flatMap(user -> {
+                return event.getOption("search").get().getOption("user").get().getOption("mention").get().getValue().get().asUser().flatMap(user -> {
                     Long userMentionSnowflake = user.getId().asLong();
                     return handleUserResults(userMentionSnowflake, event, guild);
                 });
@@ -529,7 +530,7 @@ public class CaseCommand implements Command {
         if (punishmentLazyList == null || punishmentLazyList.isEmpty()) {
             results = "No results found for user.";
         } else {
-            return Mono.from(createFormattedPunishmentsTable(punishmentLazyList, guild)).flatMap(populatedResults -> {
+            return createFormattedPunishmentsTable(punishmentLazyList, guild).flatMap(populatedResults -> {
                 EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                         .color(Color.ENDEAVOUR)
                         .title("Results for User: " + userIdSnowflake)
@@ -621,7 +622,7 @@ public class CaseCommand implements Command {
                     });
                 }).then();
 
-        return Mono.from(populateTable).flatMap(unused -> {
+        return populateTable.flatMap(unused -> {
             rows.add("```");
 
             StringBuilder stringBuffer = new StringBuilder();

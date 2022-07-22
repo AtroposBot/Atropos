@@ -46,8 +46,7 @@ public class WarnCommand implements Command {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
         PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
-        return Mono.just(event)
-                .flatMap(event1 -> punishmentManager.doPunishment(request, event1));
+        return punishmentManager.doPunishment(request, event);
     }
 
 }

@@ -110,35 +110,35 @@ public class BlacklistListener {
             default -> "note";
         };
 
-        return createPunishment(event, b, type).flatMap(p -> {
-            return guild.getSelfMember().flatMap(selfMember -> punishmentManager.onlyCheckIfPunisherHasHighestRole(selfMember, event.getMember().get(), guild).flatMap(aBoolean -> {
-                if (!aBoolean) {
-                    return loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);
-                }
-
-                if (action.equals("delete")){
-                    return event.getMessage().delete();
-                }
-
-                if (action.equals("warn")) {
-                    return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Warned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"));
-                }
-
-                if (action.equals("mute")) {
-                    return event.getMessage().delete().then(
-                                    Notifier.notifyPunished(guild, p, "Muted for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
-                            .then(punishmentManager.discordMuteUser(guild, userIdSnowflake))
-                            .then(loggingListener.onBlacklistMute(event, p));
-                }
-
-                if (action.equals("ban")) {
-                    return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Banned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
-                            .then(punishmentManager.discordBanUser(guild, userIdSnowflake, 0, "Triggered the blacklist: `" + b.getServerBlacklist().getTrigger() + "`"));
-                }
-
+        return createPunishment(event, b, type).flatMap(p ->
+                guild.getSelfMember().flatMap(selfMember ->
+                        punishmentManager.onlyCheckIfPunisherHasHighestRole(selfMember, event.getMember().get(), guild).flatMap(aBoolean -> {
+            if (!aBoolean) {
                 return loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);
-        }));
-        });
+            }
+
+            if (action.equals("delete")){
+                return event.getMessage().delete();
+            }
+
+            if (action.equals("warn")) {
+                return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Warned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"));
+            }
+
+            if (action.equals("mute")) {
+                return event.getMessage().delete().then(
+                                Notifier.notifyPunished(guild, p, "Muted for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
+                        .then(punishmentManager.discordMuteUser(guild, userIdSnowflake))
+                        .then(loggingListener.onBlacklistMute(event, p));
+            }
+
+            if (action.equals("ban")) {
+                return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Banned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
+                        .then(punishmentManager.discordBanUser(guild, userIdSnowflake, 0, "Triggered the blacklist: `" + b.getServerBlacklist().getTrigger() + "`"));
+            }
+
+            return loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);
+    })));
     }
 
     private Mono<Punishment> createPunishment(MessageCreateEvent event, Blacklist blacklist, String type) {

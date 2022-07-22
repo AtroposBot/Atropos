@@ -54,14 +54,12 @@ public class WipeCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        Mono<Void> deferMono = event.deferReply().withEphemeral(true);
-
         if (event.getOption("guild").isPresent()) {
-            return this.wipeGuild(event);
+            return wipeGuild(event);
         }
 
         if (event.getOption("user").isPresent()) {
-            return this.wipeUser(event);
+            return wipeUser(event);
         }
 
         return Mono.empty();
@@ -69,7 +67,7 @@ public class WipeCommand implements Command {
 
     private Mono<Void> wipeGuild(ChatInputInteractionEvent event) {
 
-        return Mono.from(event.getInteraction().getGuild())
+        return event.getInteraction().getGuild()
                 .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                 .onErrorResume(Mono::error)
@@ -85,7 +83,7 @@ public class WipeCommand implements Command {
                     return messageChannel.createMessage("Administrator Server Wipe Activated. Farewell!").flatMap(message -> {
                         discordServer.delete();
                         DatabaseLoader.closeConnectionIfOpen();
-                        return Mono.from(guild.leave().retry(10));
+                        return guild.leave().retry(10);
                     });
                 }));
     }
@@ -94,7 +92,7 @@ public class WipeCommand implements Command {
 
         User user = event.getInteraction().getUser();
 
-        return Mono.from(event.getInteraction().getGuild())
+        return event.getInteraction().getGuild()
                 .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .filter(Objects::nonNull)
                 .flatMap(guild -> {

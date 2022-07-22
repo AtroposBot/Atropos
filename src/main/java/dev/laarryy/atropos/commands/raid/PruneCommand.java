@@ -48,13 +48,13 @@ public class PruneCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        return Mono.from(CommandChecks.commandChecks(event, request.name()))
+        return CommandChecks.commandChecks(event, request.name())
                 .flatMap(aBoolean -> {
                     if (!aBoolean) {
                         return Mono.error(new NoPermissionsException("No Permission"));
                     }
-                    return Mono.from(event.getInteraction().getChannel().ofType(TextChannel.class)).flatMap(channel ->
-                            Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+                    return event.getInteraction().getChannel().ofType(TextChannel.class).flatMap(channel ->
+                            event.getInteraction().getGuild().flatMap(guild -> {
 
                                 if (event.getOption("number").isEmpty() || event.getOption("number").get().getValue().isEmpty()) {
                                     return Mono.error(new MalformedInputException("Malformed Input"));
@@ -77,7 +77,7 @@ public class PruneCommand implements Command {
                                         .timestamp(Instant.now())
                                         .build();
 
-                                return Mono.from(channel.bulkDelete(snowflakeFlux))
+                                return channel.bulkDelete(snowflakeFlux)
                                         .then(Notifier.sendResultsEmbed(event, embed))
                                         .then(AuditLogger.addCommandToDB(event, true));
 

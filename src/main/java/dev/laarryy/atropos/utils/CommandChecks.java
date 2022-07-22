@@ -20,16 +20,16 @@ public class CommandChecks {
 
     public static Mono<Boolean> commandChecks(ChatInputInteractionEvent event, String requestName) {
 
-        return Mono.from(event.getInteraction().getGuild())
+        return event.getInteraction().getGuild()
                 .flatMap(guild -> {
                     if (guild == null) {
                         return Mono.error(new NullServerException("No Guild"));
                     }
-                    return Mono.from((permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName)))
+                    return permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName)
                             .flatMap(aBoolean -> {
                                 if (!aBoolean) {
-                                    AuditLogger.addCommandToDB(event, false);
-                                    return Mono.error(new NoPermissionsException("No Permission"));
+                                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoPermissionsException("No Permission")));
+
                                 } else {
                                     return Mono.just(true);
                                 }
@@ -46,12 +46,12 @@ public class CommandChecks {
 
     public static Mono<Boolean> commandChecks(ButtonInteractionEvent event, String requestName) {
 
-        return Mono.from(event.getInteraction().getGuild())
+        return event.getInteraction().getGuild()
                 .flatMap(guild -> {
                     if (guild == null) {
                         return Mono.error(new NullServerException("No Guild"));
                     }
-                    return Mono.from((permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName)))
+                    return permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName)
                             .flatMap(aBoolean -> {
                                 if (!aBoolean) {
                                     return Mono.error(new NoPermissionsException("No Permission"));

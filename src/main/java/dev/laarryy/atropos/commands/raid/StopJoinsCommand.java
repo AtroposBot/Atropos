@@ -37,11 +37,11 @@ public class StopJoinsCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        return Mono.from(CommandChecks.commandChecks(event, request.name())).flatMap(aBoolean -> {
+        return CommandChecks.commandChecks(event, request.name()).flatMap(aBoolean -> {
             if (!aBoolean) {
                 return Mono.error(new NoPermissionsException("No Permission"));
             }
-            return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+            return event.getInteraction().getGuild().flatMap(guild -> {
                 DatabaseLoader.openConnectionIfClosed();
                 DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
 
@@ -58,7 +58,7 @@ public class StopJoinsCommand implements Command {
 
                     cache.invalidate(guild.getId().asLong());
 
-                    return Mono.from(loggingListener.onStopJoinsEnable(guild)).flatMap(a -> {
+                    return loggingListener.onStopJoinsEnable(guild).flatMap(a -> {
                         EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Success").description("Enabled the prevention of all joins.").color(Color.ENDEAVOUR).timestamp(Instant.now()).build();
 
                         DatabaseLoader.closeConnectionIfOpen();
@@ -78,11 +78,12 @@ public class StopJoinsCommand implements Command {
                     serverProperties.save();
                     serverProperties.refresh();
                     cache.invalidate(guild.getId().asLong());
-                    return Mono.from(loggingListener.onStopJoinsDisable(guild)).flatMap(a -> {
+                    return loggingListener.onStopJoinsDisable(guild).flatMap(a -> {
                         EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Success").description("Disabled the prevention of all joins.").color(Color.ENDEAVOUR).timestamp(Instant.now()).build();
 
                         DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+                        return Notifier.sendResultsEmbed(event, embed)
+                                .then(AuditLogger.addCommandToDB(event, true));
                     });
 
                 }

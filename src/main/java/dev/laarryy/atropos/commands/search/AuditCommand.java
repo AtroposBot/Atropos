@@ -95,7 +95,8 @@ public class AuditCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        return Mono.from(CommandChecks.commandChecks(event, request.name())).flatMap(aBoolean -> {
+        return CommandChecks.commandChecks(event, request.name())
+                .flatMap(aBoolean -> {
             if (!aBoolean) {
                 return Mono.error(new NoPermissionsException("No Permission"));
             }
@@ -244,7 +245,7 @@ public class AuditCommand implements Command {
 
     private Mono<Void> handleUserSearch(ChatInputInteractionEvent event, Long userIdSnowflake) {
 
-        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+        return event.getInteraction().getGuild().flatMap(guild -> {
             long guildId = event.getInteraction().getGuildId().get().asLong();
             DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
@@ -269,7 +270,7 @@ public class AuditCommand implements Command {
                 return AuditLogger.addCommandToDB(event, true).then(Mono.error(new NoResultsException("No Results")));
             }
 
-            return Mono.from(createFormattedAuditTable(commandUsesLazyList, guild)).flatMap(results -> {
+            return createFormattedAuditTable(commandUsesLazyList, guild).flatMap(results -> {
                 EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                         .color(Color.ENDEAVOUR)
                         .title("Results")

@@ -19,8 +19,6 @@ import java.time.Instant;
 
 public class ModMailSettings {
     private final Logger logger = LogManager.getLogger(this);
-    private final PermissionChecker permissionChecker = new PermissionChecker();
-    private final AddServerToDB addServerToDB = new AddServerToDB();
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 

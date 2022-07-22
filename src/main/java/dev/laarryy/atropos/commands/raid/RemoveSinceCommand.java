@@ -79,12 +79,12 @@ public class RemoveSinceCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        return Mono.from(CommandChecks.commandChecks(event, request.name()))
+        return CommandChecks.commandChecks(event, request.name())
                 .flatMap(aBoolean -> {
                     if (!aBoolean) {
                         return Mono.error(new NoPermissionsException("No Permission"));
                     }
-                    return Mono.from(event.getInteraction().getGuild()).publishOn(Schedulers.boundedElastic()).publishOn(Schedulers.boundedElastic()).flatMap(guild -> {
+                    return event.getInteraction().getGuild().flatMap(guild -> {
                         if (event.getOption("type").isEmpty()
                                 || event.getOption("duration").isEmpty()
                                 || event.getOption("type").get().getValue().isEmpty()
@@ -184,21 +184,21 @@ public class RemoveSinceCommand implements Command {
             DiscordUser discordUser = DiscordUser.findFirst("id = ?", serverUser.getUserId());
             long userId = discordUser.getUserIdSnowflake();
 
-            return Mono.from(guild.getSelfMember()).flatMap(selfMember -> {
+            return guild.getSelfMember().flatMap(selfMember -> {
                 if (selfMember.getId().asLong() == userId) {
                     return Mono.just("");
                 } else {
-                    return Mono.from(guild.getMemberById(Snowflake.of(userId))).flatMap(memberById -> {
+                    return guild.getMemberById(Snowflake.of(userId)).flatMap(memberById -> {
                         if (memberById.isBot()) {
                             return Mono.just("");
                         }
                         else {
                             Set<Snowflake> snowflakeSet = memberById.getRoleIds();
-                            return Mono.from(member.hasHigherRoles(snowflakeSet)).flatMap(memberHasHigherRoles -> {
+                            return member.hasHigherRoles(snowflakeSet).flatMap(memberHasHigherRoles -> {
                                 if (!snowflakeSet.isEmpty() && !memberHasHigherRoles) {
                                     return Mono.just("");
                                 } else {
-                                    return Mono.from(guild.ban(Snowflake.of(userId)).withReason("Banned as part of anti-raid measures").withDeleteMessageDays(2))
+                                    return guild.ban(Snowflake.of(userId)).withReason("Banned as part of anti-raid measures").withDeleteMessageDays(2)
                                             .thenReturn(String.valueOf(userId));
                                 }
                             });
@@ -213,21 +213,21 @@ public class RemoveSinceCommand implements Command {
             DiscordUser discordUser = DiscordUser.findFirst("id = ?", serverUser.getUserId());
             long userId = discordUser.getUserIdSnowflake();
 
-            return Mono.from(guild.getSelfMember()).flatMap(selfMember -> {
+            return guild.getSelfMember().flatMap(selfMember -> {
                 if (selfMember.getId().asLong() == userId) {
                     return Mono.just("");
                 } else {
-                    return Mono.from(guild.getMemberById(Snowflake.of(userId))).flatMap(memberById -> {
+                    return guild.getMemberById(Snowflake.of(userId)).flatMap(memberById -> {
                         if (memberById.isBot()) {
                             return Mono.just("");
                         }
                         else {
                             Set<Snowflake> snowflakeSet = memberById.getRoleIds();
-                            return Mono.from(member.hasHigherRoles(snowflakeSet)).flatMap(memberHasHigherRoles -> {
+                            return member.hasHigherRoles(snowflakeSet).flatMap(memberHasHigherRoles -> {
                                 if (!snowflakeSet.isEmpty() && !memberHasHigherRoles) {
                                     return Mono.just("");
                                 } else {
-                                    return Mono.from(guild.kick(Snowflake.of(userId), "Kicked as part of Anti-Raid Measures"))
+                                    return guild.kick(Snowflake.of(userId), "Kicked as part of Anti-Raid Measures")
                                             .thenReturn(String.valueOf(userId));
                                 }
                             });

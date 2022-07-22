@@ -87,7 +87,7 @@ public class InfoCommand implements Command {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         logger.info("Execute Received");
-        return Mono.from(CommandChecks.commandChecks(event, request.name())).flatMap(aBoolean -> {
+        return CommandChecks.commandChecks(event, request.name()).flatMap(aBoolean -> {
             if (!aBoolean) {
                 return Mono.error(new NoPermissionsException("No Permission"));
             }
@@ -112,8 +112,9 @@ public class InfoCommand implements Command {
 
     private Mono<Void> sendBotInfo(ChatInputInteractionEvent event) {
         DatabaseLoader.openConnectionIfClosed();
-        return Mono.from(event.getInteraction().getGuild()).flatMap(guild ->
-                Mono.from(guild.getSelfMember()).flatMap(selfMember -> {
+
+        return event.getInteraction().getGuild().flatMap(guild ->
+                guild.getSelfMember().flatMap(selfMember -> {
                     DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
                     DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
 
@@ -171,11 +172,11 @@ public class InfoCommand implements Command {
         }
 
         if (event.getOption("user").get().getOption("mention").isPresent()) {
-            return Mono.from(event.getOption("user").get().getOption("mention").get().getValue().get().asUser()).flatMap(user -> {
+            return event.getOption("user").get().getOption("mention").get().getValue().get().asUser().flatMap(user -> {
                 Snowflake userIdSnowflake = user.getId();
 
-                return Mono.from(event.getInteraction().getGuild()).flatMap(guild ->
-                        Mono.from(guild.getMemberById(userIdSnowflake)).flatMap(member -> {
+                return event.getInteraction().getGuild().flatMap(guild ->
+                        guild.getMemberById(userIdSnowflake).flatMap(member -> {
                             if (member == null) {
                                 StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
                                         .append("Profile: ").append(user.getMention()).append("\n")
@@ -195,7 +196,8 @@ public class InfoCommand implements Command {
 
                             //todo: test this>
                             if (discordUser == null) {
-                                return Mono.from(addServerToDB.addUserToDatabase(member, guild)).then(Mono.error(new TryAgainException("Try Again")));
+                                return addServerToDB.addUserToDatabase(member, guild)
+                                        .then(Mono.error(new TryAgainException("Try Again")));
                             }
 
                             discordUser.refresh();
@@ -203,7 +205,7 @@ public class InfoCommand implements Command {
 
                             ServerUser serverUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId());
 
-                            return Mono.from(guild.getSelfMember()).flatMap(selfMember -> {
+                            return guild.getSelfMember().flatMap(selfMember -> {
                                 DiscordUser discordSelfUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
                                 ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
 
@@ -266,7 +268,7 @@ public class InfoCommand implements Command {
 
         logger.info("Sending server info");
 
-        return Mono.from(event.getInteraction().getGuild()).flatMap(guild -> {
+        return event.getInteraction().getGuild().flatMap(guild -> {
             Long guildId = guild.getId().asLong();
 
             DiscordServer server = DiscordServer.findOrCreateIt("server_id", guildId);
@@ -286,7 +288,7 @@ public class InfoCommand implements Command {
 
             Instant created = guild.getId().getTimestamp();
 
-            return Mono.from(guild.getOwner()).flatMap(guildOwner -> {
+            return guild.getOwner().flatMap(guildOwner -> {
                 StringBuilder sb = new StringBuilder();
                 sb.append("**Guild Information**\n");
                 sb.append(EmojiManager.getModeratorBadge()).append(" **Owner:** ").append(guildOwner.getNicknameMention()).append("\n");
@@ -333,13 +335,13 @@ public class InfoCommand implements Command {
 
                 String description = sb.toString();
 
-                return Mono.from(roleCount(guild)).flatMap(roleLong ->
-                        Mono.from(categoryCount(guild)).flatMap(categoryLong ->
-                        Mono.from(voiceCount(guild)).flatMap(voiceLong ->
-                                Mono.from(textCount(guild)).flatMap(textLong ->
-                                        Mono.from(stageCount(guild)).flatMap(stageLong ->
-                                                Mono.from(storeCount(guild)).flatMap(storeLong ->
-                                                        Mono.from(newsCount(guild)).flatMap(newsLong -> {
+                return roleCount(guild).flatMap(roleLong ->
+                        categoryCount(guild).flatMap(categoryLong ->
+                        voiceCount(guild).flatMap(voiceLong ->
+                                textCount(guild).flatMap(textLong ->
+                                        stageCount(guild).flatMap(stageLong ->
+                                                storeCount(guild).flatMap(storeLong ->
+                                                        newsCount(guild).flatMap(newsLong -> {
                                                             String field1Content = EmojiManager.getServerCategory() + " `" +
                                                                     categoryLong +
                                                                     "` Categories\n" +

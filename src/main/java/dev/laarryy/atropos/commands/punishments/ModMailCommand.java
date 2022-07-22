@@ -3,6 +3,7 @@ package dev.laarryy.atropos.commands.punishments;
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.exceptions.CannotSendModMailException;
 import dev.laarryy.atropos.exceptions.MalformedInputException;
+import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
@@ -50,8 +51,13 @@ public class ModMailCommand implements Command {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
         Mono<Guild> guildMono = event.getInteraction().getGuild();
 
-        return Mono.from(guildMono)
+        return guildMono
                 .flatMap(guild -> {
+
+                    if (guild == null) {
+                        return Mono.error(new NullServerException("No Server"));
+                    }
+
                     Member member = event.getInteraction().getMember().get();
 
                     DatabaseLoader.openConnectionIfClosed();
@@ -67,7 +73,7 @@ public class ModMailCommand implements Command {
                     if (properties.getModMailChannelSnowflake() != null) {
                         Mono<TextChannel> channelMono = guild.getChannelById(Snowflake.of(properties.getModMailChannelSnowflake())).ofType(TextChannel.class);
 
-                        return Mono.from(channelMono).flatMap(channel -> {
+                        return channelMono.flatMap(channel -> {
                             String content;
                             if (input.length() > 3985) {
                                 content = "```\n" + input.substring(0, 3975) + "\n```";
@@ -84,7 +90,7 @@ public class ModMailCommand implements Command {
                                     .timestamp(Instant.now())
                                     .build();
 
-                            return Mono.from(channel.createMessage(embed)).flatMap(message -> {
+                            return channel.createMessage(embed).flatMap(message -> {
                                 EmbedCreateSpec embed2 = EmbedCreateSpec.builder()
                                         .title("Success")
                                         .description("Sent to ModMail successfully.")

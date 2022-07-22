@@ -151,12 +151,12 @@ public class AntiSpamListener {
             pingHistory.put(pair, pingInt + userMentions);
         }
 
-        Mono<Void> tempIdk = Mono.empty();
+        Mono<Void> muteIfNeeded = Mono.empty();
         if (properties.getAntiScam()) {
             try {
                 String match = checkMessageForScam(event.getMessage().getContent());
                 if (match != null) {
-                    tempIdk = muteUserForScam(event, match);
+                    muteIfNeeded = muteUserForScam(event, match);
                 }
             } catch (MalformedURLException ignored) {
             }
@@ -164,17 +164,17 @@ public class AntiSpamListener {
 
         if (warnsToMute > 0 && warnInt >= warnsToMute) {
             warnHistory.invalidate(pair);
-            return tempIdk.then(muteUserForSpam(event));
+            return muteIfNeeded.then(muteUserForSpam(event));
         }
 
         if (pingsToWarn > 0 && pingInt == pingsToWarn) {
             warnHistory.put(pair, warnInt + 1);
-            return tempIdk.then(warnUserForSpam(event));
+            return muteIfNeeded.then(warnUserForSpam(event));
         }
 
         if (messagesToWarn > 0 && histInt == messagesToWarn) {
             warnHistory.put(pair, warnInt + 1);
-            return tempIdk.then(warnUserForSpam(event));
+            return muteIfNeeded.then(warnUserForSpam(event));
         }
 
         return Mono.empty();

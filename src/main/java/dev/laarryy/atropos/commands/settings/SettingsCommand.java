@@ -300,12 +300,12 @@ public class SettingsCommand implements Command {
 
         if (event.getOption("antispam").isPresent()) {
 
-            return Mono.from(CommandChecks.commandChecks(event, "antispamsettings"))
+            return CommandChecks.commandChecks(event, "antispamsettings")
                     .doFirst(DatabaseLoader::openConnectionIfClosed)
                     .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                     .flatMap(aBoolean -> {
                         if (aBoolean) {
-                            return Mono.from(antiSpamSettings.execute(event));
+                            return antiSpamSettings.execute(event);
                         } else {
                             return Mono.error(new NoPermissionsException("No Permission"));
                         }
@@ -314,12 +314,12 @@ public class SettingsCommand implements Command {
 
         if (event.getOption("blacklist").isPresent()) {
 
-            return Mono.from(CommandChecks.commandChecks(event, "blacklistsettings"))
+            return CommandChecks.commandChecks(event, "blacklistsettings")
                     .doFirst(DatabaseLoader::openConnectionIfClosed)
                     .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                     .flatMap(aBoolean -> {
                         if (aBoolean) {
-                            return Mono.from(blacklistSettings.execute(event));
+                            return blacklistSettings.execute(event);
                         } else {
                             return Mono.error(new NoPermissionsException("No Permission"));
                         }
@@ -328,12 +328,12 @@ public class SettingsCommand implements Command {
 
         if (event.getOption("log").isPresent()) {
 
-            return Mono.from(CommandChecks.commandChecks(event, "logsettings"))
+            return CommandChecks.commandChecks(event, "logsettings")
                     .doFirst(DatabaseLoader::openConnectionIfClosed)
                     .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                     .flatMap(aBoolean -> {
                         if (aBoolean) {
-                            return Mono.from(logSettings.execute(event));
+                            return logSettings.execute(event);
                         } else {
                             return Mono.error(new NoPermissionsException("No Permission"));
                         }
@@ -342,12 +342,12 @@ public class SettingsCommand implements Command {
 
         if (event.getOption("modmail").isPresent()) {
 
-            return Mono.from(CommandChecks.commandChecks(event, "modmailsettings"))
+            return CommandChecks.commandChecks(event, "modmailsettings")
                     .doFirst(DatabaseLoader::openConnectionIfClosed)
                     .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                     .flatMap(aBoolean -> {
                         if (aBoolean) {
-                            return Mono.from(modMailSettings.execute(event));
+                            return modMailSettings.execute(event);
                         } else {
                             return Mono.error(new NoPermissionsException("No Permission"));
                         }
@@ -356,12 +356,12 @@ public class SettingsCommand implements Command {
 
         if (event.getOption("mutedrole").isPresent()) {
 
-            return Mono.from(CommandChecks.commandChecks(event, "mutedrolesettings"))
+            return CommandChecks.commandChecks(event, "mutedrolesettings")
                     .doFirst(DatabaseLoader::openConnectionIfClosed)
                     .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                     .flatMap(aBoolean -> {
                         if (aBoolean) {
-                            return Mono.from(mutedRoleSettings.execute(event));
+                            return mutedRoleSettings.execute(event);
                         } else {
                             return Mono.error(new NoPermissionsException("No Permission"));
                         }

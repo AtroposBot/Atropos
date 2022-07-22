@@ -38,15 +38,15 @@ public final class Notifier {
 
     public static Mono<Void> sendResultsEmbed(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
 
-        return replyDeferredInteraction(event, embed);
+        String commandName = event.getInteraction().getCommandInteraction().flatMap(ApplicationCommandInteraction::getName).orElse("unknown");
+        boolean shouldAllowNonEphemeralDisplay = true;
 
-        /*return Mono.from(event.getInteractionResponse().deleteInitialResponse())
-                .thenReturn(event.getInteractionResponse().createFollowupMessage(
-                        MultipartRequest.ofRequest(WebhookExecuteRequest
-                                .builder()
-                                .addEmbed(embed.asRequest())
-                                .build())))
-                .then();*/
+        if (commandName.equals("wipe")) {
+            shouldAllowNonEphemeralDisplay = false;
+        }
+
+        return replyDeferredInteraction(event, embed, shouldAllowNonEphemeralDisplay);
+
     }
 
     private static Mono<Void> replyDeferredInteraction(ButtonInteractionEvent event, EmbedCreateSpec embed) {
@@ -65,20 +65,24 @@ public final class Notifier {
                         .build()).then();*/
     }
 
-    private static Mono<Void> replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
+    private static Mono<Void> replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed, boolean shouldAllowNonEphemeral) {
         Button deEphemeralize = Button.primary("deephemeralize", "Display Non-Ephemerally");
 
-        return event.getInteractionResponse().editInitialResponse(
-                WebhookMessageEditRequest
-                        .builder()
-                        .addEmbed(embed.asRequest())
-                        .addComponent(ActionRow.of(deEphemeralize).getData())
-                        .build())
+        WebhookMessageEditRequest webhook = WebhookMessageEditRequest.builder()
+                .addEmbed(embed.asRequest())
+                .build();
+
+        if (shouldAllowNonEphemeral) {
+            webhook = WebhookMessageEditRequest.builder()
+                    .addEmbed(embed.asRequest())
+                    .addComponent(ActionRow.of(deEphemeralize).getData())
+                    .build();
+        }
+
+        return event.getInteractionResponse().editInitialResponse(webhook)
                 .flatMap(messageData -> {
 
-                    String commandName = event.getInteraction().getCommandInteraction().flatMap(ApplicationCommandInteraction::getName).orElse("unknown");
-
-                    if (commandName.equals("wipe")) {
+                    if (!shouldAllowNonEphemeral) {
                         return Mono.empty();
                     }
 
@@ -119,7 +123,7 @@ public final class Notifier {
     }
 
     public static Mono<Void> notifyPunisherForcebanComplete(ChatInputInteractionEvent event, String idInput) {
-        return replyDeferredInteraction(event, forceBanCompleteEmbed(idInput)).then();
+        return replyDeferredInteraction(event, forceBanCompleteEmbed(idInput), true).then();
     }
 
     public static Mono<Void> notifyPunisher(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
@@ -143,19 +147,19 @@ public final class Notifier {
 
             switch (punishment.getPunishmentType()) {
                 case "warn" -> {
-                    return replyDeferredInteraction(event, warnEmbed(userName, punishmentReason, caseId));
+                    return replyDeferredInteraction(event, warnEmbed(userName, punishmentReason, caseId), true);
                 }
                 case "kick" -> {
-                    return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
+                    return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId), true);
                 }
                 case "ban" -> {
-                    return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
+                    return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId), true);
                 }
                 case "mute" -> {
-                    return replyDeferredInteraction(event, muteEmbed(userName, punishmentEnd, punishmentReason, caseId));
+                    return replyDeferredInteraction(event, muteEmbed(userName, punishmentEnd, punishmentReason, caseId), true);
                 }
                 case "note" -> {
-                    return replyDeferredInteraction(event, noteEmbed(userName, punishmentReason, caseId));
+                    return replyDeferredInteraction(event, noteEmbed(userName, punishmentReason, caseId), false);
                 }
                 default -> {
                     return Mono.empty();
@@ -252,11 +256,11 @@ public final class Notifier {
     }
 
     public static Mono<Void> notifyModOfUnban(ChatInputInteractionEvent event, String reason, long userId) {
-        return replyDeferredInteraction(event, unbanEmbed(userId, reason));
+        return replyDeferredInteraction(event, unbanEmbed(userId, reason), true);
     }
 
     public static Mono<Void> notifyModOfUnmute(ChatInputInteractionEvent event, String username, String reason) {
-        return replyDeferredInteraction(event, unmuteEmbed(username, reason));
+        return replyDeferredInteraction(event, unmuteEmbed(username, reason), true);
     }
 
     public static Mono<Void> notifyModOfUnmute(ButtonInteractionEvent event, String username, String reason) {

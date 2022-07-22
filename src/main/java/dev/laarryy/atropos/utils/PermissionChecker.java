@@ -27,15 +27,13 @@ public final class PermissionChecker {
      * @param guild Guild to check permission in
      * @param user User to check permissions of
      * @param requestName Command name to check permission of
-     * @return a true {@link Mono}<{@link Boolean}> if user has permission in guild, or an error signal indicating no permission.
+     * @return a true {@link Mono}<{@link Boolean}> if user has permission in guild, or an error signal indicating no permission
      */
-
-    // WHO WROTE THESE LOVELY DOCS WTF
 
     public Mono<Boolean> checkPermission(Guild guild, User user, String requestName) {
         Snowflake guildIdSnowflake = guild.getId();
 
-        return Mono.from(user.asMember(guildIdSnowflake))
+        return user.asMember(guildIdSnowflake)
                 .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                 .flatMap(member -> {
@@ -46,22 +44,23 @@ public final class PermissionChecker {
 
                     logger.info("Permission check in progress - permission ID = " + permissionId);
 
-                    return Mono.from(checkIsAdministrator(member)).flatMap(aBoolean -> {
+                    return checkIsAdministrator(member).flatMap(aBoolean -> {
                         if (aBoolean) {
                             return Mono.just(true);
                         }
 
                         int guildId = DiscordServer.findFirst("server_id = ?", guildIdSnowflake.asLong()).getInteger("id");
 
+                        // This Mono.from() is necessary and not superficial
                         return Mono.from(guild.getRoles()
                                 .filter(role ->
                                         (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null)
                                                 || (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null)
                                                 || role.getPermissions().contains(Permission.ADMINISTRATOR))
-                                .flatMap(role -> Mono.from(member.getRoles()
+                                .flatMap(role -> member.getRoles()
                                                 .mergeWith(guild.getEveryoneRole())
                                                 .any(memberRole -> memberRole.equals(role))
-                                        )
+
                                         .flatMap(bool -> {
                                             if (!bool) {
                                                 return Mono.error(new NoPermissionsException("No Permission"));
@@ -74,6 +73,12 @@ public final class PermissionChecker {
                 });
     }
 
+    /**
+     *
+     * @param member A guild {@link Member} to check if administrator
+     * @return A true {@link Mono}<{@link Boolean}> if the {@link Member} is an administrator or false if not
+     */
+
     public Mono<Boolean> checkIsAdministrator(Member member) {
 
         return member.getRoles()
@@ -84,13 +89,13 @@ public final class PermissionChecker {
 
     public Mono<Boolean> checkBotPermission(ChatInputInteractionEvent event) {
 
-        return Mono.from(event.getInteraction().getGuild())
+        return event.getInteraction().getGuild()
                 .flatMap(guild -> {
                     if (guild == null) {
-                        AuditLogger.addCommandToDB(event, false);
-                        return Mono.error(new NullServerException("No Guild"));
+                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("No Guild")));
                     }
-                    return Mono.from(guild.getSelfMember()).flatMap(self -> Mono.from(self.getBasePermissions()).flatMap(basePerms -> {
+                    return guild.getSelfMember().flatMap(self ->
+                            self.getBasePermissions().flatMap(basePerms -> {
                         if (basePerms.contains(Permission.ADMINISTRATOR)) {
                             return Mono.just(true);
                         }
@@ -112,15 +117,13 @@ public final class PermissionChecker {
                                 Permission.MUTE_MEMBERS
                         );
 
-                        return Mono.from(self.getBasePermissions()).flatMap(selfPermissions -> {
+                        return self.getBasePermissions().flatMap(selfPermissions -> {
                             if (selfPermissions == null) {
-                                AuditLogger.addCommandToDB(event, false);
-                                return Mono.error(new BotPermissionsException("No Bot Permission"));
+                                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new BotPermissionsException("No Bot Permission")));
                             }
                             for (Permission permission : requiredPermissions) {
                                 if (!selfPermissions.contains(permission)) {
-                                    AuditLogger.addCommandToDB(event, false);
-                                    return Mono.error(new BotPermissionsException("No Bot Permission"));
+                                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new BotPermissionsException("No Bot Permission")));
                                 }
                             }
                             return Mono.just(true);

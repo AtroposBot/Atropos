@@ -128,7 +128,7 @@ public class ScheduledTaskDoer {
     }
 
     private Mono<Void> autoUnbanUser(Guild guild, Punishment punishment, Snowflake userId) {
-        return Mono.from(guild.getSelfMember())
+        return guild.getSelfMember()
                 .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .flatMap(selfMember -> {
                     DiscordUser selfDiscordUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
@@ -140,15 +140,15 @@ public class ScheduledTaskDoer {
                     punishment.setEndReason("Automatically unbanned on timer.");
                     punishment.save();
                     punishment.refresh();
-                    loggingListener.onUnban(guild, "Automatically unbanned on timer.", punishment);
-                    return guild.unban(userId);
+
+                    return guild.unban(userId).then(loggingListener.onUnban(guild, "Automatically unbanned on timer.", punishment));
                 })
                 .doFinally(s -> DatabaseLoader.closeConnectionIfOpen());
     }
 
     private Mono<Void> autoUnmuteUser(DiscordServer server, Punishment punishment, Member member, Guild guild) {
 
-        return Mono.from(guild.getSelfMember())
+        return guild.getSelfMember()
                 .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .flatMap(self -> {
                     DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id = ?", server.getServerId());
@@ -163,10 +163,9 @@ public class ScheduledTaskDoer {
                     punishment.setEndReason("Automatically unmuted on timer.");
                     punishment.save();
                     punishment.refresh();
-                    loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment);
+
                     if (member != null) {
-                        return Mono.just(member)
-                                .flatMap(member1 -> member1.removeRole(Snowflake.of(mutedRoleSnowflake)));
+                        return member.removeRole(Snowflake.of(mutedRoleSnowflake)).then(loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment));
                     } else {
                         return Mono.empty();
                     }

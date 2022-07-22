@@ -21,6 +21,7 @@ import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.checkerframework.checker.units.qual.A;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -91,7 +92,8 @@ public class BlacklistSettings {
                     .footer("To remove this entry, run /blacklist remove " + blacklistId, "")
                     .build();
 
-            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+            return Notifier.sendResultsEmbed(event, embed)
+                    .then(AuditLogger.addCommandToDB(event, true));
         });
     }
 
@@ -127,7 +129,8 @@ public class BlacklistSettings {
                         .build();
             }
 
-            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+            return Notifier.sendResultsEmbed(event, embed)
+                    .then(AuditLogger.addCommandToDB(event, true));
         });
     }
 
@@ -198,7 +201,7 @@ public class BlacklistSettings {
         if (event.getOption("blacklist").get().getOption("add").get().getOption("type").get().getValue().isEmpty()
                 || event.getOption("blacklist").get().getOption("add").get().getOption("entry").get().getValue().isEmpty()
                 || event.getOption("blacklist").get().getOption("add").get().getOption("action").get().getValue().isEmpty()) {
-            AuditLogger.addCommandToDB(event, false);
+
             return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
@@ -227,13 +230,16 @@ public class BlacklistSettings {
             String action = event.getOption("blacklist").get().getOption("add").get().getOption("action").get().getValue().get().asString();
 
             if (serverBlacklist != null) {
-                AuditLogger.addCommandToDB(event, false);
                 return AuditLogger.addCommandToDB(event, false).then(Mono.error(new AlreadyBlacklistedException("Already Blacklisted")));
             }
 
             LoadingCache<Long, List<Blacklist>> blacklistCache = BlacklistCacheManager.getManager().getBlacklistCache();
 
             List<Blacklist> blacklistList = blacklistCache.get(guild.getId().asLong());
+
+            if (blacklistList == null) {
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("No Entries Found")));
+            }
 
             if (blacklistList.size() >= 31) {
                 return AuditLogger.addCommandToDB(event, false).then(Mono.error(new TooManyEntriesException("Too Many Entries")));

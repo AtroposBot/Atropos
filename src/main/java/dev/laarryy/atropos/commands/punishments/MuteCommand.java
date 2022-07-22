@@ -51,7 +51,6 @@ public class MuteCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        return Mono.just(event)
-                .flatMap(event1 -> punishmentManager.doPunishment(request, event1));
+        return punishmentManager.doPunishment(request, event);
     }
 }

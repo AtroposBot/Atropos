@@ -44,218 +44,194 @@ public class ErrorHandler {
     public static Mono<Void> handleError(Throwable error, ChatInputInteractionEvent event) {
 
         if (error instanceof NoPermissionsException) {
-            return Mono.from(
-                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                             .builder()
                             .addEmbed(noPermissionsEmbed().asRequest())
-                            .build()))
+                            .build())
                     .then();
         }
 
         if (error instanceof BotPermissionsException) {
-            return Mono.from(
-                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                             .builder()
                             .addEmbed(noBotPermissionsEmbed().asRequest())
-                            .build()))
+                            .build())
                     .then();
         }
 
         if (error instanceof ClientException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(discordSideError().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof NullServerException) {
-            return Mono.from(
-                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                             .builder()
                             .addEmbed(nullServerEmbed().asRequest())
-                            .build()))
+                            .build())
                     .then();
         }
 
         if (error instanceof BotRoleException) {
-            return Mono.from(
-                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                             .builder()
                             .addEmbed(botRoleTooLow().asRequest())
-                            .build()))
+                            .build())
                     .then();
         }
 
         if (error instanceof AlreadyAppliedException) {
-            return Mono.from(
-                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                             .builder()
                             .addEmbed(punishmentAlreadyAppliedEmbed().asRequest())
-                            .build()))
+                            .build())
                     .then();
         }
 
         if (error instanceof AlreadyAssignedException) {
-            return Mono.from(
-                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                             .builder()
                             .addEmbed(alreadyAssignedEmbed().asRequest())
-                            .build()))
+                            .build())
                     .then();
         }
 
         if (error instanceof AlreadyBlacklistedException) {
-            return Mono.from(
-                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                             .builder()
                             .addEmbed(alreadyBlacklistedEmbed().asRequest())
-                            .build()))
+                            .build())
                     .then();
         }
 
         if (error instanceof CannotTargetBotsException) {
-            return Mono.from(
-                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                             .builder()
                             .addEmbed(cannotTargetBotsEmbed().asRequest())
-                            .build()))
+                            .build())
                     .then();
         }
 
         if (error instanceof DurationTooLongException) {
-            return Mono.from(
-                    event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                             .builder()
                             .addEmbed(durationTooLongEmbed().asRequest())
-                            .build()))
+                            .build())
                     .then();
         }
 
         if (error instanceof InputTooLongException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(inputTooLongEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof InvalidChannelException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(invalidChannelEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof InvalidDurationException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(invalidDurationEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof MalformedInputException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(malformedInputEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof NoMemberException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(noMemberEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof NoMutedRoleException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(noMutedRoleEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof NoResultsException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(noResultsEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof NotFoundException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(fourOhFourEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof NoUserException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(noUserEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof TooManyEntriesException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(tooManyEntriesEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof UserNotMutedException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(userNotMutedEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof CannotSendModMailException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(cannotSendModmail().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
         if (error instanceof TryAgainException) {
-            return Mono.from(
-                            event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+            return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                     .builder()
                                     .addEmbed(tryAgainEmbed().asRequest())
-                                    .build()))
+                                    .build())
                     .then();
         }
 
 
-        return Mono.from(
-                        event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
+        return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                 .builder()
                                 .addEmbed(unknownErrorEmbed().asRequest())
-                                .build()))
+                                .build())
                 .then();
 
     }

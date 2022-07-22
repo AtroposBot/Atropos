@@ -90,12 +90,12 @@ public final class ManualPunishmentEnder {
 
             mutedRole = event.getInteraction().getGuild().flatMap(guild -> guild.getRoleById(Snowflake.of(mutedRoleId)));
 
-            return Mono.from(mutedRole)
+            return mutedRole
                             .flatMap(role -> {
                                 if (role == null) {
                                     return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoMutedRoleException("No Muted Role")));
                                 } else {
-                                    return Mono.from(member.getRoles().any(arole -> arole.equals(role)))
+                                    return member.getRoles().any(arole -> arole.equals(role))
                                             .flatMap(aBoolean -> {
 
                                                 if (!aBoolean) {

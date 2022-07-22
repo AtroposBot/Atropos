@@ -128,7 +128,7 @@ public class PunishmentManager {
                                         // Ensure nobody is trying to forceban their boss or a bot or someone that doesn't exist
                                         return guild.getMemberById(Snowflake.of(aLong))
                                                 .filter(Objects::nonNull)
-                                                .flatMap(punishedMember -> Mono.from(checkIfPunisherHasHighestRole(event.getInteraction().getMember().get(), punishedMember, guild, event))
+                                                .flatMap(punishedMember -> checkIfPunisherHasHighestRole(event.getInteraction().getMember().get(), punishedMember, guild, event)
                                                         .flatMap(aBoolean1 -> {
 
                                                             logger.info("4.4");
@@ -346,20 +346,20 @@ public class PunishmentManager {
         return Mono.just(punishment.getPunishmentType()).flatMap(typeString -> {
             switch (punishment.getPunishmentType()) {
                 case "mute" -> {
-                    return Mono.from(discordMuteUser(guild, punished.getUserIdSnowflake())).flatMap(unused ->
+                    return discordMuteUser(guild, punished.getUserIdSnowflake()).flatMap(unused ->
                             loggingListener.onPunishment(event, punishment)
                                     .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
                                     .then(AuditLogger.addCommandToDB(event, true)));
                 }
                 case "ban" -> {
-                    return Mono.from(discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason)).flatMap(unused ->
+                    return discordBanUser(guild, punished.getUserIdSnowflake(), messageDeleteDays, punishmentReason).flatMap(unused ->
                             loggingListener.onPunishment(event, punishment)
                                     .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
                                     .then(AuditLogger.addCommandToDB(event, true)));
 
                 }
                 case "kick" -> {
-                    return Mono.from(discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason)).flatMap(unused ->
+                    return discordKickUser(guild, punished.getUserIdSnowflake(), punishmentReason).flatMap(unused ->
                             loggingListener.onPunishment(event, punishment)
                                     .then(Notifier.notifyPunisher(event, punishment, punishmentReason))
                                     .then(AuditLogger.addCommandToDB(event, true)));
@@ -437,18 +437,18 @@ public class PunishmentManager {
             discordServerProperties.refresh();
         }
 
-        return Mono.from(guild.getMemberById(Snowflake.of(userIdSnowflake))).flatMap(punishedMember ->
-                Mono.from(guild.getSelfMember()).flatMap(selfMember ->
-                        Mono.from(onlyCheckIfPunisherHasHighestRole(selfMember, punishedMember, guild)).flatMap(aBoolean -> {
+        return guild.getMemberById(Snowflake.of(userIdSnowflake)).flatMap(punishedMember ->
+                guild.getSelfMember().flatMap(selfMember ->
+                        onlyCheckIfPunisherHasHighestRole(selfMember, punishedMember, guild).flatMap(aBoolean -> {
                             if (!aBoolean) {
                                 return Mono.error(new BotPermissionsException("No Bot Permission"));
                             }
                             if (needToUpdateMutedRole) {
-                                return Mono.from(updateMutedRoleInAllChannels(guild, mutedRole)).flatMap(unused ->
-                                        Mono.from(mutedRole).flatMap(role ->
+                                return updateMutedRoleInAllChannels(guild, mutedRole).flatMap(unused ->
+                                        mutedRole.flatMap(role ->
                                                 punishedMember.addRole(role.getId())));
                             } else {
-                                return Mono.from(mutedRole).flatMap(role ->
+                                return mutedRole.flatMap(role ->
                                         punishedMember.addRole(role.getId()));
                             }
                         })));
@@ -460,15 +460,15 @@ public class PunishmentManager {
 
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
-        return Mono.from(guild.getSelfMember()).flatMap(selfMember -> {
-            return Mono.from(selfMember.getRoles().collectList()).flatMap(selfRoleList -> {
-                return Mono.from(guild.getRoles().map(Role::getData).collectList()).flatMap(roleData -> {
+        return guild.getSelfMember().flatMap(selfMember ->
+                selfMember.getRoles().collectList().flatMap(selfRoleList ->
+                        guild.getRoles().map(Role::getData).collectList().flatMap(roleData -> {
                     Flux<RoleData> roleDataFlux = Flux.fromIterable(roleData);
                     Role highestSelfRole = selfRoleList.get(selfRoleList.size() - 1);
-                    return Mono.from(OrderUtil.orderRoles(roleDataFlux).takeWhile(role -> !role.equals(highestSelfRole.getData())).count()).flatMap(roleCount -> {
+                    return OrderUtil.orderRoles(roleDataFlux).takeWhile(role -> !role.equals(highestSelfRole.getData())).count().flatMap(roleCount -> {
                         int roleInt = roleCount != null ? roleCount.intValue() - 1 : 1;
 
-                        return Mono.from(mutedRoleMono).flatMap(mutedRole -> {
+                        return mutedRoleMono.flatMap(mutedRole -> {
                             Mono<Void> changePositionMono;
                             if (mutedRole != null) {
                                 discordServerProperties.setMutedRoleSnowflake(mutedRole.getId().asLong());
@@ -521,9 +521,7 @@ public class PunishmentManager {
                             );
                         });
                     });
-                });
-            });
-        });
+                })));
 
 
     }
@@ -554,7 +552,7 @@ public class PunishmentManager {
         }));
 
         return punished.getRoles().map(Role::getId).collectList()
-                .flatMap(snowflakes -> Mono.from(adminDiff).flatMap(aBoolean -> {
+                .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {
                     logger.info("7.6");
                     if (!aBoolean) {
                         return Mono.error(new NoPermissionsException("No Permission"));
@@ -594,16 +592,16 @@ public class PunishmentManager {
             return Mono.just(false);
         }));
 
-        return Mono.from(punished.getRoles().map(Role::getId).collectList())
-                .flatMap(snowflakes -> Mono.from(adminDiff).flatMap(aBoolean -> {
+        return punished.getRoles().map(Role::getId).collectList()
+                .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {
                     if (!aBoolean) {
                         return Mono.error(new NoPermissionsException("No Permission"));
                     }
-                    return Mono.from(guild.getSelfMember()).flatMap(selfMember -> Mono.from(selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(botHasHigherRoles -> {
+                    return guild.getSelfMember().flatMap(selfMember -> selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false).flatMap(botHasHigherRoles -> {
                         if (!botHasHigherRoles) {
                             return Mono.error(new BotRoleException("Bot Role Too Low"));
                         } else {
-                            return Mono.from(punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(punisherHasHigherRoles -> {
+                            return punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false).flatMap(punisherHasHigherRoles -> {
                                 if (!punisherHasHigherRoles) {
                                     return Mono.error(new NoPermissionsException("No Permission"));
                                 } else {
@@ -621,29 +619,27 @@ public class PunishmentManager {
             return Mono.error(new NoPermissionsException("No Permission"));
         }
 
-        Mono<Boolean> adminDiff = Mono.empty().flatMap(a -> {
-            return Mono.from(permissionChecker.checkIsAdministrator(punisher)).flatMap(punisherIsAdmin -> {
-                return Mono.from(permissionChecker.checkIsAdministrator(punished)).flatMap(punishedIsAdmin -> {
+        Mono<Boolean> adminDiff = Mono.empty().flatMap(a ->
+                permissionChecker.checkIsAdministrator(punisher).flatMap(punisherIsAdmin ->
+                        permissionChecker.checkIsAdministrator(punished).flatMap(punishedIsAdmin -> {
                     if (punisherIsAdmin && !punishedIsAdmin) {
                         return Mono.just(true);
                     } else if (punishedIsAdmin && punisherIsAdmin) {
                         return loggingListener.onAttemptedInsubordination(event, punished).thenReturn(false);
                     }
                     return Mono.just(false);
-                });
-            });
-        });
+                })));
 
-        return Mono.from(punished.getRoles().map(Role::getId).collectList())
-                .flatMap(snowflakes -> Mono.from(adminDiff).flatMap(aBoolean -> {
+        return punished.getRoles().map(Role::getId).collectList()
+                .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {
                     if (!aBoolean) {
                         return Mono.error(new NoPermissionsException("No Permission"));
                     }
-                    return Mono.from(guild.getSelfMember()).flatMap(selfMember -> Mono.from(selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(botHasHigherRoles -> {
+                    return guild.getSelfMember().flatMap(selfMember -> selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false).flatMap(botHasHigherRoles -> {
                         if (!botHasHigherRoles) {
                             return Mono.error(new BotRoleException("Bot Role Too Low"));
                         } else {
-                            return Mono.from(punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false)).flatMap(punisherHasHigherRoles -> {
+                            return punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false).flatMap(punisherHasHigherRoles -> {
                                 if (!punisherHasHigherRoles) {
                                     return loggingListener.onAttemptedInsubordination(event, punished).then(Mono.error(new NoPermissionsException("No Permission")));
                                 } else {

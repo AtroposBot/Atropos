@@ -26,7 +26,6 @@ import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.User;
 import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.spec.EmbedCreateFields;
@@ -42,8 +41,6 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -87,7 +84,6 @@ public class ButtonUseListener {
                 return sendMessageNonEphemerally(event);
             }
 
-
             if (ban.matches()) {
                 DatabaseLoader.openConnectionIfClosed();
                 String punishmentId = ban.group(1);
@@ -114,7 +110,7 @@ public class ButtonUseListener {
         });
     }
 
-    private MessageCreateSpec specFromData(MessageData data) {
+    private MessageCreateSpec messageSpecFromData(MessageData data) {
 
         EmbedData embedData = data.embeds().get(0);
         EmbedCreateSpec.Builder spec = EmbedCreateSpec.builder();
@@ -137,6 +133,7 @@ public class ButtonUseListener {
 
         return MessageCreateSpec.builder()
                 .embeds(Collections.singleton(spec.build()))
+                .content(data.content())
                 .build();
     }
 
@@ -156,7 +153,7 @@ public class ButtonUseListener {
                         }
 
                         DatabaseLoader.closeConnectionIfOpen();
-                        return messageChannel.createMessage(specFromData(messageData).withContent("Made visible by " + event.getInteraction().getUser().getMention() + ":"))
+                        return messageChannel.createMessage(messageSpecFromData(messageData).withContent("Made visible by " + event.getInteraction().getUser().getMention() + ":"))
                                 .then(event.edit().withComponents(ActionRow.of(Button.success("it-worked", "Done!").disabled())));
                                 //.then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "Done!").disabled())));
 
