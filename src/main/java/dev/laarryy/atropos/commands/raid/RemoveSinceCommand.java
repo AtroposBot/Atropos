@@ -124,7 +124,7 @@ public class RemoveSinceCommand implements Command {
 
                         if (type.equals("ban")) {
                             return Flux.fromIterable(serverUserList)
-                                    .map(serverUser -> this.banUsers(serverUser, guild, event.getInteraction().getMember().get()))
+                                    .flatMap(serverUser -> this.banUsers(serverUser, guild, event.getInteraction().getMember().get()))
                                     .filter(string -> !string.equals("none"))
                                     .map(string -> sb.append(string).append(" "))
                                     .flatMap(stb -> {
@@ -149,7 +149,7 @@ public class RemoveSinceCommand implements Command {
 
                         if (type.equals("kick")) {
                             return Flux.fromIterable(serverUserList)
-                                    .map(serverUser -> this.kickUsers(serverUser, guild, event.getInteraction().getMember().get()))
+                                    .flatMap(serverUser -> this.kickUsers(serverUser, guild, event.getInteraction().getMember().get()))
                                     .filter(stringMono -> !stringMono.equals("none"))
                                     .map(string -> sb.append(string).append(" "))
                                     .flatMap(stb -> {
