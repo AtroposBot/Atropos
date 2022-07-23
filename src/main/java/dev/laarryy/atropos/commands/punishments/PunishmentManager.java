@@ -79,7 +79,8 @@ public class PunishmentManager {
                     // Make sure user has permission to do this, or stop here
                     return permissionChecker.checkPermission(guild, user, request.name()).flatMap(aBoolean -> {
                         if (!aBoolean) {
-                            return Mono.error(new NoPermissionsException("No Permission"));
+                            return AuditLogger.addCommandToDB(event, false)
+                                    .then(Mono.error(new NoPermissionsException("No Permission")));
                         }
 
                         logger.info("3");

@@ -63,7 +63,7 @@ public final class PermissionChecker {
 
                                         .flatMap(bool -> {
                                             if (!bool) {
-                                                return Mono.error(new NoPermissionsException("No Permission"));
+                                                return Mono.just(false);
                                             } else {
                                                 return Mono.just(true);
                                             }

@@ -44,7 +44,7 @@ public class CommandChecks {
      * @return a true {@link Mono}<{@link Boolean}> if button-use command is permitted in event's guild, or an error signal indicating no permission.
      */
 
-    public static Mono<Boolean> commandChecks(ButtonInteractionEvent event, String requestName) {
+    public static Mono<Boolean> commandChecks(ButtonInteractionEvent event, String requestName, String auditString) {
 
         return event.getInteraction().getGuild()
                 .flatMap(guild -> {
@@ -54,7 +54,7 @@ public class CommandChecks {
                     return permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName)
                             .flatMap(aBoolean -> {
                                 if (!aBoolean) {
-                                    return Mono.error(new NoPermissionsException("No Permission"));
+                                    return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
                                 } else {
                                     return Mono.just(true);
                                 }
