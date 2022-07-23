@@ -139,6 +139,10 @@ public final class LoggingListener {
         return getLogChannel(guild, "punishment").flatMap(channel -> LogExecutor.logMuteNotApplicable(memberToMute, channel));
     }
 
+    public Mono<Void> onNoDehoistPermission(Guild guild, Member memberToDehoist) {
+        return getLogChannel(guild, "punishment").flatMap(channel -> LogExecutor.logNoDehoistPermission(memberToDehoist, channel));
+    }
+
     public Mono<Void> onStopJoinsEnable(Guild guild) {
         return getLogChannel(guild, "guild").flatMap(LogExecutor::logStopJoinsEnabled);
     }

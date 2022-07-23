@@ -155,7 +155,7 @@ public class ButtonUseListener {
                         DatabaseLoader.closeConnectionIfOpen();
                         return messageChannel.createMessage(messageSpecFromData(messageData).withContent("Made visible by " + event.getInteraction().getUser().getMention() + ":"))
                                 .then(event.edit().withComponents(ActionRow.of(Button.success("it-worked", "Done!").disabled())));
-                                //.then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "Done!").disabled())));
+                        //.then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "Done!").disabled())));
 
                     } else {
                         DatabaseLoader.closeConnectionIfOpen();
@@ -289,7 +289,10 @@ public class ButtonUseListener {
         DiscordUser discordUser = getDiscordUserFromId(userId);
         Punishment punishment = getPunishmentFromId(punishmentId);
 
+        logger.info("unmuting user");
+
         return guild.getMemberById(Snowflake.of(discordUser.getUserIdSnowflake())).flatMap(mutedUser -> {
+
             String reason = "Unmuted by moderators after review of case `" + punishment.getPunishmentId() + "`, with original reason:\n > " + punishment.getPunishmentMessage();
             DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
             Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
@@ -301,12 +304,16 @@ public class ButtonUseListener {
                     return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
                 }
 
+                logger.info("Passed command check");
+
                 Member punisher = event.getInteraction().getMember().get();
 
                 return punishmentManager.checkIfPunisherHasHighestRole(punisher, mutedUser, guild, event).flatMap(theBool -> {
                     if (!theBool) {
                         return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
                     }
+
+                    logger.info("Passed highest role check");
 
                     if (mutedRoleId == null) {
                         DatabaseLoader.closeConnectionIfOpen();
@@ -315,13 +322,12 @@ public class ButtonUseListener {
 
                     return guild.getRoleById(Snowflake.of(mutedRoleId)).flatMap(mutedRole -> event.deferReply().flatMap(unused -> mutedUser.getRoles().any(role -> role.equals(mutedRole)).flatMap(theBoolean -> {
                         if (mutedRole != null && theBoolean) {
-                            return mutedUser.removeRole(Snowflake.of(mutedRoleId), reason).flatMap(unused1 -> {
-
-                                return manualPunishmentEnder.databaseEndPunishment(discordUser.getUserIdSnowflake(), guild, "unmute", reason, moderator, mutedUser)
-                                        .then(Notifier.notifyModOfUnmute(event, mutedUser.getDisplayName(), reason))
-                                        .then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "User Unmuted").disabled())))
-                                        .then(AuditLogger.addCommandToDB(event, auditString, true));
-                            });
+                            logger.info("Returning final mono");
+                            return mutedUser.removeRole(Snowflake.of(mutedRoleId), reason)
+                                    .then(manualPunishmentEnder.databaseEndPunishment(discordUser.getUserIdSnowflake(), guild, "unmute", reason, moderator, mutedUser))
+                                    .then(Notifier.notifyModOfUnmute(event, mutedUser.getDisplayName(), reason))
+                                    .then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.success("it-worked", "User Unmuted").disabled())))
+                                    .then(AuditLogger.addCommandToDB(event, auditString, true));
                         } else {
                             return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new UserNotMutedException("User Not Muted")));
                         }

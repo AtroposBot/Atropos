@@ -131,4 +131,44 @@ public final class PermissionChecker {
                     }));
                 });
     }
+
+    public Mono<Boolean> checkBotPermission(Member selfMember) {
+
+
+        return selfMember.getBasePermissions().flatMap(basePerms -> {
+            if (basePerms.contains(Permission.ADMINISTRATOR)) {
+                return Mono.just(true);
+            }
+
+            PermissionSet requiredPermissions = PermissionSet.of(
+                    Permission.VIEW_CHANNEL,
+                    Permission.MANAGE_CHANNELS,
+                    Permission.MANAGE_ROLES,
+                    Permission.VIEW_AUDIT_LOG,
+                    Permission.MANAGE_NICKNAMES,
+                    //Permission.USE_PRIVATE_THREADS,
+                    //Permission.USE_PUBLIC_THREADS,
+                    Permission.KICK_MEMBERS,
+                    Permission.BAN_MEMBERS,
+                    Permission.SEND_MESSAGES,
+                    Permission.USE_EXTERNAL_EMOJIS,
+                    Permission.MANAGE_MESSAGES,
+                    Permission.READ_MESSAGE_HISTORY,
+                    Permission.MUTE_MEMBERS
+            );
+
+            return selfMember.getBasePermissions().flatMap(selfPermissions -> {
+                if (selfPermissions == null) {
+                    return Mono.just(false);
+                }
+                for (Permission permission : requiredPermissions) {
+                    if (!selfPermissions.contains(permission)) {
+                        return Mono.just(false);
+                    }
+                }
+                return Mono.just(true);
+            });
+
+        });
+    }
 }

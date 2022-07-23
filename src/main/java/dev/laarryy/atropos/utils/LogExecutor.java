@@ -169,6 +169,23 @@ public final class LogExecutor {
         }).then();
     }
 
+    public static Mono<Void> logNoDehoistPermission(Member memberToDehoist, TextChannel logChannel) {
+        String displayName = memberToDehoist.getDisplayName() + "#" + memberToDehoist.getDiscriminator();
+        String mention = memberToDehoist.getMention();
+        long id = memberToDehoist.getId().asLong();
+
+        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                .title("Unable to Dehoist")
+                .color(Color.JAZZBERRY_JAM)
+                .description("I tried to dehoist the user " + "`%s`:`%d`:%s".formatted(displayName, id, mention) +
+                        " but was unable to, due to missing permissions." +
+                        "\nIf you would like to prevent this error, either disable dehoisting by running " +
+                        "`/settings antispam set dehoist False`, or give me the required **Edit Nicknames** permission.")
+                .build();
+
+        return logChannel.createMessage(embed).then();
+    }
+
     public static Mono<Void> logPunishment(Punishment punishment, TextChannel logChannel) {
         return Mono.defer(() -> {
             DatabaseLoader.openConnectionIfClosed();

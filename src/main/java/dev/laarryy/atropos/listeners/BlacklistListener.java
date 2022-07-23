@@ -118,11 +118,13 @@ public class BlacklistListener {
             }
 
             if (action.equals("delete")){
-                return event.getMessage().delete();
+                return event.getMessage().delete()
+                        .then(loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p));
             }
 
             if (action.equals("warn")) {
-                return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Warned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"));
+                return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Warned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
+                        .then(loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p));
             }
 
             if (action.equals("mute")) {
@@ -134,7 +136,8 @@ public class BlacklistListener {
 
             if (action.equals("ban")) {
                 return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Banned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
-                        .then(punishmentManager.discordBanUser(guild, userIdSnowflake, 0, "Triggered the blacklist: `" + b.getServerBlacklist().getTrigger() + "`"));
+                        .then(punishmentManager.discordBanUser(guild, userIdSnowflake, 0, "Triggered the blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
+                        .then(loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p));
             }
 
             return loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);

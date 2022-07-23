@@ -610,15 +610,15 @@ public class PunishmentManager {
         return punished.getRoles().map(Role::getId).collectList()
                 .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {
                     if (!aBoolean) {
-                        return Mono.error(new NoPermissionsException("No Permission"));
+                        return Mono.just(false);
                     }
                     return guild.getSelfMember().flatMap(selfMember -> selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false).flatMap(botHasHigherRoles -> {
                         if (!botHasHigherRoles) {
-                            return Mono.error(new BotRoleException("Bot Role Too Low"));
+                            return Mono.just(false);
                         } else {
                             return punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false).flatMap(punisherHasHigherRoles -> {
                                 if (!punisherHasHigherRoles) {
-                                    return Mono.error(new NoPermissionsException("No Permission"));
+                                    return Mono.just(false);
                                 } else {
                                     return Mono.just(true);
                                 }
@@ -648,7 +648,7 @@ public class PunishmentManager {
         return punished.getRoles().map(Role::getId).collectList()
                 .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {
                     if (!aBoolean) {
-                        return Mono.error(new NoPermissionsException("No Permission"));
+                        return Mono.just(false);
                     }
                     return guild.getSelfMember().flatMap(selfMember -> selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false).flatMap(botHasHigherRoles -> {
                         if (!botHasHigherRoles) {
@@ -656,7 +656,7 @@ public class PunishmentManager {
                         } else {
                             return punisher.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false).flatMap(punisherHasHigherRoles -> {
                                 if (!punisherHasHigherRoles) {
-                                    return loggingListener.onAttemptedInsubordination(event, punished).then(Mono.error(new NoPermissionsException("No Permission")));
+                                    return loggingListener.onAttemptedInsubordination(event, punished).then(Mono.just(false));
                                 } else {
                                     return Mono.just(true);
                                 }

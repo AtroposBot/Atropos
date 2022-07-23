@@ -239,9 +239,6 @@ public class ErrorHandler {
     }
 
     public static Mono<Void> handleListenerError(Throwable error, Event event) {
-        logger.error(error);
-
-        logger.error("stinky!!", error);
 
         if (event instanceof ButtonInteractionEvent) {
             if (error instanceof NoUserException) {
@@ -263,7 +260,21 @@ public class ErrorHandler {
             if (error instanceof UserNotMutedException) {
                 return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(userNotMutedEmbed()).build()).then();
             }
+
+            if (error instanceof BotRoleException) {
+                return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(botRoleTooLow()).build()).then();
+            }
+
+            if (error instanceof BotPermissionsException) {
+                return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(noBotPermissionsEmbed()).build()).then();
+            }
+            logger.error("Listener error with event of class: " + event.getClass());
+            logger.error("stinky!!", error);
+            return Mono.empty();
         }
+
+        logger.error("Listener error with event of class: " + event.getClass());
+        logger.error("stinky!!", error);
 
         return Mono.empty();
     }
