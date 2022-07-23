@@ -268,8 +268,13 @@ public class ErrorHandler {
             if (error instanceof BotPermissionsException) {
                 return ((ButtonInteractionEvent) event).createFollowup(InteractionFollowupCreateSpec.builder().addEmbed(noBotPermissionsEmbed()).build()).then();
             }
+
             logger.error("Listener error with event of class: " + event.getClass());
             logger.error("stinky!!", error);
+            return Mono.empty();
+        }
+
+        if (error instanceof NotFoundException) {
             return Mono.empty();
         }
 

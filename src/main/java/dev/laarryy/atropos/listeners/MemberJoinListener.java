@@ -45,38 +45,37 @@ public class MemberJoinListener {
                         .then(punishmentManager.discordKickUser(guild, member.getId().asLong(), "Automatically kicked as part of anti-raid measures")));
             }
 
-            return addServerToDB.addUserToDatabase(event.getMember(), guild).flatMap(unused -> {
-                // Apply evaded mutes
+            return addServerToDB.addUserToDatabase(event.getMember(), guild).then(applyEvadedMutes(event, guild));
+        });
+    }
 
-                DatabaseLoader.openConnectionIfClosed();
-                DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getMember().getId().asLong());
-                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+    private Mono<Void> applyEvadedMutes(MemberJoinEvent event, Guild guild) {
+        // Apply evaded mutes
 
-                if (user != null) {
-                    LazyList<Punishment> activePunishments = Punishment.find("user_id_punished = ? and end_date_passed = ? and server_id = ?",
-                            user.getUserId(), false, discordServer.getServerId());
-                    if (!activePunishments.isEmpty()) {
-                        for (Punishment activePunishment : activePunishments) {
-                            if (activePunishment != null) {
-                                logger.info("Punishment Evader!");
-                                logger.info(activePunishment.getPunishmentType());
-                                if (activePunishment.getPunishmentType().equals("mute")) {
-                                    logger.info("Mute Evader!");
-                                    return punishmentManager.discordMuteUser(guild, event.getMember().getId().asLong());
-                                } else {
-                                    DatabaseLoader.openConnectionIfClosed();
-                                    activePunishment.setEnded(true);
-                                    activePunishment.save();
-                                }
-                            }
+        DatabaseLoader.openConnectionIfClosed();
+        DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getMember().getId().asLong());
+        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+
+        if (user != null) {
+            LazyList<Punishment> activePunishments = Punishment.find("user_id_punished = ? and end_date_passed = ? and server_id = ?",
+                    user.getUserId(), false, discordServer.getServerId());
+            if (!activePunishments.isEmpty()) {
+                for (Punishment activePunishment : activePunishments) {
+                    if (activePunishment != null) {
+                        logger.info("Punishment Evader!");
+                        logger.info(activePunishment.getPunishmentType());
+                        if (activePunishment.getPunishmentType().equals("mute")) {
+                            logger.info("Mute Evader!");
+                            return punishmentManager.discordMuteUser(guild, event.getMember().getId().asLong());
+                        } else {
+                            DatabaseLoader.openConnectionIfClosed();
+                            activePunishment.setEnded(true);
+                            activePunishment.save();
                         }
                     }
                 }
-
-                DatabaseLoader.closeConnectionIfOpen();
-
-                return Mono.empty();
-            });
-        });
+            }
+        }
+        return Mono.empty();
     }
 }

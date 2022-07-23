@@ -176,6 +176,7 @@ public class BlacklistListener {
 
             punishment.save();
             punishment.refresh();
+
             DatabaseLoader.closeConnectionIfOpen();
             return Mono.just(punishment);
         }));

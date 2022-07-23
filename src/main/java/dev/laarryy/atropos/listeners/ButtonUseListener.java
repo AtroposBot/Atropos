@@ -57,6 +57,8 @@ public class ButtonUseListener {
     private static final Pattern UNMUTE = Pattern.compile("(.*)-atropos-unmute-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
     private static final Pattern KICK = Pattern.compile("(.*)-atropos-kick-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
 
+    private static final Pattern KICK_UNMUTE = Pattern.compile("(.*)-atropos-kickunmute-(.*)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
+
     private static final Pattern DE_EPHEMERALIZE = Pattern.compile("deephemeralize", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CHARACTER_CLASS | Pattern.DOTALL);
 
 
@@ -78,6 +80,7 @@ public class ButtonUseListener {
             Matcher ban = BAN.matcher(id);
             Matcher kick = KICK.matcher(id);
             Matcher unmute = UNMUTE.matcher(id);
+            Matcher kickUnmute = KICK_UNMUTE.matcher(id);
             Matcher deEphemeralize = DE_EPHEMERALIZE.matcher(id);
 
             if (deEphemeralize.matches()) {
@@ -96,6 +99,13 @@ public class ButtonUseListener {
                 String punishmentId = kick.group(1);
                 String userId = kick.group(2);
                 return kickUser(punishmentId, userId, guild, mod, event);
+            }
+
+            if (kickUnmute.matches()) {
+                DatabaseLoader.openConnectionIfClosed();
+                String punishmentId = kick.group(1);
+                String userId = kick.group(2);
+                return kickUnmuteUser(punishmentId, userId, guild, mod, event);
             }
 
             if (unmute.matches()) {
@@ -173,15 +183,14 @@ public class ButtonUseListener {
 
         String auditString = "Button: Ban " + discordUser.getUserIdSnowflake() + " for case " + punishmentId;
 
-        return CommandChecks.commandChecks(event, "ban", auditString).flatMap(aBoolean -> {
-            if (!aBoolean) {
-                return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
-            }
+        return CommandChecks.commandChecks(event, "kick", auditString)
+                .then(event.deferReply())
+                .then(guild.getMemberById(Snowflake.of(discordUser.getUserIdSnowflake())).flatMap(punished -> {
+                    logger.info("Post command checks");
 
-            Member punisher = event.getInteraction().getMember().get();
+                    Member punisher = event.getInteraction().getMember().get();
 
-            return guild.getMemberById(Snowflake.of(discordUser.getUserIdSnowflake())).flatMap(punished ->
-                    punishmentManager.checkIfPunisherHasHighestRole(punisher, punished, guild, event).flatMap(theBool -> {
+                    return punishmentManager.checkIfPunisherHasHighestRole(punisher, punished, guild, event).flatMap(theBool -> {
 
                         if (!theBool) {
                             return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
@@ -221,8 +230,8 @@ public class ButtonUseListener {
                                     .then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("it-worked", "User Banned").disabled())))
                                     .then(AuditLogger.addCommandToDB(event, auditString, true));
                         });
-                    }));
-        });
+                    });
+                }));
     }
 
     private Mono<Void> kickUser(String punishmentId, String userId, Guild guild, Member mod, ButtonInteractionEvent event) {
@@ -243,50 +252,105 @@ public class ButtonUseListener {
 
                     return punishmentManager.checkIfPunisherHasHighestRole(punisher, punished, guild, event).flatMap(theBool -> {
 
-                                logger.info("before the bool");
-                                if (!theBool) {
-                                    return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
-                                }
-                                logger.info("after bool");
+                        logger.info("before the bool");
+                        if (!theBool) {
+                            return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
+                        }
+                        logger.info("after bool");
 
-                                DatabaseLoader.openConnectionIfClosed();
+                        DatabaseLoader.openConnectionIfClosed();
 
-                                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-                                Punishment initialMute = getPunishmentFromId(punishmentId);
+                        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                        Punishment initialMute = getPunishmentFromId(punishmentId);
 
-                                String reason = "Kicked after moderator review. " +
-                                        "Original case number `" + initialMute.getPunishmentId() + "` with reason:\n > " + initialMute.getPunishmentMessage();
+                        String reason = "Kicked after moderator review. " +
+                                "Original case number `" + initialMute.getPunishmentId() + "` with reason:\n > " + initialMute.getPunishmentMessage();
 
-                                Punishment punishment = Punishment.create(
-                                        "user_id_punished", discordUser.getUserId(),
-                                        "name_punished", punished.getUsername(),
-                                        "discrim_punished", punished.getDiscriminator(),
-                                        "user_id_punisher", moderator.getUserId(),
-                                        "name_punisher", punisher.getUsername(),
-                                        "discrim_punisher", punisher.getDiscriminator(),
-                                        "server_id", discordServer.getServerId(),
-                                        "punishment_type", "kick",
-                                        "punishment_date", Instant.now().toEpochMilli(),
-                                        "punishment_message", reason,
-                                        "did_dm", true,
-                                        "end_date_passed", true,
-                                        "permanent", true,
-                                        "automatic", false,
-                                        "punishment_end_reason", "No reason provided.");
-                                punishment.save();
-                                punishment.refresh();
-                                DatabaseLoader.closeConnectionIfOpen();
+                        Punishment punishment = Punishment.create(
+                                "user_id_punished", discordUser.getUserId(),
+                                "name_punished", punished.getUsername(),
+                                "discrim_punished", punished.getDiscriminator(),
+                                "user_id_punisher", moderator.getUserId(),
+                                "name_punisher", punisher.getUsername(),
+                                "discrim_punisher", punisher.getDiscriminator(),
+                                "server_id", discordServer.getServerId(),
+                                "punishment_type", "kick",
+                                "punishment_date", Instant.now().toEpochMilli(),
+                                "punishment_message", reason,
+                                "did_dm", true,
+                                "end_date_passed", true,
+                                "permanent", true,
+                                "automatic", false,
+                                "punishment_end_reason", "No reason provided.");
+                        punishment.save();
+                        punishment.refresh();
+                        DatabaseLoader.closeConnectionIfOpen();
 
-                                logger.info("returning final mono");
+                        logger.info("returning final mono");
 
-                                return loggingListener.onPunishment(event, punishment)
-                                        .then(Notifier.notifyPunisherOfKick(event, punishment, punishment.getPunishmentMessage()))
-                                        .then(Notifier.notifyPunished(guild, punishment, reason))
-                                        .then(punishmentManager.discordKickUser(guild, discordUser.getUserIdSnowflake(), reason))
-                                        .then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("it-worked", "User Kicked").disabled())))
-                                        .then(AuditLogger.addCommandToDB(event, auditString, true));
-                            });
+                        return loggingListener.onPunishment(event, punishment)
+                                .then(Notifier.notifyPunisherOfKick(event, punishment, punishment.getPunishmentMessage()))
+                                .then(Notifier.notifyPunished(guild, punishment, reason))
+                                .then(punishmentManager.discordKickUser(guild, discordUser.getUserIdSnowflake(), reason))
+                                .then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("it-worked", "User Kicked").disabled())))
+                                .then(AuditLogger.addCommandToDB(event, auditString, true));
+                    });
                 }));
+    }
+
+    private Mono<Void> kickUnmuteUser(String punishmentId, String userId, Guild guild, Member moderator, ButtonInteractionEvent event) {
+        DatabaseLoader.openConnectionIfClosed();
+        DiscordUser discordUser = getDiscordUserFromId(userId);
+        Punishment punishment = getPunishmentFromId(punishmentId);
+
+        logger.info("unmuting user");
+
+        return guild.getMemberById(Snowflake.of(discordUser.getUserIdSnowflake())).flatMap(mutedUser -> {
+
+            String reason = "Unmuted by moderators after review of case `" + punishment.getPunishmentId() + "`, with original reason:\n > " + punishment.getPunishmentMessage();
+            DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+            Long mutedRoleId = serverProperties.getMutedRoleSnowflake();
+
+            String auditString = "Button: Kick & Unmute " + discordUser.getUserIdSnowflake() + " for case " + punishment.getPunishmentId();
+
+            return CommandChecks.commandChecks(event, "kick", auditString).flatMap(aBoolean -> {
+                if (!aBoolean) {
+                    return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
+                }
+
+                logger.info("Passed command check");
+
+                Member punisher = event.getInteraction().getMember().get();
+
+                return punishmentManager.checkIfPunisherHasHighestRole(punisher, mutedUser, guild, event).flatMap(theBool -> {
+                    if (!theBool) {
+                        return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
+                    }
+
+                    logger.info("Passed highest role check");
+
+                    if (mutedRoleId == null) {
+                        DatabaseLoader.closeConnectionIfOpen();
+                        return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoMutedRoleException("No Muted Role")));
+                    }
+
+                    return guild.getRoleById(Snowflake.of(mutedRoleId)).flatMap(mutedRole ->
+                            event.deferReply().then(mutedUser.getRoles().any(role -> role.equals(mutedRole)).flatMap(theBoolean -> {
+                                if (mutedRole != null && theBoolean) {
+                                    logger.info("Returning final mono");
+                                    return mutedUser.removeRole(Snowflake.of(mutedRoleId), reason)
+                                            .then(manualPunishmentEnder.databaseEndPunishment(discordUser.getUserIdSnowflake(), guild, "unmute", reason, moderator, mutedUser))
+                                            .then(Notifier.notifyModOfKickUnmute(event, mutedUser.getDisplayName(), reason))
+                                            .then(punishmentManager.discordKickUser(guild, discordUser.getUserIdSnowflake(), reason))
+                                            .then(event.getInteraction().getMessage().get().edit().withComponents(ActionRow.of(Button.danger("it-worked", "User Kicked and Unmuted").disabled())))
+                                            .then(AuditLogger.addCommandToDB(event, auditString, true));
+                                } else {
+                                    return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new UserNotMutedException("User Not Muted")));
+                                }
+                            })));
+                });
+            });
+        });
     }
 
     private Mono<Void> unmuteUser(String punishmentId, String userId, Guild guild, Member moderator, ButtonInteractionEvent event) {

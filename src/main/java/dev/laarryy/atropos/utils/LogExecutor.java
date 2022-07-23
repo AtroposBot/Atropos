@@ -232,8 +232,9 @@ public final class LogExecutor {
             Button banButton = Button.danger(punishment.getPunishmentId() + "-atropos-ban-" + punishedUser.getUserId(), "Ban User");
             Button unmuteButton = Button.success(punishment.getPunishmentId() + "-atropos-unmute-" + punishedUser.getUserId(), "Unmute User");
             Button kickButton = Button.primary(punishment.getPunishmentId() + "-atropos-kick-" + punishedUser.getUserId(), "Kick User");
+            Button kickUnmuteButton = Button.secondary(punishment.getPunishmentId() + "-atropos-kickunmute-" + punishedUser.getUserId(), "Kick & Unmute User");
 
-            return logChannel.createMessage(embed).withComponents(ActionRow.of(banButton, kickButton, unmuteButton));
+            return logChannel.createMessage(embed).withComponents(ActionRow.of(banButton, kickButton, kickUnmuteButton, unmuteButton));
         }).then();
     }
 

@@ -270,6 +270,10 @@ public final class Notifier {
         return replyDeferredInteraction(event, unmuteEmbed(username, reason));
     }
 
+    public static Mono<Void> notifyModOfKickUnmute(ButtonInteractionEvent event, String username, String reason) {
+        return replyDeferredInteraction(event, kickUnmuteEmbed(username, reason));
+    }
+
     private static EmbedCreateSpec warnEmbed(String userName, String reason, String caseId) {
         return EmbedCreateSpec.builder()
                 .title("Warned User: " + userName)
@@ -350,6 +354,16 @@ public final class Notifier {
         return EmbedCreateSpec.builder()
                 .title("Unmuted User: " + userName)
                 .description("Successfully stored a record of this unmute.")
+                .addField("Reason", reason, false)
+                .color(Color.ENDEAVOUR)
+                .timestamp(Instant.now())
+                .build();
+    }
+
+    private static EmbedCreateSpec kickUnmuteEmbed(String userName, String reason) {
+        return EmbedCreateSpec.builder()
+                .title("Kicked and Unmuted User: " + userName)
+                .description("Successfully stored a record of this kick & unmute.")
                 .addField("Reason", reason, false)
                 .color(Color.ENDEAVOUR)
                 .timestamp(Instant.now())
