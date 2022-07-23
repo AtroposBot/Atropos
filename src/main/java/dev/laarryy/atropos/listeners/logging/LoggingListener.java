@@ -1,6 +1,8 @@
 package dev.laarryy.atropos.listeners.logging;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
+import dev.laarryy.atropos.exceptions.NotFoundException;
 import dev.laarryy.atropos.listeners.EventListener;
 import dev.laarryy.atropos.managers.PropertiesCacheManager;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
@@ -72,7 +74,17 @@ public final class LoggingListener {
             return Mono.empty();
         }
 
-        return guild.getChannelById(Snowflake.of(logChannelSnowflake)).ofType(TextChannel.class);
+        return guild.getChannelById(Snowflake.of(logChannelSnowflake)).ofType(TextChannel.class)
+                .onErrorMap(t -> {
+                    switch (type) {
+                        case "member" -> serverProperties.setMemberLogChannelSnowflake(null);
+                        case "message" -> serverProperties.setMessageLogChannelSnowflake(null);
+                        case "guild" -> serverProperties.setGuildLogChannelSnowflake(null);
+                        case "punishment" -> serverProperties.setPunishmentLogChannelSnowflake(null);
+                        case "modmail" -> serverProperties.setModMailChannelSnowflake(null);
+                    }
+                    return new NotFoundException(t.getMessage());
+                });
     }
 
     public Mono<Void> onAttemptedInsubordination(ChatInputInteractionEvent event, Member target) {
