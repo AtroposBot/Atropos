@@ -173,7 +173,7 @@ public class ButtonUseListener {
 
         String auditString = "Button: Ban " + discordUser.getUserIdSnowflake() + " for case " + punishmentId;
 
-        return CommandChecks.commandChecks(event, "ban").flatMap(aBoolean -> {
+        return CommandChecks.commandChecks(event, "ban", auditString).flatMap(aBoolean -> {
             if (!aBoolean) {
                 return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
             }
@@ -232,7 +232,9 @@ public class ButtonUseListener {
 
         String auditString = "Button: Kick " + discordUser.getUserIdSnowflake() + " for case " + punishmentId;
 
-        return CommandChecks.commandChecks(event, "kick", auditString).then(event.deferReply()).flatMap(aBoolean -> {
+        return CommandChecks.commandChecks(event, "kick", auditString)
+                .then(event.deferReply())
+                .flatMap(aBoolean -> {
 
             Member punisher = event.getInteraction().getMember().get();
             return guild.getMemberById(Snowflake.of(discordUser.getUserIdSnowflake())).flatMap(punished ->
@@ -295,7 +297,7 @@ public class ButtonUseListener {
 
             String auditString = "Button: Unmute " + discordUser.getUserIdSnowflake() + " for case " + punishment.getPunishmentId();
 
-            return CommandChecks.commandChecks(event, "unmute").flatMap(aBoolean -> {
+            return CommandChecks.commandChecks(event, "unmute", auditString).flatMap(aBoolean -> {
                 if (!aBoolean) {
                     return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
                 }
