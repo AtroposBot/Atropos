@@ -419,6 +419,7 @@ public class PunishmentManager {
         DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
         Mono<Role> mutedRole;
         boolean needToUpdateMutedRole;
+
         if (discordServerProperties.getMutedRoleSnowflake() == null || discordServerProperties.getMutedRoleSnowflake() == 0) {
             mutedRole = guild.createRole(RoleCreateSpec.builder()
                     .name("Muted")
@@ -444,9 +445,10 @@ public class PunishmentManager {
                                 return Mono.error(new BotPermissionsException("No Bot Permission"));
                             }
                             if (needToUpdateMutedRole) {
-                                return updateMutedRoleInAllChannels(guild, mutedRole).flatMap(unused ->
-                                        mutedRole.flatMap(role ->
-                                                punishedMember.addRole(role.getId())));
+                                logger.info("Need to update muted role");
+
+                                return mutedRole.flatMap(role -> updateMutedRoleInAllChannels(guild, role)
+                                        .then(punishedMember.addRole(role.getId())));
                             } else {
                                 return mutedRole.flatMap(role ->
                                         punishedMember.addRole(role.getId()));
@@ -454,7 +456,7 @@ public class PunishmentManager {
                         })));
     }
 
-    public Mono<Void> updateMutedRoleInAllChannels(Guild guild, Mono<Role> mutedRoleMono) {
+    public Mono<Void> updateMutedRoleInAllChannels(Guild guild, Role mutedRole) {
 
         DatabaseLoader.openConnectionIfClosed();
 
@@ -463,66 +465,79 @@ public class PunishmentManager {
         return guild.getSelfMember().flatMap(selfMember ->
                 selfMember.getRoles().collectList().flatMap(selfRoleList ->
                         guild.getRoles().map(Role::getData).collectList().flatMap(roleData -> {
-                    Flux<RoleData> roleDataFlux = Flux.fromIterable(roleData);
-                    Role highestSelfRole = selfRoleList.get(selfRoleList.size() - 1);
-                    return OrderUtil.orderRoles(roleDataFlux).takeWhile(role -> !role.equals(highestSelfRole.getData())).count().flatMap(roleCount -> {
-                        int roleInt = roleCount != null ? roleCount.intValue() - 1 : 1;
+                            Flux<RoleData> roleDataFlux = Flux.fromIterable(roleData);
+                            Role highestSelfRole = selfRoleList.get(selfRoleList.size() - 1);
+                            logger.info(highestSelfRole.getName());
+                            return OrderUtil.orderRoles(roleDataFlux).takeWhile(role -> !role.equals(highestSelfRole.getData())).count().flatMap(roleCount -> {
 
-                        return mutedRoleMono.flatMap(mutedRole -> {
-                            Mono<Void> changePositionMono;
-                            if (mutedRole != null) {
-                                discordServerProperties.setMutedRoleSnowflake(mutedRole.getId().asLong());
+                                DatabaseLoader.openConnectionIfClosed();
+
+                                logger.info(roleCount);
+                                logger.info(roleCount.intValue());
+
+                                int roleInt = roleCount != null ? roleCount.intValue() : 1;
+
+                                logger.info(roleInt);
+                                Mono<Void> changePositionMono;
+                                DatabaseLoader.openConnectionIfClosed();
+                                if (mutedRole != null) {
+                                    discordServerProperties.setMutedRoleSnowflake(mutedRole.getId().asLong());
+                                    discordServerProperties.save();
+
+                                    logger.info("Muted role not null");
+
+                                    changePositionMono = mutedRole.changePosition(roleInt).then();
+                                } else {
+
+                                    logger.info("MUTED ROLE NULL WTF");
+
+                                    changePositionMono = Mono.empty();
+                                }
+
                                 discordServerProperties.save();
+                                discordServerProperties.refresh();
 
-                                changePositionMono = mutedRole.changePosition(roleInt).then();
-                            } else {
-                                changePositionMono = Mono.empty();
-                            }
+                                Mono<Void> updateTextPerms = guild.getChannels().ofType(TextChannel.class)
+                                        .flatMap(textChannel ->
+                                                textChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
+                                                                PermissionSet.none(),
+                                                                PermissionSet.of(
+                                                                        Permission.SEND_MESSAGES,
+                                                                        Permission.ADD_REACTIONS,
+                                                                        // Permission.USE_PUBLIC_THREADS,
+                                                                        // Permission.USE_PRIVATE_THREADS,
+                                                                        Permission.USE_SLASH_COMMANDS
+                                                                )))
+                                                        .onErrorResume(e -> {
+                                                            logger.error("------------------------- Text Channel Edit Prohibited");
+                                                            return Mono.empty();
+                                                        }))
+                                        .then();
 
-                            discordServerProperties.save();
-                            discordServerProperties.refresh();
+                                Mono<Void> updateVoicePerms = guild.getChannels().ofType(VoiceChannel.class)
+                                        .flatMap(voiceChannel ->
+                                                voiceChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
+                                                                PermissionSet.none(),
+                                                                PermissionSet.of(
+                                                                        Permission.SPEAK,
+                                                                        Permission.STREAM
+                                                                )))
+                                                        .onErrorResume(e -> {
+                                                            logger.error("------------------- Voice Channel Edit Prohibited");
+                                                            return Mono.empty();
+                                                        }))
+                                        .then();
 
-                            Mono<Void> updateTextPerms = guild.getChannels().ofType(TextChannel.class)
-                                    .flatMap(textChannel -> {
-                                        return textChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
-                                                        PermissionSet.none(),
-                                                        PermissionSet.of(
-                                                                Permission.SEND_MESSAGES,
-                                                                Permission.ADD_REACTIONS,
-                                                                // Permission.USE_PUBLIC_THREADS,
-                                                                // Permission.USE_PRIVATE_THREADS,
-                                                                Permission.USE_SLASH_COMMANDS
-                                                        )))
-                                                .onErrorResume(e -> {
-                                                    logger.error("------------------------- Text Channel Edit Prohibited");
-                                                    return Mono.empty();
-                                                });
-                                    })
-                                    .then();
+                                logger.info("Doing the position and channel updates");
 
-                            Mono<Void> updateVoicePerms = guild.getChannels().ofType(VoiceChannel.class)
-                                    .flatMap(voiceChannel -> {
-                                        return voiceChannel.addRoleOverwrite(mutedRole.getId(), PermissionOverwrite.forRole(mutedRole.getId(),
-                                                        PermissionSet.none(),
-                                                        PermissionSet.of(
-                                                                Permission.SPEAK,
-                                                                Permission.STREAM
-                                                        )))
-                                                .onErrorResume(e -> {
-                                                    logger.error("------------------- Voice Channel Edit Prohibited");
-                                                    return Mono.empty();
-                                                });
-                                    }).then();
+                                DatabaseLoader.closeConnectionIfOpen();
 
-                            return Mono.when(
-                                    changePositionMono,
-                                    updateTextPerms,
-                                    updateVoicePerms
-                            );
-                        });
-                    });
-                })));
+                                return changePositionMono
+                                        .then(updateTextPerms)
+                                        .then(updateVoicePerms);
 
+                            });
+                        })));
 
     }
 
@@ -537,19 +552,19 @@ public class PunishmentManager {
         logger.info("7.2");
 
         Mono<Boolean> adminDiff = permissionChecker.checkIsAdministrator(punisher).flatMap(punisherIsAdmin ->
-                        permissionChecker.checkIsAdministrator(punished).flatMap(punishedIsAdmin -> {
-            logger.info("7.3");
-            if (punisherIsAdmin && !punishedIsAdmin) {
-                return Mono.just(true);
-            } else if (punishedIsAdmin && punisherIsAdmin) {
-                logger.info("7.4");
-                return loggingListener.onAttemptedInsubordination(event, punished)
-                        .then(AuditLogger.addCommandToDB(event, false))
-                        .thenReturn(false);
-            }
-            logger.info("7.5");
-            return Mono.just(false);
-        }));
+                permissionChecker.checkIsAdministrator(punished).flatMap(punishedIsAdmin -> {
+                    logger.info("7.3");
+                    if (punisherIsAdmin && !punishedIsAdmin) {
+                        return Mono.just(true);
+                    } else if (punishedIsAdmin && punisherIsAdmin) {
+                        logger.info("7.4");
+                        return loggingListener.onAttemptedInsubordination(event, punished)
+                                .then(AuditLogger.addCommandToDB(event, false))
+                                .thenReturn(false);
+                    }
+                    logger.info("7.5");
+                    return Mono.just(false);
+                }));
 
         return punished.getRoles().map(Role::getId).collectList()
                 .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {
@@ -565,12 +580,12 @@ public class PunishmentManager {
                             return punisher.hasHigherRoles(Set.copyOf(snowflakes))
                                     .defaultIfEmpty(false)
                                     .flatMap(punisherHasHigherRoles -> {
-                                if (!punisherHasHigherRoles) {
-                                    return loggingListener.onAttemptedInsubordination(event, punished).then(Mono.error(new NoPermissionsException("No Permission")));
-                                } else {
-                                    return Mono.just(true);
-                                }
-                            });
+                                        if (!punisherHasHigherRoles) {
+                                            return loggingListener.onAttemptedInsubordination(event, punished).then(Mono.error(new NoPermissionsException("No Permission")));
+                                        } else {
+                                            return Mono.just(true);
+                                        }
+                                    });
                         }
                     }));
                 }));
@@ -584,13 +599,13 @@ public class PunishmentManager {
 
         Mono<Boolean> adminDiff = permissionChecker.checkIsAdministrator(punisher).flatMap(punisherIsAdmin ->
                 permissionChecker.checkIsAdministrator(punished).flatMap(punishedIsAdmin -> {
-            if (punisherIsAdmin && !punishedIsAdmin) {
-                return Mono.just(true);
-            } else if (punishedIsAdmin && punisherIsAdmin) {
-                return Mono.just(false);
-            }
-            return Mono.just(false);
-        }));
+                    if (punisherIsAdmin && !punishedIsAdmin) {
+                        return Mono.just(true);
+                    } else if (punishedIsAdmin && punisherIsAdmin) {
+                        return Mono.just(false);
+                    }
+                    return Mono.just(false);
+                }));
 
         return punished.getRoles().map(Role::getId).collectList()
                 .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {
@@ -622,13 +637,13 @@ public class PunishmentManager {
         Mono<Boolean> adminDiff = Mono.empty().flatMap(a ->
                 permissionChecker.checkIsAdministrator(punisher).flatMap(punisherIsAdmin ->
                         permissionChecker.checkIsAdministrator(punished).flatMap(punishedIsAdmin -> {
-                    if (punisherIsAdmin && !punishedIsAdmin) {
-                        return Mono.just(true);
-                    } else if (punishedIsAdmin && punisherIsAdmin) {
-                        return loggingListener.onAttemptedInsubordination(event, punished).thenReturn(false);
-                    }
-                    return Mono.just(false);
-                })));
+                            if (punisherIsAdmin && !punishedIsAdmin) {
+                                return Mono.just(true);
+                            } else if (punishedIsAdmin && punisherIsAdmin) {
+                                return loggingListener.onAttemptedInsubordination(event, punished).thenReturn(false);
+                            }
+                            return Mono.just(false);
+                        })));
 
         return punished.getRoles().map(Role::getId).collectList()
                 .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {

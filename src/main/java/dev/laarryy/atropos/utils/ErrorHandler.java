@@ -227,6 +227,8 @@ public class ErrorHandler {
                     .then();
         }
 
+        logger.error("stinky command error", error);
+
 
         return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
                                 .builder()

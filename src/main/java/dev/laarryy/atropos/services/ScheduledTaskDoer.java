@@ -41,7 +41,7 @@ public class ScheduledTaskDoer {
 
         Mono<Void> startInterval1 = Flux.interval(Duration.ofMinutes(1))
                 .doOnNext(l -> logger.info("CHECKING PUN. ENDING"))
-                .map(this::checkPunishmentEnding)
+                .flatMap(this::checkPunishmentEnding)
                 .then();
 
         Mono<Void> startInterval2 = Flux.interval(Duration.ofDays(1))
@@ -73,7 +73,7 @@ public class ScheduledTaskDoer {
 
         return Flux.fromIterable(punishmentsLazyList)
                 .filter(this::checkIfOverDue)
-                .map(p -> {
+                .flatMap(p -> {
                     logger.info("Ending punishment");
                     return endPunishment(p);
                 })
@@ -183,7 +183,7 @@ public class ScheduledTaskDoer {
                     punishment.save();
                     punishment.refresh();
 
-                    if (member != null) {
+                    if (member != null && mutedRoleSnowflake != null) {
                         return member.removeRole(Snowflake.of(mutedRoleSnowflake))
                                 .then(loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment));
                     } else {

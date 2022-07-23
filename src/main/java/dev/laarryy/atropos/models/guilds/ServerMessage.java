@@ -9,9 +9,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.Model;
 import org.javalite.activejdbc.annotations.Table;
-import org.javalite.json.JSONMap;
-
-import java.sql.Clob;
 
 @Table("server_messages")
 public class ServerMessage extends Model {
