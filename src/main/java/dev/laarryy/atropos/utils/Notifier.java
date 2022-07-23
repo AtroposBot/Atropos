@@ -232,6 +232,9 @@ public final class Notifier {
             }
 
             return guild.getSelfMember().flatMap(selfMember -> {
+
+                DatabaseLoader.openConnectionIfClosed();
+
                 EmbedCreateSpec embed = EmbedCreateSpec.builder()
                         .title(guild.getName())
                         .author("Notice from Guild:", "", guild.getIconUrl(Image.Format.PNG).orElse(selfMember.getAvatarUrl()))

@@ -634,8 +634,7 @@ public class PunishmentManager {
             return Mono.error(new NoPermissionsException("No Permission"));
         }
 
-        Mono<Boolean> adminDiff = Mono.empty().flatMap(a ->
-                permissionChecker.checkIsAdministrator(punisher).flatMap(punisherIsAdmin ->
+        Mono<Boolean> adminDiff = permissionChecker.checkIsAdministrator(punisher).flatMap(punisherIsAdmin ->
                         permissionChecker.checkIsAdministrator(punished).flatMap(punishedIsAdmin -> {
                             if (punisherIsAdmin && !punishedIsAdmin) {
                                 return Mono.just(true);
@@ -643,7 +642,7 @@ public class PunishmentManager {
                                 return loggingListener.onAttemptedInsubordination(event, punished).thenReturn(false);
                             }
                             return Mono.just(false);
-                        })));
+                        }));
 
         return punished.getRoles().map(Role::getId).collectList()
                 .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {

@@ -796,7 +796,7 @@ public final class LogExecutor {
 
     public static Mono<Void> logPresenceUpdate(PresenceUpdateEvent event, TextChannel logChannel) {
         return event.getOldUser().map(oldUser -> event.getGuild()
-                        .flatMap($ -> event.getMember())
+                        .flatMap(guild -> event.getMember())
                         .flatMap(member -> {
                             long memberId = member.getId().asLong();
                             String username = member.getUsername() + '#' + member.getDiscriminator();

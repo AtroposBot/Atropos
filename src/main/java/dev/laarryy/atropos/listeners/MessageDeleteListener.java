@@ -19,7 +19,7 @@ public class MessageDeleteListener {
         ServerMessage serverMessage = ServerMessage.findFirst("message_id_snowflake = ?", event.getMessageId().asLong());
 
         if (serverMessage == null) {
-            return Mono.error(new NotFoundException("No Message"));
+            return Mono.empty();
         } else {
             serverMessage.setDeleted(true);
             serverMessage.save();
