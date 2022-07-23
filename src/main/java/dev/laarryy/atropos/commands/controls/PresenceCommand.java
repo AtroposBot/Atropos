@@ -104,7 +104,7 @@ public class PresenceCommand implements Command {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         return Mono.just(event)
-                .map(event1 -> {
+                .flatMap(event1 -> {
                     if (!event.getInteraction().getUser().getId().equals(Snowflake.of(ConfigManager.getControllerId()))) {
                         return Mono.error(new NoPermissionsException("No Permission"));
                     }
