@@ -86,14 +86,12 @@ public final class LogExecutor {
     public static Mono<Void> logInsubordination(ChatInputInteractionEvent event, TextChannel logChannel, Member target) {
         return event.getInteraction().getGuild().flatMap($ -> {
             long targetId = target.getId().asLong();
-            String username = target.getUsername() + '#' + target.getDiscriminator();
-            String targetInfo = "`%s`:`%d`:%s".formatted(username, targetId, target.getMention());
+            String targetInfo = "`%s`:`%d`:%s".formatted(target.getTag(), targetId, target.getMention());
 
             String mutineerInfo = event.getInteraction().getMember()
                     .map(mutineer -> {
                         long mutineerId = mutineer.getId().asLong();
-                        String mutineerName = mutineer.getUsername() + '#' + mutineer.getDiscriminator();
-                        return "`%s`:`%d`:%s".formatted(mutineerName, mutineerId, mutineer.getMention());
+                        return "`%s`:`%d`:%s".formatted(mutineer.getTag(), mutineerId, mutineer.getMention());
                     }).orElse("Unknown");
 
             return Flux.fromIterable(event.getOptions())
@@ -114,14 +112,12 @@ public final class LogExecutor {
     public static Mono<Void> logInsubordination(ButtonInteractionEvent event, TextChannel logChannel, Member target) {
         return event.getInteraction().getGuild().flatMap($ -> {
             long targetId = target.getId().asLong();
-            String username = target.getUsername() + '#' + target.getDiscriminator();
-            String targetInfo = "`%s`:`%d`:%s".formatted(username, targetId, target.getMention());
+            String targetInfo = "`%s`:`%d`:%s".formatted(target.getTag(), targetId, target.getMention());
 
             String mutineerInfo = event.getInteraction().getMember()
                     .map(mutineer -> {
                         long mutineerId = mutineer.getId().asLong();
-                        String mutineerName = mutineer.getUsername() + '#' + mutineer.getDiscriminator();
-                        return "`%s`:`%d`:%s".formatted(mutineerName, mutineerId, mutineer.getMention());
+                        return "`%s`:`%d`:%s".formatted(mutineer.getTag(), mutineerId, mutineer.getMention());
                     }).orElse("Unknown");
 
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -141,8 +137,7 @@ public final class LogExecutor {
         return Mono.justOrEmpty(event.getMember()).flatMap(user -> {
             DatabaseLoader.openConnectionIfClosed();
             long userId = user.getId().asLong();
-            String username = user.getUsername() + '#' + user.getDiscriminator();
-            String userInfo = "`%s`:`%d`:%s".formatted(username, userId, user.getMention());
+            String userInfo = "`%s`:`%d`:%s".formatted(user.getTag(), userId, user.getMention());
 
             String content = event.getMessage().getContent();
 
@@ -253,7 +248,7 @@ public final class LogExecutor {
                     } else {
                         User theResponsibleUser = responsibleUser.get();
                         long id = theResponsibleUser.getId().asLong();
-                        String username = theResponsibleUser.getUsername() + '#' + theResponsibleUser.getDiscriminator();
+                        String username = theResponsibleUser.getTag();
                         return Mono.just("`%s`:`%d`:%s".formatted(username, id, theResponsibleUser.getMention()));
                     }
                 });
@@ -318,18 +313,16 @@ public final class LogExecutor {
 
                 Mono<String> senderDescriptorMono = message.flatMap(Message::getAuthor).map(author -> {
                     long id = author.getId().asLong();
-                    String username = author.getUsername() + '#' + author.getDiscriminator();
-                    return Mono.just("`%s`:`%d`:%s".formatted(username, id, author.getMention()));
+                    return Mono.just("`%s`:`%d`:%s".formatted(author.getTag(), id, author.getMention()));
                 }).orElseGet(() -> {
                     DatabaseLoader.openConnectionIfClosed();
                     ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
                     DatabaseLoader.closeConnectionIfOpen();
                     if (serverMessage != null) {
                         long id = serverMessage.getUserSnowflake();
-                        return guild.getMemberById(Snowflake.of(id)).map(author -> {
-                            String username = author.getUsername() + '#' + author.getDiscriminator();
-                            return "`%s`:`%d`:%s".formatted(username, id, author.getMention());
-                        });
+                        return guild.getMemberById(Snowflake.of(id)).map(author ->
+                                "`%s`:`%d`:%s".formatted(author.getTag(), id, author.getMention())
+                        );
                     } else {
                         return Mono.just("Unknown");
                     }
@@ -608,8 +601,7 @@ public final class LogExecutor {
         return event.getGuild().flatMap($ -> {
             final Member eventMember = event.getMember();
             long memberId = eventMember.getId().asLong();
-            String username = eventMember.getUsername() + '#' + eventMember.getDiscriminator();
-            String member = "`%s`:`%d`:%s".formatted(username, memberId, eventMember.getMention());
+            String member = "`%s`:`%d`:%s".formatted(eventMember.getTag(), memberId, eventMember.getMention());
 
             String avatarUrl = eventMember.getAvatarUrl();
 
@@ -667,8 +659,7 @@ public final class LogExecutor {
         return event.getGuild().flatMap($ -> {
             final User eventUser = event.getUser();
             long memberId = eventUser.getId().asLong();
-            String username = eventUser.getUsername() + '#' + eventUser.getDiscriminator();
-            String memberName = "`%s`:`%d`:%s".formatted(username, memberId, eventUser.getMention());
+            String memberName = "`%s`:`%d`:%s".formatted(eventUser.getTag(), memberId, eventUser.getMention());
             String avatarUrl = eventUser.getAvatarUrl();
 
 
@@ -710,8 +701,7 @@ public final class LogExecutor {
     public static Mono<Void> logMemberUpdate(MemberUpdateEvent event, TextChannel logChannel) {
         return Mono.zip(event.getGuild(), event.getMember(), ($, member) -> {
             long memberId = member.getId().asLong();
-            String username = member.getUsername() + '#' + member.getDiscriminator();
-            String memberName = "`%s`:`%d`:%s".formatted(username, memberId, member.getMention());
+            String memberName = "`%s`:`%d`:%s".formatted(member.getTag(), memberId, member.getMention());
             String avatarUrl = member.getAvatarUrl();
 
             return event.getOld()
@@ -800,8 +790,7 @@ public final class LogExecutor {
                         .flatMap(guild -> event.getMember())
                         .flatMap(member -> {
                             long memberId = member.getId().asLong();
-                            String username = member.getUsername() + '#' + member.getDiscriminator();
-                            String memberName = "`%s`:`%d`:%s".formatted(username, memberId, member.getMention());
+                            String memberName = "`%s`:`%d`:%s".formatted(member.getTag(), memberId, member.getMention());
 
                             String presenceDiffInfo;
                             if (
@@ -862,8 +851,7 @@ public final class LogExecutor {
                 .flatMap(channel -> {
                     String inviter = event.getInviter().map(user -> {
                         long inviterId = user.getId().asLong();
-                        String username = user.getUsername() + '#' + user.getDiscriminator();
-                        return "`%s`:`%d`:%s".formatted(username, inviterId, user.getMention());
+                        return "`%s`:`%d`:%s".formatted(user.getTag(), inviterId, user.getMention());
                     }).orElse("Unknown");
                     String channelDescriptor = "`%d`:%s".formatted(channel.getId().asLong(), channel.getMention());
                     EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -1276,8 +1264,7 @@ public final class LogExecutor {
 
             final User user = event.getUser();
             long userId = user.getId().asLong();
-            String username = user.getUsername() + '#' + user.getDiscriminator();
-            String userDescriptor = "`%s`:`%d`:%s".formatted(username, userId, user.getMention());
+            String userDescriptor = "`%s`:`%d`:%s".formatted(user.getTag(), userId, user.getMention());
 
             return responsibleUserId.flatMap(responsibleUser -> {
                 EmbedCreateSpec embed = EmbedCreateSpec.builder()

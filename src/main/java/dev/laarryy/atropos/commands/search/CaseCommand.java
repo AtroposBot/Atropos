@@ -182,47 +182,35 @@ public class CaseCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
+        return Mono.defer(() -> {
+            // Have to do CommandChecks here because permissions are too granular - there is one for each type of case command instead of one for the entire case command
 
-        // Have to do CommandChecks here because permissions are too granular - there is one for each type of case command instead of one for the entire case command
+            if (event.getOption("delete").isPresent()) {
+                return CommandChecks.commandChecks(event, "casedelete").then(deletePunishment(event));
+            }
 
-        if (event.getOption("delete").isPresent()) {
-            return CommandChecks.commandChecks(event, "casedelete").flatMap(aBoolean -> {
-                if (!aBoolean) {
-                    return Mono.error(new NoPermissionsException("No Permission"));
-                }
-                return Mono.just(event).flatMap(this::deletePunishment);
-            });
-        }
+            if (event.getOption("update").isPresent()) {
+                return CommandChecks.commandChecks(event, "caseupdate").then(updatePunishment(event));
+            }
+            if (event.getOption("search").isPresent()) {
+                return CommandChecks.commandChecks(event, "casesearch").then(Mono.defer(() -> {
+                    if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("user").isPresent()) {
+                        return searchPunishments(event);
+                    }
 
-        if (event.getOption("update").isPresent()) {
-            return CommandChecks.commandChecks(event, "caseupdate").flatMap(aBoolean -> {
-                if (!aBoolean) {
-                    return Mono.error(new NoPermissionsException("No Permission"));
-                }
-                return Mono.just(event).flatMap(this::updatePunishment);
-            });
-        }
-        if (event.getOption("search").isPresent()) {
-            return CommandChecks.commandChecks(event, "casesearch").flatMap(aBoolean -> {
-                if (!aBoolean) {
-                    return Mono.error(new NoPermissionsException("No Permission"));
-                }
-                if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("user").isPresent()) {
-                    return Mono.just(event).flatMap(this::searchPunishments);
-                }
+                    if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("id").isPresent()) {
+                        return searchForCase(event);
+                    }
 
-                if (event.getOption("search").isPresent() && event.getOption("search").get().getOption("id").isPresent()) {
-                    return Mono.just(event).flatMap(this::searchForCase);
-                }
+                    if (event.getOption("search").get().getOption("recent").isPresent()) {
+                        return recentCases(event);
+                    }
+                    return Mono.error(new MalformedInputException("Malformed Input"));
+                }));
+            }
 
-                if (event.getOption("search").get().getOption("recent").isPresent()) {
-                    return Mono.just(event).flatMap(this::recentCases);
-                }
-                return Mono.error(new MalformedInputException("Malformed Input"));
-            });
-        }
-
-        return Mono.error(new MalformedInputException("Malformed Input"));
+            return Mono.error(new MalformedInputException("Malformed Input"));
+        });
     }
 
     private Mono<Void> deletePunishment(ChatInputInteractionEvent event) {
@@ -231,39 +219,31 @@ public class CaseCommand implements Command {
                 return Mono.error(new MalformedInputException("Malformed Input"));
             }
 
-            Long id = event.getOption("delete").get().getOption("id").get().getValue().get().asLong();
+            try (final var usage = DatabaseLoader.use()) {
+                Long id = event.getOption("delete").get().getOption("id").get().getValue().get().asLong();
+                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                if (discordServer == null) {
+                    return Mono.error(new NullServerException("Null Server"));
+                }
 
-            DatabaseLoader.openConnectionIfClosed();
+                Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", id, discordServer.getServerId());
+                if (punishment == null) {
+                    return Mono.error(new NotFoundException("404 Not Found"));
+                }
 
-            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getMessageDelete() + " Case #" + punishment.getPunishmentId() + " Deleted")
+                        .timestamp(Instant.now())
+                        .build();
 
-            if (discordServer == null) {
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.error(new NullServerException("Null Server"));
+                punishment.delete();
+                return Notifier.sendResultsEmbed(event, embed);
             }
-
-            Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", id, discordServer.getServerId());
-
-            if (punishment == null) {
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.error(new NotFoundException("404 Not Found"));
-            }
-
-            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                    .title(EmojiManager.getMessageDelete() + " Case #" + punishment.getPunishmentId() + " Deleted")
-                    .timestamp(Instant.now())
-                    .build();
-
-            punishment.delete();
-            DatabaseLoader.closeConnectionIfOpen();
-            return Notifier.sendResultsEmbed(event, embed);
         });
     }
 
     private Mono<Void> recentCases(ChatInputInteractionEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
-
-        return event.getInteraction().getGuild().flatMap(guild -> {
+        return event.getInteraction().getGuild().flatMap(guild -> DatabaseLoader.use(() -> {
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
             Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
             long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
@@ -289,7 +269,6 @@ public class CaseCommand implements Command {
                             .timestamp(Instant.now())
                             .build();
 
-                    DatabaseLoader.closeConnectionIfOpen();
                     return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
                 });
             }
@@ -302,178 +281,173 @@ public class CaseCommand implements Command {
                     .timestamp(Instant.now())
                     .build();
 
-            DatabaseLoader.closeConnectionIfOpen();
             return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
-        });
+        }));
     }
 
     private Mono<Void> searchForCase(ChatInputInteractionEvent event) {
-
-        if (event.getOption("search").get().getOption("id").isEmpty() || event.getOption("search").get().getOption("id").get().getOption("caseid").isEmpty()) {
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
-        }
-
-        DatabaseLoader.openConnectionIfClosed();
-
-        int caseInt = (int) event.getOption("search").get().getOption("id").get().getOption("caseid").get().getValue().get().asLong();
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
-
-        if (discordServer == null) {
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
-        }
-
-        int serverId = discordServer.getServerId();
-        Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", caseInt, serverId);
-
-        if (punishment == null) {
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
-        }
-
-        DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-        DiscordUser punisher = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
-
-        DiscordUser punishmentEnderUser;
-        if (punishment.getPunishmentEnder() != null) {
-            punishmentEnderUser = DiscordUser.findFirst("id = ?", punishment.getPunishmentEnder());
-        } else {
-            punishmentEnderUser = null;
-        }
-        if (discordUser == null || punisher == null) {
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
-        }
-
-        Long userSnowflake = discordUser.getUserIdSnowflake();
-        Long punisherSnowflake = punisher.getUserIdSnowflake();
-
-        String endDate;
-        String endReason;
-        String reason;
-        String didDMMessage;
-        String automatic;
-        String automaticallyEnded;
-        String permanent;
-        String punishmentEnder;
-
-        if (punishment.getEndDate() != null) {
-            endDate = TimestampMaker.getTimestampFromEpochSecond(
-                    Instant.ofEpochMilli(punishment.getEndDate()).getEpochSecond(),
-                    TimestampMaker.TimestampType.RELATIVE);
-        } else {
-            endDate = "Not ended.";
-        }
-
-        if (punishment.getAutomatic()) {
-            automatic = "Yes";
-        } else {
-            automatic = "No";
-        }
-
-        if (punishment.getAutomaticEnd()) {
-            automaticallyEnded = "Yes";
-        } else {
-            automaticallyEnded = "No";
-        }
-
-        if (punishment.getPermanent()) {
-            permanent = "Yes";
-        } else {
-            permanent = "No";
-        }
-
-        if (punishmentEnderUser == null) {
-            punishmentEnder = "No punishment ender found.";
-        } else {
-            long enderId = punishmentEnderUser.getUserIdSnowflake();
-            punishmentEnder = "`" + enderId + "`:<@" + enderId + ">:`";
-            if (punishment.getPunishmentEnderName() != null && punishment.getPunishmentEnderDiscrim() != null) {
-                punishmentEnder = "`" + enderId + "`:<@" + enderId + ">:`"
-                        + punishment.getPunishmentEnderName() + "#" + punishment.getPunishmentEnderDiscrim() + "`";
+        return Mono.defer(() -> DatabaseLoader.use(() -> {
+            if (event.getOption("search").get().getOption("id").isEmpty() || event.getOption("search").get().getOption("id").get().getOption("caseid").isEmpty()) {
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
             }
 
-        }
+            int caseInt = (int) event.getOption("search").get().getOption("id").get().getOption("caseid").get().getValue().get().asLong();
+            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
 
-        if (punishment.getEndReason() != null) {
-            endReason = punishment.getEndReason();
-        } else {
-            endReason = "No reason provided.";
-        }
+            if (discordServer == null) {
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
+            }
 
-        if (punishment.getPunishmentMessage() != null) {
-            reason = punishment.getPunishmentMessage();
-        } else {
-            reason = "No reason provided.";
-        }
+            int serverId = discordServer.getServerId();
+            Punishment punishment = Punishment.findFirst("id = ? and server_id = ?", caseInt, serverId);
 
-        if (punishment.getIfDMed()) {
-            didDMMessage = "Yes";
-        } else {
-            didDMMessage = "No";
-        }
+            if (punishment == null) {
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
+            }
 
-        String batchId;
+            DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+            DiscordUser punisher = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
 
-        if (punishment.getBatchId() != null) {
-            batchId = punishment.getBatchId().toString();
-        } else {
-            batchId = null;
-        }
+            DiscordUser punishmentEnderUser;
+            if (punishment.getPunishmentEnder() != null) {
+                punishmentEnderUser = DiscordUser.findFirst("id = ?", punishment.getPunishmentEnder());
+            } else {
+                punishmentEnderUser = null;
+            }
+            if (discordUser == null || punisher == null) {
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
+            }
 
-        String date = TimestampMaker.getTimestampFromEpochSecond(
-                Instant.ofEpochMilli(punishment.getDateEntry()).getEpochSecond(),
-                TimestampMaker.TimestampType.RELATIVE);
+            Long userSnowflake = discordUser.getUserIdSnowflake();
+            Long punisherSnowflake = punisher.getUserIdSnowflake();
 
-        String user;
-        String moderator;
-        if (punishment.getPunishedUserName() == null || punishment.getPunishedUserDiscrim() == null) {
-            user = "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">";
-        } else {
-            user = "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">:`"
-                    + punishment.getPunishedUserName() + "#" + punishment.getPunishedUserDiscrim() + "`";
-        }
+            String endDate;
+            String endReason;
+            String reason;
+            String didDMMessage;
+            String automatic;
+            String automaticallyEnded;
+            String permanent;
+            String punishmentEnder;
 
-        if (punishment.getPunishingUserName() == null || punishment.getPunishingUserDiscrim() == null) {
-            moderator = "`" + punisherSnowflake + "`:" + "<@" + punisherSnowflake + ">";
-        } else {
-            moderator = "`" + punisherSnowflake + "`:" + "<@" + punisherSnowflake + ">:`"
-                    + punishment.getPunishingUserName() + "#" + punishment.getPunishingUserDiscrim() + "`";
-        }
+            if (punishment.getEndDate() != null) {
+                endDate = TimestampMaker.getTimestampFromEpochSecond(
+                        Instant.ofEpochMilli(punishment.getEndDate()).getEpochSecond(),
+                        TimestampMaker.TimestampType.RELATIVE);
+            } else {
+                endDate = "Not ended.";
+            }
 
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .color(Color.ENDEAVOUR)
-                .title("Case " + punishment.getPunishmentId())
-                .addField("User", user, false)
-                .addField("Moderator", moderator, false)
-                .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), true)
-                .addField("Date", date, true)
-                .addField("Reason", reason, false)
-                .addField("End Date", endDate, true)
-                .addField("Automatically Issued?", automatic, true)
-                .addField("Permanent When Issued?", permanent, true)
-                .addField("Attempted to DM User?", didDMMessage, true)
-                .timestamp(Instant.now())
-                .build();
+            if (punishment.getAutomatic()) {
+                automatic = "Yes";
+            } else {
+                automatic = "No";
+            }
 
-        if (batchId != null) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .footer("Batch ID: " + batchId, "")
+            if (punishment.getAutomaticEnd()) {
+                automaticallyEnded = "Yes";
+            } else {
+                automaticallyEnded = "No";
+            }
+
+            if (punishment.getPermanent()) {
+                permanent = "Yes";
+            } else {
+                permanent = "No";
+            }
+
+            if (punishmentEnderUser == null) {
+                punishmentEnder = "No punishment ender found.";
+            } else {
+                long enderId = punishmentEnderUser.getUserIdSnowflake();
+                punishmentEnder = "`" + enderId + "`:<@" + enderId + ">:`";
+                if (punishment.getPunishmentEnderName() != null && punishment.getPunishmentEnderDiscrim() != null) {
+                    punishmentEnder = "`" + enderId + "`:<@" + enderId + ">:`"
+                            + punishment.getPunishmentEnderName() + "#" + punishment.getPunishmentEnderDiscrim() + "`";
+                }
+
+            }
+
+            if (punishment.getEndReason() != null) {
+                endReason = punishment.getEndReason();
+            } else {
+                endReason = "No reason provided.";
+            }
+
+            if (punishment.getPunishmentMessage() != null) {
+                reason = punishment.getPunishmentMessage();
+            } else {
+                reason = "No reason provided.";
+            }
+
+            if (punishment.getIfDMed()) {
+                didDMMessage = "Yes";
+            } else {
+                didDMMessage = "No";
+            }
+
+            String batchId;
+
+            if (punishment.getBatchId() != null) {
+                batchId = punishment.getBatchId().toString();
+            } else {
+                batchId = null;
+            }
+
+            String date = TimestampMaker.getTimestampFromEpochSecond(
+                    Instant.ofEpochMilli(punishment.getDateEntry()).getEpochSecond(),
+                    TimestampMaker.TimestampType.RELATIVE);
+
+            String user;
+            String moderator;
+            if (punishment.getPunishedUserName() == null || punishment.getPunishedUserDiscrim() == null) {
+                user = "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">";
+            } else {
+                user = "`" + userSnowflake + "`: " + "<@" + userSnowflake + ">:`"
+                        + punishment.getPunishedUserName() + "#" + punishment.getPunishedUserDiscrim() + "`";
+            }
+
+            if (punishment.getPunishingUserName() == null || punishment.getPunishingUserDiscrim() == null) {
+                moderator = "`" + punisherSnowflake + "`:" + "<@" + punisherSnowflake + ">";
+            } else {
+                moderator = "`" + punisherSnowflake + "`:" + "<@" + punisherSnowflake + ">:`"
+                        + punishment.getPunishingUserName() + "#" + punishment.getPunishingUserDiscrim() + "`";
+            }
+
+            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .color(Color.ENDEAVOUR)
+                    .title("Case " + punishment.getPunishmentId())
+                    .addField("User", user, false)
+                    .addField("Moderator", moderator, false)
+                    .addField("Moderation Action", punishment.getPunishmentType().toUpperCase(), true)
+                    .addField("Date", date, true)
+                    .addField("Reason", reason, false)
+                    .addField("End Date", endDate, true)
+                    .addField("Automatically Issued?", automatic, true)
+                    .addField("Permanent When Issued?", permanent, true)
+                    .addField("Attempted to DM User?", didDMMessage, true)
+                    .timestamp(Instant.now())
                     .build();
-        }
 
-        if (!endDate.equals("Not ended.")) {
-            embed = EmbedCreateSpec.builder().from(embed)
-                    .addField("Ended By", punishmentEnder, false)
-                    .addField("End Reason", endReason, false)
-                    .addField("Automatically Ended?", automaticallyEnded, true)
-                    .build();
-        }
+            if (batchId != null) {
+                embed = EmbedCreateSpec.builder().from(embed)
+                        .footer("Batch ID: " + batchId, "")
+                        .build();
+            }
 
-        DatabaseLoader.closeConnectionIfOpen();
-        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+            if (!endDate.equals("Not ended.")) {
+                embed = EmbedCreateSpec.builder().from(embed)
+                        .addField("Ended By", punishmentEnder, false)
+                        .addField("End Reason", endReason, false)
+                        .addField("Automatically Ended?", automaticallyEnded, true)
+                        .build();
+            }
 
+            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+        }));
     }
 
     private Mono<Void> searchPunishments(ChatInputInteractionEvent event) {
-
         return event.getInteraction().getGuild().flatMap(guild -> {
             long userIdSnowflake;
             if (event.getOption("search").get().getOption("user").isPresent()
@@ -506,168 +480,156 @@ public class CaseCommand implements Command {
 
 
     private Mono<Void> handleUserResults(Long userIdSnowflake, ChatInputInteractionEvent event, Guild guild) {
-        DatabaseLoader.openConnectionIfClosed();
+        return Mono.defer(() -> DatabaseLoader.use(() -> {
+            DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
 
-        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+            if (discordUser == null) {
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
+            }
 
-        if (discordUser == null) {
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
-        }
+            int userId = discordUser.getUserId();
+            long guildId = event.getInteraction().getGuildId().get().asLong();
+            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
 
-        int userId = discordUser.getUserId();
-        long guildId = event.getInteraction().getGuildId().get().asLong();
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
+            if (discordServer == null) {
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
+            }
 
-        if (discordServer == null) {
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
-        }
+            int serverId = discordServer.getServerId();
 
-        int serverId = discordServer.getServerId();
+            LazyList<Punishment> punishmentLazyList = Punishment.find("user_id_punished = ? and server_id = ?", userId, serverId).limit(70).orderBy("id desc");
 
-        LazyList<Punishment> punishmentLazyList = Punishment.find("user_id_punished = ? and server_id = ?", userId, serverId).limit(70).orderBy("id desc");
-
-        String results;
-        if (punishmentLazyList == null || punishmentLazyList.isEmpty()) {
-            results = "No results found for user.";
-        } else {
-            return createFormattedPunishmentsTable(punishmentLazyList, guild).flatMap(populatedResults -> {
-                EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
-                        .color(Color.ENDEAVOUR)
-                        .title("Results for User: " + userIdSnowflake)
-                        .description(populatedResults)
-                        .footer("For detailed information, run /case search id <id>", "")
-                        .timestamp(Instant.now())
-                        .build();
-
-                DatabaseLoader.closeConnectionIfOpen();
-                return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
-            });
-        }
-
-        EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
-                .color(Color.ENDEAVOUR)
-                .title("Results for User: " + userIdSnowflake)
-                .description(results)
-                .footer("For detailed information, run /case search id <id>", "")
-                .timestamp(Instant.now())
-                .build();
-
-        DatabaseLoader.closeConnectionIfOpen();
-        return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
-    }
-
-    private Mono<Void> updatePunishment(ChatInputInteractionEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
-
-        if (event.getOption("update").get().getOption("id").isPresent()
-                && event.getOption("update").get().getOption("id").get().getValue().isPresent()) {
-            long caseIdLong = event.getOption("update").get().getOption("id").get().getValue().get().asLong();
-            int caseId = (int) caseIdLong;
-
-            Punishment punishment = Punishment.findFirst("id = ?", caseId);
-
-            String newReason;
-            if (event.getOption("update").get().getOption("reason").isPresent()
-                    && event.getOption("update").get().getOption("reason").get().getValue().isPresent()) {
-                newReason = event.getOption("update").get().getOption("reason").get().getValue().get().asString();
+            String results;
+            if (punishmentLazyList == null || punishmentLazyList.isEmpty()) {
+                results = "No results found for user.";
             } else {
-                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                return createFormattedPunishmentsTable(punishmentLazyList, guild).flatMap(populatedResults -> {
+                    EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
+                            .color(Color.ENDEAVOUR)
+                            .title("Results for User: " + userIdSnowflake)
+                            .description(populatedResults)
+                            .footer("For detailed information, run /case search id <id>", "")
+                            .timestamp(Instant.now())
+                            .build();
+
+                    return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
+                });
             }
 
-            if (punishment == null) {
-                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
-            }
-
-            EmbedCreateSpec spec = EmbedCreateSpec.builder()
-                    .title("Punishment Updated")
+            EmbedCreateSpec resultEmbed = EmbedCreateSpec.builder()
                     .color(Color.ENDEAVOUR)
-                    .description("Punishment successfully updated with new reason: `" + newReason + "`")
-                    .footer("Case ID: " + punishment.getPunishmentId(), "")
+                    .title("Results for User: " + userIdSnowflake)
+                    .description(results)
+                    .footer("For detailed information, run /case search id <id>", "")
                     .timestamp(Instant.now())
                     .build();
 
-            if (event.getOption("update").get().getOption("which").get().getValue().get().asString().equals("punishment")) {
-                punishment.setPunishmentMessage(newReason);
-            }
+            return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
+        }));
+    }
 
-            if (event.getOption("update").get().getOption("which").get().getValue().get().asString().equals("endpunishment")) {
-                punishment.setEndReason(newReason);
+    private Mono<Void> updatePunishment(ChatInputInteractionEvent event) {
+        return Mono.defer(() -> DatabaseLoader.use(() -> {
+            if (event.getOption("update").get().getOption("id").isPresent()
+                    && event.getOption("update").get().getOption("id").get().getValue().isPresent()) {
+                long caseIdLong = event.getOption("update").get().getOption("id").get().getValue().get().asLong();
+                int caseId = (int) caseIdLong;
+
+                Punishment punishment = Punishment.findFirst("id = ?", caseId);
+
+                String newReason;
+                if (event.getOption("update").get().getOption("reason").isPresent()
+                        && event.getOption("update").get().getOption("reason").get().getValue().isPresent()) {
+                    newReason = event.getOption("update").get().getOption("reason").get().getValue().get().asString();
+                } else {
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                }
+
+                if (punishment == null) {
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
+                }
+
+                EmbedCreateSpec spec = EmbedCreateSpec.builder()
+                        .title("Punishment Updated")
+                        .color(Color.ENDEAVOUR)
+                        .description("Punishment successfully updated with new reason: `" + newReason + "`")
+                        .footer("Case ID: " + punishment.getPunishmentId(), "")
+                        .timestamp(Instant.now())
+                        .build();
+
+                if (event.getOption("update").get().getOption("which").get().getValue().get().asString().equals("punishment")) {
+                    punishment.setPunishmentMessage(newReason);
+                }
+
+                if (event.getOption("update").get().getOption("which").get().getValue().get().asString().equals("endpunishment")) {
+                    punishment.setEndReason(newReason);
+                }
+                punishment.save();
+                return Notifier.sendResultsEmbed(event, spec).then(AuditLogger.addCommandToDB(event, true));
+            } else {
+                return Mono.error(new MalformedInputException("Malformed Input"));
             }
-            punishment.save();
-            return Notifier.sendResultsEmbed(event, spec).then(AuditLogger.addCommandToDB(event, true));
-        } else {
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.error(new MalformedInputException("Malformed Input"));
-        }
+        }));
     }
 
     private Mono<String> createFormattedPunishmentsTable(LazyList<Punishment> punishmentLazyList, Guild guild) {
-        List<String> rows = new ArrayList<>();
-        rows.add("```");
-        rows.add(String.format("| %-6s | %-8s | %-30s |\n", "ID", "Type", "Mod"));
-        rows.add("------------------------------------------------------\n");
+        return Flux.just(
+                        "```",
+                        String.format("| %-6s | %-8s | %-30s |", "ID", "Type", "Mod"),
+                        "------------------------------------------------------"
+                )
+                .concatWith(
+                        Flux.fromIterable(punishmentLazyList)
+                                .filter(Objects::nonNull)
+                                .flatMap(p -> {
+                                    int id;
+                                    String type;
+                                    Long punisherSnowflake;
+                                    try (final var usage = DatabaseLoader.use()) {
+                                        DiscordUser punishingUser = DiscordUser.findFirst("id = ?", p.getPunishingUserId());
+                                        id = p.getPunishmentId();
+                                        type = p.getPunishmentType();
+                                        punisherSnowflake = punishingUser.getUserIdSnowflake();
+                                    }
 
-        Mono<Void> populateTable = Flux.fromIterable(punishmentLazyList)
-                .filter(Objects::nonNull)
-                .flatMap(p -> {
-                    DiscordUser punishingUser = DiscordUser.findFirst("id = ?", p.getPunishingUserId());
-                    int id = p.getPunishmentId();
-
-                    return guild.getMemberById(Snowflake.of(punishingUser.getUserIdSnowflake())).flatMap(member -> {
-                        String punisher = getUsernameDefaultID(punishingUser, member, 30);
-
-                        String type = p.getPunishmentType();
-                        rows.add(String.format("| %-6s | %-8s | %-30s |\n", id, type, punisher));
-                        return Mono.empty();
-                    });
-                }).then();
-
-        return populateTable.flatMap(unused -> {
-            rows.add("```");
-
-            StringBuilder stringBuffer = new StringBuilder();
-            for (String row : rows) {
-                stringBuffer.append(row);
-            }
-
-            return Mono.just(stringBuffer.toString());
-        });
+                                    return guild.getMemberById(Snowflake.of(punisherSnowflake)).map(member -> {
+                                        String punisher = getUsernameDefaultID(punisherSnowflake, member, 30);
+                                        return String.format("| %-6s | %-8s | %-30s |", id, type, punisher);
+                                    });
+                                })
+                )
+                .concatWithValues("```")
+                .reduce("%s%n%s"::formatted);
     }
 
     private Mono<String> createFormattedRecentPunishmentsTable(LazyList<Punishment> punishmentLazyList, Guild guild) {
-        List<String> rowList = new ArrayList<>();
+        return Flux.just(
+                        "```",
+                        String.format("| %-6s | %-8s | %-30s |", "ID", "Type", "Punished User"),
+                        "------------------------------------------------------"
+                )
+                .concatWith(
+                        Flux.fromIterable(punishmentLazyList)
+                                .filter(Objects::nonNull)
+                                .flatMap(p -> {
+                                    int id;
+                                    String type;
+                                    final Long punishedUserSnowflake;
+                                    try (final var usage = DatabaseLoader.use()) {
+                                        DiscordUser punishedUser = DiscordUser.findFirst("id = ?", p.getPunishedUserId());
+                                        id = p.getPunishmentId();
+                                        type = p.getPunishmentType();
+                                        punishedUserSnowflake = punishedUser.getUserIdSnowflake();
+                                    }
 
-        Mono<List<String>> populateTable = Flux.fromIterable(punishmentLazyList)
-                .filter(Objects::nonNull)
-                .flatMap(p -> {
-                    DiscordUser punishedUser = DiscordUser.findFirst("id = ?", p.getPunishedUserId());
-                    int id = p.getPunishmentId();
-                    return guild.getMemberById(Snowflake.of(punishedUser.getUserIdSnowflake()))
-                            .map(member -> {
-
-                                String punished = getUsernameDefaultID(punishedUser, member, 30);
-
-                                String type = p.getPunishmentType();
-                                return String.format("| %-6s | %-8s | %-30s |\n", id, type, punished);
-                            });
-                }).collectList();
-
-
-        return Mono.just(rowList).flatMap(rows -> {
-            rows.add("```");
-            rows.add(String.format("| %-6s | %-8s | %-30s |\n", "ID", "Type", "Punished User"));
-            rows.add("------------------------------------------------------\n");
-            return populateTable.flatMap(stringList -> {
-                rows.addAll(stringList);
-                rows.add("```");
-                StringBuilder stringBuffer = new StringBuilder();
-                for (String row : rows) {
-                    stringBuffer.append(row);
-                }
-
-                return Mono.just(stringBuffer.toString());
-            });
-        });
+                                    return guild.getMemberById(Snowflake.of(punishedUserSnowflake)).map(member -> {
+                                        String punished = getUsernameDefaultID(punishedUserSnowflake, member, 30);
+                                        return String.format("| %-6s | %-8s | %-30s |", id, type, punished);
+                                    });
+                                })
+                )
+                .concatWithValues("```")
+                .reduce("%s%n%s"::formatted);
     }
 
     private String getStringOfLegalLength(String reason, int length) {
@@ -680,13 +642,12 @@ public class CaseCommand implements Command {
         return result;
     }
 
-    private String getUsernameDefaultID(DiscordUser discordUser, User user, int allowedLength) {
-        Long userId = discordUser.getUserIdSnowflake();
+    private String getUsernameDefaultID(long snowflake, User user, int allowedLength) {
         String usernameOrId;
         try {
             usernameOrId = user.getTag();
         } catch (Exception ignored) {
-            usernameOrId = userId.toString();
+            usernameOrId = String.valueOf(snowflake);
         }
 
         if (usernameOrId.length() > allowedLength) {

@@ -49,40 +49,35 @@ public class PruneCommand implements Command {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         return CommandChecks.commandChecks(event, request.name())
-                .flatMap(aBoolean -> {
-                    if (!aBoolean) {
-                        return Mono.error(new NoPermissionsException("No Permission"));
-                    }
-                    return event.getInteraction().getChannel().ofType(TextChannel.class).flatMap(channel ->
-                            event.getInteraction().getGuild().flatMap(guild -> {
+                .then(event.getInteraction().getChannel().ofType(TextChannel.class).flatMap(channel ->
+                        event.getInteraction().getGuild().flatMap(guild -> {
 
-                                if (event.getOption("number").isEmpty() || event.getOption("number").get().getValue().isEmpty()) {
-                                    return Mono.error(new MalformedInputException("Malformed Input"));
-                                }
+                            if (event.getOption("number").isEmpty() || event.getOption("number").get().getValue().isEmpty()) {
+                                return Mono.error(new MalformedInputException("Malformed Input"));
+                            }
 
-                                long number = event.getOption("number").get().getValue().get().asLong();
+                            long number = event.getOption("number").get().getValue().get().asLong();
 
-                                if (number < 2 || number > 100) {
-                                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
-                                }
+                            if (number < 2 || number > 100) {
+                                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                            }
 
-                                Flux<Snowflake> snowflakeFlux = channel.getMessagesBefore(Snowflake.of(Instant.now()))
-                                        .take(number)
-                                        .map(Message::getId);
+                            Flux<Snowflake> snowflakeFlux = channel.getMessagesBefore(Snowflake.of(Instant.now()))
+                                    .take(number)
+                                    .map(Message::getId);
 
-                                EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                                        .title("Success")
-                                        .color(Color.SEA_GREEN)
-                                        .description("Pruned `" + number + "` messages.")
-                                        .timestamp(Instant.now())
-                                        .build();
+                            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                                    .title("Success")
+                                    .color(Color.SEA_GREEN)
+                                    .description("Pruned `" + number + "` messages.")
+                                    .timestamp(Instant.now())
+                                    .build();
 
-                                return channel.bulkDelete(snowflakeFlux)
-                                        .then(Notifier.sendResultsEmbed(event, embed))
-                                        .then(AuditLogger.addCommandToDB(event, true));
+                            return channel.bulkDelete(snowflakeFlux)
+                                    .then(Notifier.sendResultsEmbed(event, embed))
+                                    .then(AuditLogger.addCommandToDB(event, true));
 
-                            }));
-                });
+                        })));
     }
 
 }

@@ -68,21 +68,18 @@ public class WipeCommand implements Command {
     private Mono<Void> wipeGuild(ChatInputInteractionEvent event) {
 
         return event.getInteraction().getGuild()
-                .doFirst(DatabaseLoader::openConnectionIfClosed)
-                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                 .onErrorResume(Mono::error)
                 .filter(Objects::nonNull)
                 .filterWhen(guild -> permissionChecker.checkIsAdministrator(event.getInteraction().getMember().get()))
                 .flatMap(guild -> event.getInteraction().getChannel().flatMap(messageChannel -> {
-                    DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                    DiscordServer discordServer = DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()));
 
                     if (discordServer == null || discordServer.getServerId() == 0) {
                         return Mono.error(new NullServerException("No Server"));
                     }
 
                     return messageChannel.createMessage("Administrator Server Wipe Activated. Farewell!").flatMap(message -> {
-                        discordServer.delete();
-                        DatabaseLoader.closeConnectionIfOpen();
+                        DatabaseLoader.use(() -> discordServer.delete());
                         return guild.leave().retry(10);
                     });
                 }));
@@ -93,9 +90,8 @@ public class WipeCommand implements Command {
         User user = event.getInteraction().getUser();
 
         return event.getInteraction().getGuild()
-                .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .filter(Objects::nonNull)
-                .flatMap(guild -> {
+                .flatMap(guild -> DatabaseLoader.use(() -> {
                     DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", user.getId().asLong());
 
                     logger.info("User with ID " + user.getId().asLong() + " has requested the deletion of their data. Complying.");
@@ -110,7 +106,6 @@ public class WipeCommand implements Command {
 
                     discordUser.delete();
                     return Notifier.sendResultsEmbed(event, embed);
-                })
-                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen());
+                }));
     }
 }

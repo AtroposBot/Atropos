@@ -37,60 +37,65 @@ public class StopJoinsCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        return CommandChecks.commandChecks(event, request.name()).flatMap(aBoolean -> {
-            if (!aBoolean) {
-                return Mono.error(new NoPermissionsException("No Permission"));
+        return CommandChecks.commandChecks(event, request.name()).then(event.getInteraction().getGuild().flatMap(guild -> DatabaseLoader.use(() -> {
+            DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
+            if (event.getOption("enable").isPresent()) {
+                if (serverProperties.getStopJoins()) {
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("Already Enabled")
+                            .description("Already kicking all new joins")
+                            .color(Color.RUBY)
+                            .timestamp(Instant.now())
+                            .build();
+                    return Notifier.sendResultsEmbed(event, embed);
+                }
+
+                serverProperties.setStopJoins(true);
+                serverProperties.save();
+                serverProperties.refresh();
+
+                cache.invalidate(guild.getId().asLong());
+
+                return loggingListener.onStopJoinsEnable(guild).flatMap(a -> {
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("Success")
+                            .description("Enabled the prevention of all joins.")
+                            .color(Color.ENDEAVOUR)
+                            .timestamp(Instant.now())
+                            .build();
+                    return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+                });
             }
-            return event.getInteraction().getGuild().flatMap(guild -> {
-                DatabaseLoader.openConnectionIfClosed();
-                DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
 
-                if (event.getOption("enable").isPresent()) {
-                    if (serverProperties.getStopJoins()) {
-                        EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Already Enabled").description("Already kicking all new joins").color(Color.RUBY).timestamp(Instant.now()).build();
-                        DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed);
-                    }
-
-                    serverProperties.setStopJoins(true);
-                    serverProperties.save();
-                    serverProperties.refresh();
-
-                    cache.invalidate(guild.getId().asLong());
-
-                    return loggingListener.onStopJoinsEnable(guild).flatMap(a -> {
-                        EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Success").description("Enabled the prevention of all joins.").color(Color.ENDEAVOUR).timestamp(Instant.now()).build();
-
-                        DatabaseLoader.closeConnectionIfOpen();
-
-                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
-                    });
+            if (event.getOption("disable").isPresent()) {
+                if (!serverProperties.getStopJoins()) {
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("Already Disabled")
+                            .description("Already not kicking all new joins.")
+                            .color(Color.RUBY)
+                            .timestamp(Instant.now())
+                            .build();
+                    return Notifier.sendResultsEmbed(event, embed);
                 }
 
-                if (event.getOption("disable").isPresent()) {
-                    if (!serverProperties.getStopJoins()) {
-                        EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Already Disabled").description("Already not kicking all new joins.").color(Color.RUBY).timestamp(Instant.now()).build();
-                        DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed);
-                    }
+                serverProperties.setStopJoins(false);
+                serverProperties.save();
+                serverProperties.refresh();
+                cache.invalidate(guild.getId().asLong());
+                return loggingListener.onStopJoinsDisable(guild).flatMap(a -> {
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("Success")
+                            .description("Disabled the prevention of all joins.")
+                            .color(Color.ENDEAVOUR)
+                            .timestamp(Instant.now())
+                            .build();
 
-                    serverProperties.setStopJoins(false);
-                    serverProperties.save();
-                    serverProperties.refresh();
-                    cache.invalidate(guild.getId().asLong());
-                    return loggingListener.onStopJoinsDisable(guild).flatMap(a -> {
-                        EmbedCreateSpec embed = EmbedCreateSpec.builder().title("Success").description("Disabled the prevention of all joins.").color(Color.ENDEAVOUR).timestamp(Instant.now()).build();
+                    return Notifier.sendResultsEmbed(event, embed)
+                            .then(AuditLogger.addCommandToDB(event, true));
+                });
+            }
 
-                        DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed)
-                                .then(AuditLogger.addCommandToDB(event, true));
-                    });
-
-                }
-
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.empty();
-            });
-        });
+            return Mono.empty();
+        })));
     }
 }

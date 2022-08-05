@@ -6,7 +6,9 @@ import dev.laarryy.atropos.config.ConfigManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.Base;
-import reactor.core.publisher.SignalType;
+import org.javalite.activejdbc.DB;
+
+import java.util.function.Supplier;
 
 
 public class DatabaseLoader {
@@ -27,19 +29,37 @@ public class DatabaseLoader {
             ds = new HikariDataSource(config);
     }
 
-    public static void openConnection() {
-        Base.open(ds);
+    public static Usage use() {
+        return new Usage(Base.open(ds));
     }
 
-    public static void openConnectionIfClosed() {
-        if (!Base.hasConnection()) {
-            openConnection();
+    public static void use(final Runnable action) {
+        try (final var db = Base.open(ds)) {
+            action.run();
         }
     }
 
-    public static void closeConnectionIfOpen() {
-        if (Base.hasConnection()) {
-            Base.close();
+    public static <T> T use(final Supplier<? extends T> action) {
+        try (final var db = Base.open(ds)) {
+            return action.get();
+        }
+    }
+
+    public static void shutdown() {
+        ds.close();
+    }
+
+    public static final class Usage implements AutoCloseable {
+
+        private final DB db;
+
+        private Usage(final DB db) {
+            this.db = db;
+        }
+
+        @Override
+        public void close() {
+            this.db.close();
         }
     }
 }
