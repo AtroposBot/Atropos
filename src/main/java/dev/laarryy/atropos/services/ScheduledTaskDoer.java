@@ -37,7 +37,6 @@ public class ScheduledTaskDoer {
 
         logger.info("Starting tasks");
 
-        DatabaseLoader.openConnectionIfClosed();
 
         Mono<Void> startInterval1 = Flux.interval(Duration.ofMinutes(1))
                 .doOnNext(l -> logger.info("CHECKING PUN. ENDING"))
@@ -54,10 +53,9 @@ public class ScheduledTaskDoer {
     }
 
     private Mono<Void> wipeOldData(Long l) {
-        DatabaseLoader.openConnectionIfClosed();
         Instant thirtyDaysAgoInstant = Instant.now().minus(Duration.ofDays(30));
         Long thirtyDaysAgo = thirtyDaysAgoInstant.toEpochMilli();
-        LazyList<ServerMessage> messageLazyList = ServerMessage.find("date < ?", thirtyDaysAgo);
+        LazyList<ServerMessage> messageLazyList = DatabaseLoader.use(() -> ServerMessage.find("date < ?", thirtyDaysAgo));
 
         return Flux.fromIterable(messageLazyList)
                 .doFinally(msg -> logger.info("+++++++++++ Old Messages Wiped"))
@@ -66,8 +64,7 @@ public class ScheduledTaskDoer {
 
     private Mono<Void> checkPunishmentEnding(Long l) {
 
-        DatabaseLoader.openConnectionIfClosed();
-        LazyList<Punishment> punishmentsLazyList = Punishment.find("end_date_passed = ? and permanent = ?", false, false);
+        LazyList<Punishment> punishmentsLazyList = DatabaseLoader.use(() -> Punishment.find("end_date_passed = ? and permanent = ?", false, false));
 
         logger.info("Checking punishment ending");
 
@@ -77,13 +74,11 @@ public class ScheduledTaskDoer {
                     logger.info("Ending punishment");
                     return endPunishment(p);
                 })
-                .then()
-                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen());
+                .then();
     }
 
     private boolean checkIfOverDue(Punishment punishment) {
         logger.info("overdue check starting");
-        DatabaseLoader.openConnectionIfClosed();
         Long endDate = punishment.getEndDate();
         if (endDate == null) return false;
         Instant endInstant = Instant.ofEpochMilli(endDate);
@@ -91,7 +86,6 @@ public class ScheduledTaskDoer {
 
         logger.info("overDue Check: " + endInstant.isBefore(nowInstant));
 
-        DatabaseLoader.closeConnectionIfOpen();
         return endInstant.isBefore(nowInstant);
     }
 
@@ -99,25 +93,24 @@ public class ScheduledTaskDoer {
 
         logger.info("Ending punishment!");
 
-        DatabaseLoader.openConnectionIfClosed();
 
         String punishmentType = punishment.getPunishmentType();
-        DiscordUser punishedUser = DiscordUser.findById(punishment.getPunishedUserId());
-        DiscordServer server = DiscordServer.findById(punishment.getServerId());
+        DiscordUser punishedUser = DatabaseLoader.use(() -> DiscordUser.findById(punishment.getPunishedUserId()));
+        DiscordServer server = DatabaseLoader.use(() -> DiscordServer.findById(punishment.getServerId()));
         Snowflake userId = Snowflake.of(punishedUser.getUserIdSnowflake());
 
         return client.getGuildById(Snowflake.of(server.getServerSnowflake()))
-                .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .flatMap(guild -> {
                     if (guild == null) {
                         // Ensure bot is still in guild - if not, nothing more is required.
                         logger.info("null guild");
-                        punishment.setEnded(true);
-                        punishment.setAutomaticEnd(true);
-                        punishment.setEndReason("Bot not in guild, punishment expired anyways.");
-                        punishment.save();
-                        punishment.refresh();
-                        DatabaseLoader.closeConnectionIfOpen();
+                        try (final var usage = DatabaseLoader.use()) {
+                            punishment.setEnded(true);
+                            punishment.setAutomaticEnd(true);
+                            punishment.setEndReason("Bot not in guild, punishment expired anyways.");
+                            punishment.save();
+                            punishment.refresh();
+                        }
                         return Mono.empty();
                     } else {
                         return guild.getMemberById(userId).flatMap(member -> {
@@ -130,69 +123,69 @@ public class ScheduledTaskDoer {
                                     return autoUnmuteUser(server, punishment, member, guild);
                                 }
                                 default -> {
-                                    punishment.setEnded(true);
-                                    punishment.setEndReason("Punishment ended but IDK what is");
-                                    punishment.save();
+                                    try (final var usage = DatabaseLoader.use()) {
+                                        punishment.setEnded(true);
+                                        punishment.setEndReason("Punishment ended but IDK what is");
+                                        punishment.save();
+                                    }
                                     return Mono.empty();
                                 }
                             }
                         });
                     }
                 })
-                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                 .then();
 
     }
 
     private Mono<Void> autoUnbanUser(Guild guild, Punishment punishment, Snowflake userId) {
         return guild.getSelfMember()
-                .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .flatMap(selfMember -> {
-                    DiscordUser selfDiscordUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
-                    punishment.setEnded(true);
-                    punishment.setAutomaticEnd(true);
-                    punishment.setPunishmentEnder(selfDiscordUser.getUserId());
-                    punishment.setPunishmentEnderName(selfMember.getUsername());
-                    punishment.setPunishmentEnderDiscrim(selfMember.getDiscriminator());
-                    punishment.setEndReason("Automatically unbanned on timer.");
-                    punishment.save();
-                    punishment.refresh();
+                    DiscordUser selfDiscordUser = DatabaseLoader.use(() -> DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong()));
 
-                    return guild.unban(userId).then(loggingListener.onUnban(guild, "Automatically unbanned on timer.", punishment));
-                })
-                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen());
+                    try (final var usage = DatabaseLoader.use()) {
+                        punishment.setEnded(true);
+                        punishment.setAutomaticEnd(true);
+                        punishment.setPunishmentEnder(selfDiscordUser.getUserId());
+                        punishment.setPunishmentEnderName(selfMember.getUsername());
+                        punishment.setPunishmentEnderDiscrim(selfMember.getDiscriminator());
+                        punishment.setEndReason("Automatically unbanned on timer.");
+                        punishment.save();
+                        punishment.refresh();
+                        return guild.unban(userId).then(loggingListener.onUnban(guild, "Automatically unbanned on timer.", punishment));
+                    }
+                });
     }
 
     private Mono<Void> autoUnmuteUser(DiscordServer server, Punishment punishment, Member member, Guild guild) {
 
         return guild.getSelfMember()
-                .doFirst(DatabaseLoader::openConnectionIfClosed)
                 .flatMap(self -> {
-                    DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id = ?", server.getServerId());
+                    DiscordServerProperties serverProperties = DatabaseLoader.use(() -> DiscordServerProperties.findFirst("server_id = ?", server.getServerId()));
                     Long mutedRoleSnowflake = serverProperties.getMutedRoleSnowflake();
 
                     logger.info("Auto Unmuting user: " + punishment.getPunishedUserName());
 
-                    DiscordUser selfDiscordUser = DiscordUser.findFirst("user_id_snowflake = ?", self.getId().asLong());
-                    punishment.setEnded(true);
-                    punishment.setAutomaticEnd(true);
-                    punishment.setPunishmentEnder(selfDiscordUser.getUserId());
-                    punishment.setPunishmentEnderName(self.getUsername());
-                    punishment.setPunishmentEnderDiscrim(self.getDiscriminator());
-                    punishment.setEndReason("Automatically unmuted on timer.");
-                    punishment.save();
-                    punishment.refresh();
-
-                    if (member != null && mutedRoleSnowflake != null) {
-                        return member.removeRole(Snowflake.of(mutedRoleSnowflake))
-                                .then(loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment));
-                    } else {
-                        return loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment);
+                    try (final var usage = DatabaseLoader.use()) {
+                        DiscordUser selfDiscordUser = DiscordUser.findFirst("user_id_snowflake = ?", self.getId().asLong());
+                        punishment.setEnded(true);
+                        punishment.setAutomaticEnd(true);
+                        punishment.setPunishmentEnder(selfDiscordUser.getUserId());
+                        punishment.setPunishmentEnderName(self.getUsername());
+                        punishment.setPunishmentEnderDiscrim(self.getDiscriminator());
+                        punishment.setEndReason("Automatically unmuted on timer.");
+                        punishment.save();
+                        punishment.refresh();
                     }
+                        if (member != null && mutedRoleSnowflake != null) {
+                            return member.removeRole(Snowflake.of(mutedRoleSnowflake))
+                                    .then(loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment));
+                        } else {
+                            return loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment);
+                        }
 
-                })
-                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen());
 
+                });
 
     }
 

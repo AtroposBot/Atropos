@@ -52,9 +52,8 @@ public class MemberJoinListener {
     private Mono<Void> applyEvadedMutes(MemberJoinEvent event, Guild guild) {
         // Apply evaded mutes
 
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getMember().getId().asLong());
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+        DiscordUser user = DatabaseLoader.use(() ->DiscordUser.findFirst("user_id_snowflake = ?", event.getMember().getId().asLong()));
+        DiscordServer discordServer = DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()));
 
         if (user != null) {
             LazyList<Punishment> activePunishments = Punishment.find("user_id_punished = ? and end_date_passed = ? and server_id = ?",
@@ -68,9 +67,10 @@ public class MemberJoinListener {
                             logger.info("Mute Evader!");
                             return punishmentManager.discordMuteUser(guild, event.getMember().getId().asLong());
                         } else {
-                            DatabaseLoader.openConnectionIfClosed();
-                            activePunishment.setEnded(true);
-                            activePunishment.save();
+                            DatabaseLoader.use(() -> {
+                                activePunishment.setEnded(true);
+                                activePunishment.save();
+                            });
                         }
                     }
                 }

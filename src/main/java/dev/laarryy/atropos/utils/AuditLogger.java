@@ -29,35 +29,37 @@ public final class AuditLogger {
 
     public static Mono<Void> addCommandToDB(ChatInputInteractionEvent event, boolean success) {
         return Mono.defer(() -> {
-            DatabaseLoader.openConnectionIfClosed();
 
             if (event.getInteraction().getGuildId().isEmpty()) {
                 return Mono.empty();
             }
 
-            DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+            try (final var usage = DatabaseLoader.use()) {
 
-            if (server == null) {
-                return Mono.empty();
+                DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+
+                if (server == null) {
+                    return Mono.empty();
+                }
+
+                int serverId = server.getServerId();
+
+                DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());
+
+                if (user == null) {
+                    return Mono.empty();
+                }
+                int commandUserId = user.getUserId();
+
+                return Flux.fromIterable(event.getOptions())
+                        .flatMap(AuditLogger::generateOptionString)
+                        .reduce(event.getCommandName(), String::concat)
+                        .doOnNext(commandContent -> {
+                            CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", commandContent, "date", Instant.now().toEpochMilli(), "success", success);
+                            commandUse.save();
+                        })
+                        .then();
             }
-
-            int serverId = server.getServerId();
-
-            DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());
-
-            if (user == null) {
-                return Mono.empty();
-            }
-            int commandUserId = user.getUserId();
-
-            return Flux.fromIterable(event.getOptions())
-                    .flatMap(AuditLogger::generateOptionString)
-                    .reduce(event.getCommandName(), String::concat)
-                    .doOnNext(commandContent -> {
-                        CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", commandContent, "date", Instant.now().toEpochMilli(), "success", success);
-                        commandUse.save();
-                    })
-                    .then();
         });
     }
 
@@ -71,29 +73,31 @@ public final class AuditLogger {
 
     public static Mono<Void> addCommandToDB(ButtonInteractionEvent event, String entry, boolean success) {
         return Mono.fromRunnable(() -> {
-            DatabaseLoader.openConnectionIfClosed();
 
             if (event.getInteraction().getGuildId().isEmpty()) {
                 return;
             }
 
-            DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+            try (final var usage = DatabaseLoader.use()) {
 
-            if (server == null) {
-                return;
+                DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+
+                if (server == null) {
+                    return;
+                }
+
+                int serverId = server.getServerId();
+
+                DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());
+
+                if (user == null) {
+                    return;
+                }
+                int commandUserId = user.getUserId();
+
+                CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", entry, "date", Instant.now().toEpochMilli(), "success", success);
+                commandUse.save();
             }
-
-            int serverId = server.getServerId();
-
-            DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());
-
-            if (user == null) {
-                return;
-            }
-            int commandUserId = user.getUserId();
-
-            CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", entry, "date", Instant.now().toEpochMilli(), "success", success);
-            commandUse.save();
         });
     }
 

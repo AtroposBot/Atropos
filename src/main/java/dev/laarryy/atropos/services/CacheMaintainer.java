@@ -15,22 +15,18 @@ public class CacheMaintainer {
     private final Logger logger = LogManager.getLogger(this);
 
     public Mono<Void> startCacheRefresh(LoadingCache<Long, DiscordServerProperties> cache) {
-        DatabaseLoader.openConnectionIfClosed();
         Mono<Void> startRefreshing = Flux.interval(Duration.ofMinutes(3))
                 .doFirst(() -> {
                     logger.info("Starting Cache Refresh");
-                    DatabaseLoader.openConnectionIfClosed();
                 })
                 .flatMap(l -> refreshPropertiesCache(cache))
-                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
                 .then();
 
         return Mono.when(startRefreshing);
     }
 
     private Mono<Void> refreshPropertiesCache(LoadingCache<Long, DiscordServerProperties> cache) {
-        DatabaseLoader.openConnectionIfClosed();
-        LazyList<DiscordServerProperties> propertiesList = DiscordServerProperties.findAll();
+        LazyList<DiscordServerProperties> propertiesList = DatabaseLoader.use(() -> DiscordServerProperties.findAll());
         return Flux.fromIterable(propertiesList)
                 .doOnNext(property -> cache.invalidate(property.getServerIdSnowflake())).then();
     }

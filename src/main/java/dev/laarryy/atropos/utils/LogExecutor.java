@@ -135,32 +135,31 @@ public final class LogExecutor {
 
     public static Mono<Void> logBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment, TextChannel logChannel) {
         return Mono.justOrEmpty(event.getMember()).flatMap(user -> {
-            DatabaseLoader.openConnectionIfClosed();
-            long userId = user.getId().asLong();
-            String userInfo = "`%s`:`%d`:%s".formatted(user.getTag(), userId, user.getMention());
+                long userId = user.getId().asLong();
 
-            String content = event.getMessage().getContent();
+                String userInfo = "`%s`:`%d`:%s".formatted(user.getTag(), userId, user.getMention());
 
-            int blacklistId = blacklist.getBlacklistId();
+                String content = event.getMessage().getContent();
 
-            EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
-                    .title(EmojiManager.getUserWarn() + " Blacklist Triggered")
-                    .color(Color.MOON_YELLOW)
-                    .description(
-                            "Blacklist ID #`" + blacklistId + "` was triggered and the message detected has been deleted. " +
-                                    "A case has been opened for the user who triggered it with ID #`" + punishment.getPunishmentId() + '`'
-                    ).addField("Content", getStringWithLegalLength(content, 1024), false)
-                    .addField("Responsible User", userInfo, false)
-                    .footer("To see information about this blacklist entry, run /settings blacklist info " + blacklistId, "")
-                    .timestamp(Instant.now());
+                int blacklistId = blacklist.getBlacklistId();
 
-            final List<Attachment> attachments = event.getMessage().getAttachments();
-            if (!attachments.isEmpty()) {
-                embed.addField("Attachments", attachments.stream().map(Attachment::getFilename).collect(Collectors.joining("\n")), false);
-            }
+                EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                        .title(EmojiManager.getUserWarn() + " Blacklist Triggered")
+                        .color(Color.MOON_YELLOW)
+                        .description(
+                                "Blacklist ID #`" + blacklistId + "` was triggered and the message detected has been deleted. " +
+                                        "A case has been opened for the user who triggered it with ID #`" + punishment.getPunishmentId() + '`'
+                        ).addField("Content", getStringWithLegalLength(content, 1024), false)
+                        .addField("Responsible User", userInfo, false)
+                        .footer("To see information about this blacklist entry, run /settings blacklist info " + blacklistId, "")
+                        .timestamp(Instant.now());
 
-            DatabaseLoader.closeConnectionIfOpen();
-            return logChannel.createMessage(embed.build());
+                final List<Attachment> attachments = event.getMessage().getAttachments();
+                if (!attachments.isEmpty()) {
+                    embed.addField("Attachments", attachments.stream().map(Attachment::getFilename).collect(Collectors.joining("\n")), false);
+                }
+                return logChannel.createMessage(embed.build());
+
         }).then();
     }
 
@@ -183,37 +182,33 @@ public final class LogExecutor {
 
     public static Mono<Void> logPunishment(Punishment punishment, TextChannel logChannel) {
         return Mono.defer(() -> {
-            DatabaseLoader.openConnectionIfClosed();
-            DiscordUser punishedUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-            DiscordUser punishingUser = DiscordUser.findFirst("id = ?", punishment.getPunishingUserId());
-            String type = switch (punishment.getPunishmentType()) {
-                case "warn" -> EmojiManager.getUserWarn() + " Warn";
-                case "note" -> EmojiManager.getUserCase() + " Note";
-                case "mute" -> EmojiManager.getUserMute() + " Mute";
-                case "kick" -> EmojiManager.getUserKick() + " Kick";
-                case "ban" -> EmojiManager.getUserBan() + " Ban";
-                default -> punishment.getPunishmentType();
-            };
-            DatabaseLoader.closeConnectionIfOpen();
-            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                    .title(type + ": ID #" + punishment.getPunishmentId())
-                    .color(Color.ENDEAVOUR)
-                    .addField("Punished User", "`%d`:<@%1$d>".formatted(punishedUser.getUserIdSnowflake()), false)
-                    .addField("Punishing User", "`%d`:<@%1$d>".formatted(punishingUser.getUserIdSnowflake()), false)
-                    .addField("Reason", punishment.getPunishmentMessage(), false)
-                    .footer("For more information, run /case search id " + punishment.getPunishmentId(), "")
-                    .timestamp(Instant.now())
-                    .build();
+                DiscordUser punishedUser = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", punishment.getPunishedUserId()));
+                DiscordUser punishingUser = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", punishment.getPunishingUserId()));
+                String type = switch (punishment.getPunishmentType()) {
+                    case "warn" -> EmojiManager.getUserWarn() + " Warn";
+                    case "note" -> EmojiManager.getUserCase() + " Note";
+                    case "mute" -> EmojiManager.getUserMute() + " Mute";
+                    case "kick" -> EmojiManager.getUserKick() + " Kick";
+                    case "ban" -> EmojiManager.getUserBan() + " Ban";
+                    default -> punishment.getPunishmentType();
+                };
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .title(type + ": ID #" + punishment.getPunishmentId())
+                        .color(Color.ENDEAVOUR)
+                        .addField("Punished User", "`%d`:<@%1$d>".formatted(punishedUser.getUserIdSnowflake()), false)
+                        .addField("Punishing User", "`%d`:<@%1$d>".formatted(punishingUser.getUserIdSnowflake()), false)
+                        .addField("Reason", punishment.getPunishmentMessage(), false)
+                        .footer("For more information, run /case search id " + punishment.getPunishmentId(), "")
+                        .timestamp(Instant.now())
+                        .build();
 
-            return logChannel.createMessage(embed);
+                return logChannel.createMessage(embed);
         }).then();
     }
 
     public static Mono<Void> logAutoMute(Punishment punishment, TextChannel logChannel) {
         return Mono.defer(() -> {
-            DatabaseLoader.openConnectionIfClosed();
-            DiscordUser punishedUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-            DatabaseLoader.closeConnectionIfOpen();
+            DiscordUser punishedUser = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", punishment.getPunishedUserId()));
 
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Automatic Mute")
@@ -315,9 +310,7 @@ public final class LogExecutor {
                     long id = author.getId().asLong();
                     return Mono.just("`%s`:`%d`:%s".formatted(author.getTag(), id, author.getMention()));
                 }).orElseGet(() -> {
-                    DatabaseLoader.openConnectionIfClosed();
-                    ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
-                    DatabaseLoader.closeConnectionIfOpen();
+                    ServerMessage serverMessage = DatabaseLoader.use(() -> ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong()));
                     if (serverMessage != null) {
                         long id = serverMessage.getUserSnowflake();
                         return guild.getMemberById(Snowflake.of(id)).map(author ->
@@ -337,9 +330,7 @@ public final class LogExecutor {
                         content = Optional.of(getStringWithLegalLength(string, 4055));
                     }
                 } else {
-                    DatabaseLoader.openConnectionIfClosed();
-                    ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong());
-                    DatabaseLoader.closeConnectionIfOpen();
+                    ServerMessage serverMessage = DatabaseLoader.use(() -> ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guild.getId().asLong(), event.getMessageId().asLong()));
                     if (serverMessage != null) {
                         content = Optional.of(getStringWithLegalLength(serverMessage.getContent(), 3055));
                     } else {
@@ -471,13 +462,11 @@ public final class LogExecutor {
                 oldContent = event.getOld()
                         .map(oldMessage -> getStringWithLegalLength(oldMessage.getContent(), 1000))
                         .orElseGet(() -> {
-                            DatabaseLoader.openConnectionIfClosed();
-                            ServerMessage serverMessage =
+                            ServerMessage serverMessage = DatabaseLoader.use(() ->
                                     ServerMessage.findFirst(
                                             "message_id_snowflake = ? and server_id_snowflake = ?",
                                             event.getMessageId().asLong(), guild.getId().asLong()
-                                    );
-                            DatabaseLoader.closeConnectionIfOpen();
+                                    ));
                             if (serverMessage != null) {
                                 return getStringWithLegalLength(serverMessage.getContent(), 1000);
                             } else {
@@ -527,7 +516,6 @@ public final class LogExecutor {
             final Set<Message> messageSet = event.getMessages();
             final Set<Snowflake> snowflakes = event.getMessageIds();
             String messages;
-            DatabaseLoader.openConnectionIfClosed();
             if (messageSet.isEmpty() && snowflakes.isEmpty()) {
                 messages = "Unknown";
             } else {
@@ -553,13 +541,12 @@ public final class LogExecutor {
                         }
                     }
                 } else {
-                    DatabaseLoader.openConnectionIfClosed();
-                    List<ServerMessage> serverMessages = snowflakes.parallelStream()
-                            .map(Snowflake::asLong)
-                            .map(snowflake -> ServerMessage.<ServerMessage>findFirst("message_id_snowflake = ?", snowflake))
-                            .filter(Objects::nonNull)
-                            .toList();
-                    DatabaseLoader.closeConnectionIfOpen();
+                    List<ServerMessage> serverMessages = DatabaseLoader.use(() ->
+                            snowflakes.parallelStream()
+                                    .map(Snowflake::asLong)
+                                    .map(snowflake -> ServerMessage.<ServerMessage>findFirst("message_id_snowflake = ?", snowflake))
+                                    .filter(Objects::nonNull)
+                                    .toList());
                     for (ServerMessage serverMessage : serverMessages) {
                         if (serverMessage.getContent().length() > 17) {
                             joiner.add(serverMessage.getMessageSnowflake() + " | " + serverMessage.getContent().substring(0, 17) + "...");
@@ -1224,22 +1211,22 @@ public final class LogExecutor {
                                     .filter(not(self::equals))
                                     .filter($ -> !reason.equalsIgnoreCase("Mass API banned by staff.") && entry.getTargetId().isPresent())
                                     .map(responsibleUser -> {
-                                        DatabaseLoader.openConnectionIfClosed();
-                                        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-                                        DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", responsibleUser.getId().asLong());
-                                        DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", entry.getTargetId().get().asLong());
-                                        Punishment punishment = Punishment.create(
-                                                "user_id_punished", punished.getUserId(),
-                                                "user_id_punisher", punisher.getUserId(),
-                                                "server_id", discordServer.getServerId(),
-                                                "punishment_type", "ban",
-                                                "punishment_date", Instant.now().toEpochMilli(),
-                                                "punishment_message", reason
-                                        );
-                                        punishment.save();
-                                        punishment.refresh();
-                                        DatabaseLoader.closeConnectionIfOpen();
-                                        return String.valueOf(punishment.getPunishmentId());
+                                        return DatabaseLoader.use(() -> {
+                                            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                                            DiscordUser punisher = DiscordUser.findFirst("user_id_snowflake = ?", responsibleUser.getId().asLong());
+                                            DiscordUser punished = DiscordUser.findFirst("user_id_snowflake = ?", entry.getTargetId().get().asLong());
+                                            Punishment punishment = Punishment.create(
+                                                    "user_id_punished", punished.getUserId(),
+                                                    "user_id_punisher", punisher.getUserId(),
+                                                    "server_id", discordServer.getServerId(),
+                                                    "punishment_type", "ban",
+                                                    "punishment_date", Instant.now().toEpochMilli(),
+                                                    "punishment_message", reason
+                                            );
+                                            punishment.save();
+                                            punishment.refresh();
+                                            return String.valueOf(punishment.getPunishmentId());
+                                        });
                                     });
 
                             EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
@@ -1413,9 +1400,7 @@ public final class LogExecutor {
     }
 
     public static Mono<Void> logPunishmentUnban(TextChannel logChannel, String reason, Punishment punishment) {
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser punished = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-        DatabaseLoader.closeConnectionIfOpen();
+        DiscordUser punished = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", punishment.getPunishedUserId()));
         long punishedId = punished.getUserIdSnowflake();
         String punishedName = "`%d`:<@%1$d>".formatted(punishedId);
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -1430,9 +1415,7 @@ public final class LogExecutor {
     }
 
     public static Mono<Void> logPunishmentUnmute(TextChannel logChannel, String reason, Punishment punishment) {
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser punished = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-        DatabaseLoader.closeConnectionIfOpen();
+        DiscordUser punished = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", punishment.getPunishedUserId()));
         long punishedId = punished.getUserIdSnowflake();
         String punishedName = "`%d`:<@%1$d>".formatted(punishedId);
         EmbedCreateSpec embed = EmbedCreateSpec.builder()

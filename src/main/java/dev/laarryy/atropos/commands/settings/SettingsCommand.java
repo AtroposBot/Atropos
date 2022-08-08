@@ -301,71 +301,32 @@ public class SettingsCommand implements Command {
         if (event.getOption("antispam").isPresent()) {
 
             return CommandChecks.commandChecks(event, "antispamsettings")
-                    .doFirst(DatabaseLoader::openConnectionIfClosed)
-                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
-                    .flatMap(aBoolean -> {
-                        if (aBoolean) {
-                            return antiSpamSettings.execute(event);
-                        } else {
-                            return Mono.error(new NoPermissionsException("No Permission"));
-                        }
-                    });
+                    .flatMap(aBoolean -> antiSpamSettings.execute(event));
         }
 
         if (event.getOption("blacklist").isPresent()) {
 
             return CommandChecks.commandChecks(event, "blacklistsettings")
-                    .doFirst(DatabaseLoader::openConnectionIfClosed)
-                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
-                    .flatMap(aBoolean -> {
-                        if (aBoolean) {
-                            return blacklistSettings.execute(event);
-                        } else {
-                            return Mono.error(new NoPermissionsException("No Permission"));
-                        }
-                    });
+
+                    .flatMap(aBoolean -> blacklistSettings.execute(event));
         }
 
         if (event.getOption("log").isPresent()) {
 
             return CommandChecks.commandChecks(event, "logsettings")
-                    .doFirst(DatabaseLoader::openConnectionIfClosed)
-                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
-                    .flatMap(aBoolean -> {
-                        if (aBoolean) {
-                            return logSettings.execute(event);
-                        } else {
-                            return Mono.error(new NoPermissionsException("No Permission"));
-                        }
-                    });
+                    .flatMap(aBoolean -> logSettings.execute(event));
         }
 
         if (event.getOption("modmail").isPresent()) {
 
             return CommandChecks.commandChecks(event, "modmailsettings")
-                    .doFirst(DatabaseLoader::openConnectionIfClosed)
-                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
-                    .flatMap(aBoolean -> {
-                        if (aBoolean) {
-                            return modMailSettings.execute(event);
-                        } else {
-                            return Mono.error(new NoPermissionsException("No Permission"));
-                        }
-                    });
+                    .flatMap(aBoolean -> modMailSettings.execute(event));
         }
 
         if (event.getOption("mutedrole").isPresent()) {
 
             return CommandChecks.commandChecks(event, "mutedrolesettings")
-                    .doFirst(DatabaseLoader::openConnectionIfClosed)
-                    .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
-                    .flatMap(aBoolean -> {
-                        if (aBoolean) {
-                            return mutedRoleSettings.execute(event);
-                        } else {
-                            return Mono.error(new NoPermissionsException("No Permission"));
-                        }
-                    });
+                    .flatMap(aBoolean -> mutedRoleSettings.execute(event));
         }
 
         return Mono.error(new MalformedInputException("Malformed Input"));

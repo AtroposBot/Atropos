@@ -145,39 +145,40 @@ public class BlacklistListener {
     }
 
     private Mono<Punishment> createPunishment(MessageCreateEvent event, Blacklist blacklist, String type) {
-        DatabaseLoader.openConnectionIfClosed();
         Member punishedMember = event.getMember().get();
 
         return event.getGuild().flatMap(guild -> guild.getSelfMember().flatMap(self -> {
             long punishedSnowflake = event.getMember().get().getId().asLong();
             long punisherSnowflake = self.getId().asLong();
-            DiscordUser punishedUser = DiscordUser.findOrCreateIt("user_id_snowflake", punishedSnowflake);
-            DiscordUser punisherUser = DiscordUser.findOrCreateIt("user_id_snowflake", punisherSnowflake);
-            DiscordServer server = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-            long date = Instant.now().toEpochMilli();
 
-            String reason = "Triggered the blacklist, which matched to the guild-level filter `" + blacklist.getServerBlacklist().getTrigger() + "`. This action will be reviewed by moderators.";
+            Punishment punishment = DatabaseLoader.use(() -> {
+                        DiscordUser punishedUser = DiscordUser.findOrCreateIt("user_id_snowflake", punishedSnowflake);
+                        DiscordUser punisherUser = DiscordUser.findOrCreateIt("user_id_snowflake", punisherSnowflake);
+                        DiscordServer server = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                        long date = Instant.now().toEpochMilli();
 
-            Punishment punishment = Punishment.create(
-                    "user_id_punished", punishedUser.getUserId(),
-                    "name_punished", punishedMember.getUsername(),
-                    "discrim_punished", punishedMember.getDiscriminator(),
-                    "user_id_punisher", punisherUser.getUserId(),
-                    "name_punisher", self.getUsername(),
-                    "discrim_punisher", self.getDiscriminator(),
-                    "server_id", server.getServerId(),
-                    "punishment_type", type,
-                    "punishment_date", date,
-                    "punishment_message", reason,
-                    "automatic", true,
-                    "end_date_passed", false,
-                    "permanent", true
-            );
+                        String reason = "Triggered the blacklist, which matched to the guild-level filter `" + blacklist.getServerBlacklist().getTrigger() + "`. This action will be reviewed by moderators.";
 
-            punishment.save();
-            punishment.refresh();
+                        Punishment punishment1 = Punishment.create(
+                                "user_id_punished", punishedUser.getUserId(),
+                                "name_punished", punishedMember.getUsername(),
+                                "discrim_punished", punishedMember.getDiscriminator(),
+                                "user_id_punisher", punisherUser.getUserId(),
+                                "name_punisher", self.getUsername(),
+                                "discrim_punisher", self.getDiscriminator(),
+                                "server_id", server.getServerId(),
+                                "punishment_type", type,
+                                "punishment_date", date,
+                                "punishment_message", reason,
+                                "automatic", true,
+                                "end_date_passed", false,
+                                "permanent", true
+                        );
 
-            DatabaseLoader.closeConnectionIfOpen();
+                        punishment1.save();
+                        punishment1.refresh();
+                        return punishment1;
+                    });
             return Mono.just(punishment);
         }));
     }

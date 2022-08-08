@@ -25,10 +25,9 @@ public class TextChannelCreateListener {
 
     @EventListener
     public Mono<Void> on(TextChannelCreateEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
 
         return event.getChannel().getGuild().flatMap(guild -> {
-            DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+            DiscordServerProperties discordServerProperties = DatabaseLoader.use(() -> DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong()));
             if (discordServerProperties != null && discordServerProperties.getMutedRoleSnowflake() != null && discordServerProperties.getMutedRoleSnowflake() != 0) {
 
                     return guild.getRoleById(Snowflake.of(discordServerProperties.getMutedRoleSnowflake()))
@@ -58,7 +57,6 @@ public class TextChannelCreateListener {
                                     }
                             ).then();
             }
-            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         });
     }

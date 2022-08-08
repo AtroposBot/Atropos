@@ -504,6 +504,14 @@ public class PunishmentManager {
                         })));
     }
 
+    /**
+     * @param punisher The {@link Member} doing the punishment
+     * @param punished The punished {@link Member}
+     * @param guild The {@link Guild} to check in
+     * @param event The {@link ChatInputInteractionEvent} to check for
+     * @return A {@link Mono}<{@link Boolean}> that is true if the punisher has the highest role and error signal if not, or if bot's role is too low to effect the punished member
+     */
+
     public Mono<Boolean> checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ChatInputInteractionEvent event) {
 
         logger.info("7.1");
@@ -516,26 +524,21 @@ public class PunishmentManager {
 
         Mono<Boolean> adminDiff = permissionChecker.checkIsAdministrator(punisher).flatMap(punisherIsAdmin ->
                 permissionChecker.checkIsAdministrator(punished).flatMap(punishedIsAdmin -> {
-                    logger.info("7.3");
                     if (punisherIsAdmin && !punishedIsAdmin) {
                         return Mono.just(true);
                     } else if (punishedIsAdmin && punisherIsAdmin) {
-                        logger.info("7.4");
                         return loggingListener.onAttemptedInsubordination(event, punished)
                                 .then(AuditLogger.addCommandToDB(event, false))
                                 .thenReturn(false);
                     }
-                    logger.info("7.5");
                     return Mono.just(false);
                 }));
 
         return punished.getRoles().map(Role::getId).collectList()
                 .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {
-                    logger.info("7.6");
                     if (!aBoolean) {
                         return Mono.error(new NoPermissionsException("No Permission"));
                     }
-                    logger.info("7.7");
                     return guild.getSelfMember().flatMap(selfMember -> selfMember.hasHigherRoles(Set.copyOf(snowflakes)).defaultIfEmpty(false).flatMap(botHasHigherRoles -> {
                         if (!botHasHigherRoles) {
                             return Mono.error(new BotRoleException("Bot Role Too Low"));
@@ -579,6 +582,14 @@ public class PunishmentManager {
                     }));
                 }));
     }
+
+    /**
+     * @param punisher The {@link Member} doing the punishment
+     * @param punished The punished {@link Member}
+     * @param guild The {@link Guild} to check in
+     * @param event The {@link ButtonInteractionEvent} to check for
+     * @return A {@link Mono}<{@link Boolean}> that is true if the punisher has the highest role and false if not. Returns error signal if bot's role is too low to effect the punished member
+     */
 
     public Mono<Boolean> checkIfPunisherHasHighestRole(Member punisher, Member punished, Guild guild, ButtonInteractionEvent event) {
 

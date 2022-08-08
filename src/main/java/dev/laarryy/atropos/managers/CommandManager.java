@@ -86,7 +86,6 @@ public class CommandManager {
                                                 return event.deferReply().withEphemeral(true)
                                                         .then(entry.execute(event))
                                                         .onErrorResume(e -> ErrorHandler.handleError(e, event))
-                                                        .doFirst(DatabaseLoader::openConnectionIfClosed)
                                                         .doFinally(s -> logger.info("Command Done"));
                                             }
                                     )

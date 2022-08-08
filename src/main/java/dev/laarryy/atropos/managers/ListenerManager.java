@@ -57,8 +57,6 @@ public class ListenerManager {
                                         .flatMap(event -> {
                                             try {
                                                 return ((Mono<Void>) listenerMethod.invoke(listener, event))
-                                                        .doFirst(DatabaseLoader::openConnectionIfClosed)
-                                                        .doFinally(signalType -> DatabaseLoader.closeConnectionIfOpen())
                                                         .onErrorResume(e -> ErrorHandler.handleListenerError(e, event));
                                             } catch (Exception e) {
                                                 logger.error("Error in Listener");

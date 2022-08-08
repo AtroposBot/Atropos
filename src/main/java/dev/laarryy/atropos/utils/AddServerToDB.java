@@ -22,88 +22,86 @@ public final class AddServerToDB {
     public Mono<Void> addServerToDatabase(Guild guild) {
 
         long serverIdSnowflake = guild.getId().asLong();
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordServer server = DiscordServer.findOrCreateIt("server_id", serverIdSnowflake);
-        server.save();
-        server.refresh();
 
-        if (server.getDateEntry() == 0) {
-            server.setDateEntry(Instant.now().toEpochMilli());
-            server.save();
-        }
+        DiscordServer server = DatabaseLoader.use(() -> {
+            DiscordServer server1 = DiscordServer.findOrCreateIt("server_id", serverIdSnowflake);
+            server1.save();
+            server1.refresh();
+            if (server1.getDateEntry() == 0) {
+                server1.setDateEntry(Instant.now().toEpochMilli());
+                server1.save();
+            }
+            return server1;
+        });
+
 
         int serverId = server.getServerId();
 
-        DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", serverIdSnowflake);
+        DiscordServerProperties properties = DatabaseLoader.use(() -> {
+            DiscordServerProperties properties1 = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", serverIdSnowflake);
+            properties1.setServerName(guild.getName());
+            properties1.save();
+            properties1.refresh();
 
-        properties.setServerName(guild.getName());
-        properties.save();
-        properties.refresh();
+            if (properties1.getMembersOnFirstJoin() == 0) {
+                properties1.setMembersOnFirstJoin(guild.getMemberCount());
+                properties1.save();
+            }
 
-        if (properties.getMembersOnFirstJoin() == 0) {
-            properties.setMembersOnFirstJoin(guild.getMemberCount());
-            properties.save();
-        }
+            return properties1;
+        });
+
 
         Mono<Void> registerMembers = guild.getMembers()
                 .filter(member -> {
-                    DatabaseLoader.openConnectionIfClosed();
-                    DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());
-                    ServerUser unregisteredUser;
-                    if (discordUser != null) {
-                        unregisteredUser = ServerUser.findFirst("user_id = ? and server_id = ?", discordUser.getUserId(), server.getServerId());
-                    } else {
-                        unregisteredUser = null;
+                    try (final var usage = DatabaseLoader.use()) {
+                        DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", member.getId().asLong());
+                        ServerUser unregisteredUser;
+                        if (discordUser != null) {
+                            unregisteredUser = ServerUser.findFirst("user_id = ? and server_id = ?", discordUser.getUserId(), server.getServerId());
+                        } else {
+                            unregisteredUser = null;
+                        }
+                        return unregisteredUser == null;
                     }
-                    return unregisteredUser == null;
                 })
                 .flatMap(member -> addUserToDatabase(member, guild))
                 .then();
-
-        DatabaseLoader.openConnectionIfClosed();
-        properties.refresh();
-        server.refresh();
-
-        DatabaseLoader.closeConnectionIfOpen();
 
         return registerMembers;
     }
 
     public Mono<Void> addUserToDatabase(Member member, Guild guild) {
+        try (final var usage = DatabaseLoader.use()) {
+            long userIdSnowflake = member.getId().asLong();
+            long serverIdSnowflake = guild.getId().asLong();
 
-        return Mono.empty()
-                .flatMap(mono -> {
-                    DatabaseLoader.openConnectionIfClosed();
+            DiscordUser user = DiscordUser.findOrCreateIt("user_id_snowflake", userIdSnowflake);
+            user.save();
+            user.refresh();
 
-                    long userIdSnowflake = member.getId().asLong();
-                    long serverIdSnowflake = guild.getId().asLong();
+            if (user.getDateEntry() == 0) {
+                user.setDateEntry(Instant.now().toEpochMilli());
+                user.save();
+            }
 
-                    DiscordUser user = DiscordUser.findOrCreateIt("user_id_snowflake", userIdSnowflake);
-                    user.save();
-                    user.refresh();
+            DiscordServer server = DiscordServer.findOrCreateIt("server_id", serverIdSnowflake);
 
-                    if (user.getDateEntry() == 0) {
-                        user.setDateEntry(Instant.now().toEpochMilli());
-                        user.save();
-                    }
+            int serverId = server.getServerId();
+            int userId = user.getUserId();
 
-                    DiscordServer server = DiscordServer.findOrCreateIt("server_id", serverIdSnowflake);
+            ServerUser serverUser = ServerUser.findOrCreateIt("user_id", userId, "server_id", serverId);
+            serverUser.save();
 
-                    int serverId = server.getServerId();
-                    int userId = user.getUserId();
+            if (serverUser.getDate() == null || serverUser.getDate() == 0) {
+                serverUser.setDate(Instant.now().toEpochMilli());
+                serverUser.save();
+            }
 
-                    ServerUser serverUser = ServerUser.findOrCreateIt("user_id", userId, "server_id", serverId);
-                    serverUser.save();
+            serverUser.refresh();
+        }
 
-                    if (serverUser.getDate() == null || serverUser.getDate() == 0) {
-                        serverUser.setDate(Instant.now().toEpochMilli());
-                        serverUser.save();
-                    }
+        return Mono.empty();
 
-                    serverUser.refresh();
-
-                    DatabaseLoader.closeConnectionIfOpen();
-                    return Mono.empty();
-                }).then();
     }
 }

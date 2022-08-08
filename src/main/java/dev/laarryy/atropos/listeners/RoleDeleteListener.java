@@ -25,33 +25,32 @@ public class RoleDeleteListener {
                 return Mono.empty();
             }
 
-            DatabaseLoader.openConnectionIfClosed();
-            Long roleId = event.getRoleId().asLong();
+            try (final var usage = DatabaseLoader.use()) {
+                Long roleId = event.getRoleId().asLong();
 
-            DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
 
-            if (serverProperties == null) {
-                DatabaseLoader.closeConnectionIfOpen();
+                DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
+
+                if (serverProperties == null) {
+                    return Mono.empty();
+                }
+
+                Long mutedRole = serverProperties.getMutedRoleSnowflake();
+                if (mutedRole == null || mutedRole == 0) {
+                    return Mono.empty();
+                }
+
+                if (mutedRole.equals(roleId)) {
+                    serverProperties.setMutedRoleSnowflake(null);
+                    serverProperties.save();
+                    serverProperties.refresh();
+                    cache.invalidate(guild.getId().asLong());
+                    LoggingListener listener = LoggingListenerManager.getManager().getLoggingListener();
+                    return listener.onMutedRoleDelete(guild, roleId);
+                }
+
                 return Mono.empty();
             }
-
-            Long mutedRole = serverProperties.getMutedRoleSnowflake();
-            if (mutedRole == null || mutedRole == 0) {
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.empty();
-            }
-
-            if (mutedRole.equals(roleId)) {
-                serverProperties.setMutedRoleSnowflake(null);
-                serverProperties.save();
-                serverProperties.refresh();
-                cache.invalidate(guild.getId().asLong());
-                LoggingListener listener = LoggingListenerManager.getManager().getLoggingListener();
-                return listener.onMutedRoleDelete(guild, roleId);
-            }
-
-            DatabaseLoader.closeConnectionIfOpen();
-            return Mono.empty();
         });
     }
 }

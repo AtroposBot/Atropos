@@ -28,14 +28,15 @@ public class BlacklistCacheManager {
             instance = new BlacklistCacheManager(Caffeine.newBuilder()
                     .expireAfterWrite(Duration.ofMinutes(10))
                     .build(aLong -> {
-                        DatabaseLoader.openConnectionIfClosed();
-                        DiscordServer server = DiscordServer.findFirst("server_id = ?", aLong);
-                        List<ServerBlacklist> serverBlacklistList = ServerBlacklist.find("server_id = ?", server.getServerId());
-                        List<Blacklist> blacklistList = new ArrayList<>();
-                        for (ServerBlacklist serverBlacklist : serverBlacklistList) {
-                            blacklistList.add(new Blacklist(serverBlacklist));
+                        try (final var usage = DatabaseLoader.use()) {
+                            DiscordServer server = DiscordServer.findFirst("server_id = ?", aLong);
+                            List<ServerBlacklist> serverBlacklistList = ServerBlacklist.find("server_id = ?", server.getServerId());
+                            List<Blacklist> blacklistList = new ArrayList<>();
+                            for (ServerBlacklist serverBlacklist : serverBlacklistList) {
+                                blacklistList.add(new Blacklist(serverBlacklist));
+                            }
+                            return blacklistList;
                         }
-                        return blacklistList;
                     }));
         }
         return instance;

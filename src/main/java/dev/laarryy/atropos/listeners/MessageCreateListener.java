@@ -28,70 +28,71 @@ public class MessageCreateListener {
             return Mono.empty();
         }
 
-        DatabaseLoader.openConnectionIfClosed();
 
         long messageIdSnowflake = event.getMessage().getId().asLong();
         long serverIdSnowflake = event.getGuildId().get().asLong();
         long userIdSnowflake = event.getMember().get().getId().asLong();
 
-        DiscordServer server = DiscordServer.findFirst("server_id = ?", serverIdSnowflake);
-        int serverId = server.getServerId();
-        server.saveIt();
+        try (final var usage = DatabaseLoader.use()) {
 
-        DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+            DiscordServer server = DiscordServer.findFirst("server_id = ?", serverIdSnowflake);
+            int serverId = server.getServerId();
+            server.saveIt();
 
-        if (user == null) {
-            user = DiscordUser.createIt("user_id_snowflake", userIdSnowflake, "date", Instant.now().toEpochMilli());
-        }
+            DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
 
-        int userId = user.getUserId();
-        user.save();
-        user.refresh();
-
-        // Create message row in the table
-        ServerMessage message = ServerMessage.findOrCreateIt("message_id_snowflake", messageIdSnowflake, "server_id", serverId, "user_id", userId);
-
-        // Populate it
-
-        String content = event.getMessage().getContent();
-
-        if (!event.getMessage().getAttachments().isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (Attachment attachment : event.getMessage().getAttachments()) {
-                sb.append("\n > File: `").append(attachment.getFilename()).append("`:").append(attachment.getProxyUrl());
+            if (user == null) {
+                user = DiscordUser.createIt("user_id_snowflake", userIdSnowflake, "date", Instant.now().toEpochMilli());
             }
-            content = content + sb;
-        }
 
-        if (!event.getMessage().getEmbeds().isEmpty()) {
-            StringBuilder sb = new StringBuilder();
-            for (Embed embed : event.getMessage().getEmbeds()) {
-                if (embed.getTitle().isPresent()) {
-                    sb.append("\n > Embed Title: ").append(embed.getTitle()).append("\n");
+            int userId = user.getUserId();
+            user.save();
+            user.refresh();
+
+            // Create message row in the table
+            ServerMessage message = ServerMessage.findOrCreateIt("message_id_snowflake", messageIdSnowflake, "server_id", serverId, "user_id", userId);
+
+            // Populate it
+
+            String content = event.getMessage().getContent();
+
+            if (!event.getMessage().getAttachments().isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (Attachment attachment : event.getMessage().getAttachments()) {
+                    sb.append("\n > File: `").append(attachment.getFilename()).append("`:").append(attachment.getProxyUrl());
                 }
-                if (embed.getDescription().isPresent()) {
-                    sb.append("\n > Embed Description: ").append(embed.getDescription()).append("\n");
-                }
-                if (!embed.getFields().isEmpty()) {
-                    for (Embed.Field field : embed.getFields()) {
-                        sb.append("\n > Field Title: ").append(field.getName()).append("\n > Field Content: ").append(field.getValue()).append("\n");
+                content = content + sb;
+            }
+
+            if (!event.getMessage().getEmbeds().isEmpty()) {
+                StringBuilder sb = new StringBuilder();
+                for (Embed embed : event.getMessage().getEmbeds()) {
+                    if (embed.getTitle().isPresent()) {
+                        sb.append("\n > Embed Title: ").append(embed.getTitle()).append("\n");
+                    }
+                    if (embed.getDescription().isPresent()) {
+                        sb.append("\n > Embed Description: ").append(embed.getDescription()).append("\n");
+                    }
+                    if (!embed.getFields().isEmpty()) {
+                        for (Embed.Field field : embed.getFields()) {
+                            sb.append("\n > Field Title: ").append(field.getName()).append("\n > Field Content: ").append(field.getValue()).append("\n");
+                        }
                     }
                 }
+                content = content + sb;
             }
-            content = content + sb;
+
+            message.setServerId(serverId);
+            message.setServerSnowflake(serverIdSnowflake);
+            message.setUserId(userId);
+            message.setUserSnowflake(userIdSnowflake);
+            message.setDateEpochMilli(Instant.now().toEpochMilli());
+            message.setContent(content);
+            message.setDeleted(false);
+
+            message.save();
+
         }
-
-        message.setServerId(serverId);
-        message.setServerSnowflake(serverIdSnowflake);
-        message.setUserId(userId);
-        message.setUserSnowflake(userIdSnowflake);
-        message.setDateEpochMilli(Instant.now().toEpochMilli());
-        message.setContent(content);
-        message.setDeleted(false);
-
-        message.save();
-
-        DatabaseLoader.closeConnectionIfOpen();
         return Mono.empty();
     }
 }

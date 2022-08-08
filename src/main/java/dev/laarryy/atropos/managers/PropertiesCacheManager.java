@@ -24,8 +24,9 @@ public class PropertiesCacheManager {
             instance = new PropertiesCacheManager(Caffeine.newBuilder()
                     .expireAfterWrite(Duration.ofMinutes(10))
                     .build(aLong -> {
-                        DatabaseLoader.openConnectionIfClosed();
-                        return DiscordServerProperties.findFirst("server_id_snowflake = ?", aLong);
+                            try (final var usage = DatabaseLoader.use()) {
+                                return DiscordServerProperties.findFirst("server_id_snowflake = ?", aLong);
+                            }
                     }));
         }
         return instance;

@@ -23,9 +23,8 @@ public final class PermissionChecker {
     private final Logger logger = LogManager.getLogger(this);
 
     /**
-     *
-     * @param guild Guild to check permission in
-     * @param user User to check permissions of
+     * @param guild       Guild to check permission in
+     * @param user        User to check permissions of
      * @param requestName Command name to check permission of
      * @return a true {@link Mono}<{@link Boolean}> if user has permission in guild, or an error signal indicating no permission
      */
@@ -34,20 +33,17 @@ public final class PermissionChecker {
         Snowflake guildIdSnowflake = guild.getId();
 
         return user.asMember(guildIdSnowflake)
-                .doFirst(DatabaseLoader::openConnectionIfClosed)
-                .doFinally(s -> DatabaseLoader.closeConnectionIfOpen())
-                .flatMap(member -> {
-                    dev.laarryy.atropos.models.guilds.permissions.Permission permission = dev.laarryy.atropos.models.guilds.permissions.Permission.findOrCreateIt("permission", requestName);
-                    permission.save();
-                    permission.refresh();
-                    int permissionId = permission.getInteger("id");
+                .flatMap(member ->
+                        checkIsAdministrator(member).flatMap(aBoolean -> {
+                    if (aBoolean) {
+                        return Mono.just(true);
+                    }
 
-                    logger.info("Permission check in progress - permission ID = " + permissionId);
-
-                    return checkIsAdministrator(member).flatMap(aBoolean -> {
-                        if (aBoolean) {
-                            return Mono.just(true);
-                        }
+                    try (final var usage = DatabaseLoader.use()) {
+                        dev.laarryy.atropos.models.guilds.permissions.Permission permission = dev.laarryy.atropos.models.guilds.permissions.Permission.findOrCreateIt("permission", requestName);
+                        permission.save();
+                        permission.refresh();
+                        int permissionId = permission.getInteger("id");
 
                         int guildId = DiscordServer.findFirst("server_id = ?", guildIdSnowflake.asLong()).getInteger("id");
 
@@ -58,8 +54,8 @@ public final class PermissionChecker {
                                                 || (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null)
                                                 || role.getPermissions().contains(Permission.ADMINISTRATOR))
                                 .flatMap(role -> member.getRoles()
-                                                .mergeWith(guild.getEveryoneRole())
-                                                .any(memberRole -> memberRole.equals(role))
+                                        .mergeWith(guild.getEveryoneRole())
+                                        .any(memberRole -> memberRole.equals(role))
 
                                         .flatMap(bool -> {
                                             if (!bool) {
@@ -69,12 +65,11 @@ public final class PermissionChecker {
                                             }
                                         }))
                         );
-                    });
-                });
+                    }
+                }));
     }
 
     /**
-     *
      * @param member A guild {@link Member} to check if administrator
      * @return A true {@link Mono}<{@link Boolean}> if the {@link Member} is an administrator or false if not
      */
@@ -96,39 +91,39 @@ public final class PermissionChecker {
                     }
                     return guild.getSelfMember().flatMap(self ->
                             self.getBasePermissions().flatMap(basePerms -> {
-                        if (basePerms.contains(Permission.ADMINISTRATOR)) {
-                            return Mono.just(true);
-                        }
-
-                        PermissionSet requiredPermissions = PermissionSet.of(
-                                Permission.VIEW_CHANNEL,
-                                Permission.MANAGE_CHANNELS,
-                                Permission.MANAGE_ROLES,
-                                Permission.VIEW_AUDIT_LOG,
-                                Permission.MANAGE_NICKNAMES,
-                                //Permission.USE_PRIVATE_THREADS,
-                                //Permission.USE_PUBLIC_THREADS,
-                                Permission.KICK_MEMBERS,
-                                Permission.BAN_MEMBERS,
-                                Permission.SEND_MESSAGES,
-                                Permission.USE_EXTERNAL_EMOJIS,
-                                Permission.MANAGE_MESSAGES,
-                                Permission.READ_MESSAGE_HISTORY,
-                                Permission.MUTE_MEMBERS
-                        );
-
-                        return self.getBasePermissions().flatMap(selfPermissions -> {
-                            if (selfPermissions == null) {
-                                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new BotPermissionsException("No Bot Permission")));
-                            }
-                            for (Permission permission : requiredPermissions) {
-                                if (!selfPermissions.contains(permission)) {
-                                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new BotPermissionsException("No Bot Permission")));
+                                if (basePerms.contains(Permission.ADMINISTRATOR)) {
+                                    return Mono.just(true);
                                 }
-                            }
-                            return Mono.just(true);
-                        });
-                    }));
+
+                                PermissionSet requiredPermissions = PermissionSet.of(
+                                        Permission.VIEW_CHANNEL,
+                                        Permission.MANAGE_CHANNELS,
+                                        Permission.MANAGE_ROLES,
+                                        Permission.VIEW_AUDIT_LOG,
+                                        Permission.MANAGE_NICKNAMES,
+                                        //Permission.USE_PRIVATE_THREADS,
+                                        //Permission.USE_PUBLIC_THREADS,
+                                        Permission.KICK_MEMBERS,
+                                        Permission.BAN_MEMBERS,
+                                        Permission.SEND_MESSAGES,
+                                        Permission.USE_EXTERNAL_EMOJIS,
+                                        Permission.MANAGE_MESSAGES,
+                                        Permission.READ_MESSAGE_HISTORY,
+                                        Permission.MUTE_MEMBERS
+                                );
+
+                                return self.getBasePermissions().flatMap(selfPermissions -> {
+                                    if (selfPermissions == null) {
+                                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new BotPermissionsException("No Bot Permission")));
+                                    }
+                                    for (Permission permission : requiredPermissions) {
+                                        if (!selfPermissions.contains(permission)) {
+                                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new BotPermissionsException("No Bot Permission")));
+                                        }
+                                    }
+                                    return Mono.just(true);
+                                });
+                            }));
                 });
     }
 

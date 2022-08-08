@@ -223,158 +223,147 @@ public class PermissionCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        return CommandChecks.commandChecks(event, request.name()).flatMap(aBoolean -> {
-            if (!aBoolean) {
-                return Mono.error(new NoPermissionsException("No Permission"));
-            }
+            return CommandChecks.commandChecks(event, request.name()).flatMap(aBoolean -> {
 
-            if (event.getInteraction().getMember().isEmpty()) {
-                return Mono.error(new NoMemberException("No Member"));
-            }
-
-            return event.getInteraction().getGuild().flatMap(guild -> {
-                Long guildIdSnowflake = guild.getId().asLong();
-
-                Member member = event.getInteraction().getMember().get();
-                User user = event.getInteraction().getUser();
-                Long userIdSnowflake = member.getId().asLong();
-
-                DatabaseLoader.openConnectionIfClosed();
-
-                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildIdSnowflake);
-                int serverId;
-
-                if (discordServer != null) {
-                    serverId = discordServer.getServerId();
-                } else {
-                    DatabaseLoader.closeConnectionIfOpen();
-                    return Mono.empty();
+                if (event.getInteraction().getMember().isEmpty()) {
+                    return Mono.error(new NoMemberException("No Member"));
                 }
 
-                if (event.getOption("list").isPresent() && event.getOption("list").get().getOption("role").isPresent()) {
-                    if (event.getOption("list").get().getOption("role").get().getValue().isEmpty()) {
-                        DatabaseLoader.closeConnectionIfOpen();
-                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                return event.getInteraction().getGuild().flatMap(guild -> {
+                    Long guildIdSnowflake = guild.getId().asLong();
+
+                    Member member = event.getInteraction().getMember().get();
+                    User user = event.getInteraction().getUser();
+                    Long userIdSnowflake = member.getId().asLong();
+
+
+                    DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildIdSnowflake);
+                    int serverId;
+
+                    if (discordServer != null) {
+                        serverId = discordServer.getServerId();
+                    } else {
+                        return Mono.empty();
                     }
 
-                    return event.getOption("list").get().getOption("role").get().getValue().get().asRole().flatMap(role -> {
-                        long roleId = role.getId().asLong();
-                        String roleName = role.getName();
-                        String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
+                    if (event.getOption("list").isPresent() && event.getOption("list").get().getOption("role").isPresent()) {
+                        if (event.getOption("list").get().getOption("role").get().getValue().isEmpty()) {
+                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                        }
 
-                        LazyList<ServerRolePermission> permissions = ServerRolePermission.find("role_id_snowflake = ? and server_id = ?", roleId, serverId);
+                        return event.getOption("list").get().getOption("role").get().getValue().get().asRole().flatMap(role -> {
+                            long roleId = role.getId().asLong();
+                            String roleName = role.getName();
+                            String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
 
-                        String rolePermissionsInfo;
-                        if (permissions == null || permissions.isEmpty()) {
-                            rolePermissionsInfo = "none";
-                        } else {
-                            StringBuilder stringBuilder = new StringBuilder();
-                            stringBuilder.append("```diff\n");
-                            for (ServerRolePermission perm : permissions) {
-                                Permission pId = Permission.findFirst("id = ?", perm.getPermissionId());
-                                String name = pId.getName();
-                                if (name.equals("everything")) {
-                                    stringBuilder.append("+ All Permissions").append("\n");
-                                } else {
-                                    stringBuilder.append("+ /").append(name).append("\n");
+                            LazyList<ServerRolePermission> permissions = ServerRolePermission.find("role_id_snowflake = ? and server_id = ?", roleId, serverId);
+
+                            String rolePermissionsInfo;
+                            if (permissions == null || permissions.isEmpty()) {
+                                rolePermissionsInfo = "none";
+                            } else {
+                                StringBuilder stringBuilder = new StringBuilder();
+                                stringBuilder.append("```diff\n");
+                                for (ServerRolePermission perm : permissions) {
+                                    Permission pId = Permission.findFirst("id = ?", perm.getPermissionId());
+                                    String name = pId.getName();
+                                    if (name.equals("everything")) {
+                                        stringBuilder.append("+ All Permissions").append("\n");
+                                    } else {
+                                        stringBuilder.append("+ /").append(name).append("\n");
+                                    }
                                 }
+                                stringBuilder.append("```");
+                                rolePermissionsInfo = stringBuilder.toString();
                             }
-                            stringBuilder.append("```");
-                            rolePermissionsInfo = stringBuilder.toString();
-                        }
 
-                        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                                .title("Role Permission Info")
-                                .addField("Role", roleInfo, false)
-                                .color(Color.ENDEAVOUR)
-                                .timestamp(Instant.now())
-                                .build();
-
-                        if (rolePermissionsInfo.equals("none")) {
-                            embed = EmbedCreateSpec.builder().from(embed)
-                                    .description("This role has no permissions. To add permissions, use /permission add <role> <permission>.")
+                            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                                    .title("Role Permission Info")
+                                    .addField("Role", roleInfo, false)
+                                    .color(Color.ENDEAVOUR)
+                                    .timestamp(Instant.now())
                                     .build();
-                        } else {
-                            embed = EmbedCreateSpec.builder().from(embed)
-                                    .description(rolePermissionsInfo)
+
+                            if (rolePermissionsInfo.equals("none")) {
+                                embed = EmbedCreateSpec.builder().from(embed)
+                                        .description("This role has no permissions. To add permissions, use /permission add <role> <permission>.")
+                                        .build();
+                            } else {
+                                embed = EmbedCreateSpec.builder().from(embed)
+                                        .description(rolePermissionsInfo)
+                                        .build();
+                            }
+
+                            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+                        });
+                    }
+
+                    if (event.getOption("add").isPresent()) {
+                        ApplicationCommandInteractionOption option = event.getOption("add").get();
+
+                        return option.getOption("role").get().getValue().get().asRole().flatMap(role -> {
+                            int permissionToAddId = getIdOfPermissionToHandle(option);
+
+                            if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToAddId, role.getId().asLong()) != null) {
+                                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new AlreadyAssignedException("Permission Already Assigned")));
+                            }
+
+
+                            ServerRolePermission serverRolePermission = ServerRolePermission.createIt("server_id", serverId, "permission_id", permissionToAddId, "role_id_snowflake", role.getId().asLong());
+                            serverRolePermission.save();
+                            serverRolePermission.refresh();
+                            Permission perm = Permission.findFirst("id = ?", serverRolePermission.getPermissionId());
+                            String permName = "`/" + perm.getName() + "`";
+
+                            long roleId = role.getId().asLong();
+                            String roleName = role.getName();
+                            String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
+
+                            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                                    .title("Success")
+                                    .color(Color.SEA_GREEN)
+                                    .description("Added permission to use " + permName + " and all subcommands to <@&" + roleId + ">")
+                                    .addField("Role", roleInfo, false)
                                     .build();
-                        }
 
-                        DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
-                    });
-                }
+                            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+                        });
+                    }
 
-                if (event.getOption("add").isPresent()) {
-                    ApplicationCommandInteractionOption option = event.getOption("add").get();
+                    if (event.getOption("remove").isPresent()) {
+                        ApplicationCommandInteractionOption option = event.getOption("remove").get();
 
-                    return option.getOption("role").get().getValue().get().asRole().flatMap(role -> {
-                        int permissionToAddId = getIdOfPermissionToHandle(option);
+                        return option.getOption("role").get().getValue().get().asRole().flatMap(role -> {
+                            int permissionToRemoveId = getIdOfPermissionToHandle(option);
 
-                        if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToAddId, role.getId().asLong()) != null) {
-                            DatabaseLoader.closeConnectionIfOpen();
-                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new AlreadyAssignedException("Permission Already Assigned")));
-                        }
+                            if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong()) == null) {
+                                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
+                            }
 
+                            ServerRolePermission serverRolePermission = ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong());
+                            Permission perm = Permission.findFirst("id = ?", serverRolePermission.getPermissionId());
 
-                        ServerRolePermission serverRolePermission = ServerRolePermission.createIt("server_id", serverId, "permission_id", permissionToAddId, "role_id_snowflake", role.getId().asLong());
-                        serverRolePermission.save();
-                        serverRolePermission.refresh();
-                        Permission perm = Permission.findFirst("id = ?", serverRolePermission.getPermissionId());
-                        String permName = "`/" + perm.getName() + "`";
+                            long roleId = role.getId().asLong();
+                            String roleName = role.getName();
+                            String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
+                            String permName = "`/" + perm.getName() + "`";
 
-                        long roleId = role.getId().asLong();
-                        String roleName = role.getName();
-                        String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
+                            serverRolePermission.delete();
 
-                        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                                .title("Success")
-                                .color(Color.SEA_GREEN)
-                                .description("Added permission to use " + permName + " and all subcommands to <@&" + roleId + ">")
-                                .addField("Role", roleInfo, false)
-                                .build();
+                            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                                    .title("Success")
+                                    .color(Color.SEA_GREEN)
+                                    .description("Removed permission to use " + permName + " and all subcommands from <@&" + roleId + ">")
+                                    .addField("Role", roleInfo, false)
+                                    .build();
 
-                        DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
-                    });
-                }
-
-                if (event.getOption("remove").isPresent()) {
-                    ApplicationCommandInteractionOption option = event.getOption("remove").get();
-
-                    return option.getOption("role").get().getValue().get().asRole().flatMap(role -> {
-                        int permissionToRemoveId = getIdOfPermissionToHandle(option);
-
-                        if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong()) == null) {
-                            DatabaseLoader.closeConnectionIfOpen();
-                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
-                        }
-
-                        ServerRolePermission serverRolePermission = ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong());
-                        Permission perm = Permission.findFirst("id = ?", serverRolePermission.getPermissionId());
-
-                        long roleId = role.getId().asLong();
-                        String roleName = role.getName();
-                        String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
-                        String permName = "`/" + perm.getName() + "`";
-
-                        serverRolePermission.delete();
-
-                        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                                .title("Success")
-                                .color(Color.SEA_GREEN)
-                                .description("Removed permission to use " + permName + " and all subcommands from <@&" + roleId + ">")
-                                .addField("Role", roleInfo, false)
-                                .build();
-
-                        DatabaseLoader.closeConnectionIfOpen();
-                        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
-                    });
-                }
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.empty();
+                            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+                        });
+                    }
+                    return Mono.empty();
+                });
             });
-        });
+
     }
 
     private int getIdOfPermissionToHandle(ApplicationCommandInteractionOption option) {

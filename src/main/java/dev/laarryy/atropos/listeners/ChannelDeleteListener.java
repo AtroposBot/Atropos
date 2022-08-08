@@ -18,7 +18,6 @@ public class ChannelDeleteListener {
 
     @EventListener
     public Mono<Void> on(TextChannelDeleteEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
         LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
 
         return event.getChannel().getGuild().flatMap(guild -> {
@@ -52,7 +51,6 @@ public class ChannelDeleteListener {
             serverProperties.save();
             serverProperties.refresh();
             cache.invalidate(guild.getId().asLong());
-            DatabaseLoader.closeConnectionIfOpen();
             return Mono.empty();
         });
     }

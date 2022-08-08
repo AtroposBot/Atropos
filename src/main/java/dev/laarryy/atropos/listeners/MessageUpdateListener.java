@@ -20,21 +20,20 @@ public class MessageUpdateListener {
                     return Mono.empty();
                 }
 
-                DatabaseLoader.openConnectionIfClosed();
-                long guildId = event.getGuildId().get().asLong();
-                long snowflakeId = event.getMessageId().asLong();
+                try (final var usage = DatabaseLoader.use()) {
+                    long guildId = event.getGuildId().get().asLong();
+                    long snowflakeId = event.getMessageId().asLong();
 
-                ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guildId, snowflakeId);
+                    ServerMessage serverMessage = ServerMessage.findFirst("server_id_snowflake = ? and message_id_snowflake = ?", guildId, snowflakeId);
 
-                if (serverMessage == null) {
-                    DatabaseLoader.closeConnectionIfOpen();
+                    if (serverMessage == null) {
+                        return Mono.empty();
+                    } else {
+                        serverMessage.setContent(message.getContent());
+                        serverMessage.save();
+                    }
                     return Mono.empty();
-                } else {
-                    serverMessage.setContent(message.getContent());
-                    serverMessage.save();
                 }
-                DatabaseLoader.closeConnectionIfOpen();
-                return Mono.empty();
             });
         });
     }

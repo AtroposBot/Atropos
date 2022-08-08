@@ -29,66 +29,72 @@ public class MutedRoleSettings {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         return event.getInteraction().getGuild().flatMap(guild -> {
-            DiscordServerProperties discordServerProperties = propertiesCache.get(guild.getId().asLong());
 
-            if (event.getOption("mutedrole").get().getOption("set").isPresent()
-                    && event.getOption("mutedrole").get().getOption("set").get().getOption("role").isPresent()
-                    && event.getOption("mutedrole").get().getOption("set").get().getOption("role").get().getValue().isPresent()
-            ) {
+            try (final var usage = DatabaseLoader.use()) {
 
-               return event.getOption("mutedrole").get().getOption("set").get().getOption("role").get().getValue().get().asRole().flatMap(mutedRole -> {
-                   if (mutedRole.isEveryone() || mutedRole.isManaged()) {
-                       DatabaseLoader.closeConnectionIfOpen();
-                       return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
-                   }
+                DiscordServerProperties discordServerProperties = propertiesCache.get(guild.getId().asLong());
 
-                   Long mutedRoleId = mutedRole.getId().asLong();
+                if (event.getOption("mutedrole").get().getOption("set").isPresent()
+                        && event.getOption("mutedrole").get().getOption("set").get().getOption("role").isPresent()
+                        && event.getOption("mutedrole").get().getOption("set").get().getOption("role").get().getValue().isPresent()
+                ) {
 
-                   discordServerProperties.setMutedRoleSnowflake(mutedRoleId);
-                   discordServerProperties.save();
-                   discordServerProperties.refresh();
-                   propertiesCache.invalidate(guild.getId().asLong());
-                   EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                           .title("Success")
-                           .color(Color.SEA_GREEN)
-                           .description("Set muted role successfully!")
-                           .timestamp(Instant.now())
-                           .build();
+                    return event.getOption("mutedrole").get().getOption("set").get().getOption("role").get().getValue().get().asRole().flatMap(mutedRole -> {
+                        if (mutedRole.isEveryone() || mutedRole.isManaged()) {
+                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
+                        }
 
-                   return Notifier.sendResultsEmbed(event, embed);
-               });
-            }
+                        Long mutedRoleId = mutedRole.getId().asLong();
 
-            if (event.getOption("mutedrole").get().getOption("info").isPresent()) {
+                        DatabaseLoader.use(() -> {
+                            discordServerProperties.setMutedRoleSnowflake(mutedRoleId);
+                            discordServerProperties.save();
+                            discordServerProperties.refresh();
+                        });
 
-                Long mutedRoleId = DatabaseLoader.use(discordServerProperties::getMutedRoleSnowflake);
+                        propertiesCache.invalidate(guild.getId().asLong());
+                        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                                .title("Success")
+                                .color(Color.SEA_GREEN)
+                                .description("Set muted role successfully!")
+                                .timestamp(Instant.now())
+                                .build();
 
-                if (mutedRoleId == null) {
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title("Muted Role Info")
-                            .color(Color.SEA_GREEN)
-                            .description("There is currently no muted role set in this server. Muting a player while no muted role is set will cause the automatic creation of a muted role.")
-                            .footer("Run /settings mutedrole set <role> to set a role as the muted role", "")
-                            .timestamp(Instant.now())
-                            .build();
-
-                    return Notifier.sendResultsEmbed(event, embed);
+                        return Notifier.sendResultsEmbed(event, embed);
+                    });
                 }
 
-                return guild.getRoleById(Snowflake.of(mutedRoleId)).flatMap(mutedRole -> {
-                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                            .title("Muted Role Info")
-                            .color(Color.SEA_GREEN)
-                            .description("The current muted role for this server. Muting a player while no muted role is set will cause the automatic creation of a muted role.")
-                            .addField("Current Muted Role", "`" + mutedRole.getName() + "`:<@&" + mutedRoleId + ">:`" + mutedRoleId + "`", false)
-                            .footer("Run /settings mutedrole set <role> to set a role as the muted role", "")
-                            .timestamp(Instant.now())
-                            .build();
-                    return Notifier.sendResultsEmbed(event, embed);
-                });
-            }
+                if (event.getOption("mutedrole").get().getOption("info").isPresent()) {
 
-            return Mono.error(new MalformedInputException("Malformed Input"));
+                    Long mutedRoleId = DatabaseLoader.use(discordServerProperties::getMutedRoleSnowflake);
+
+                    if (mutedRoleId == null) {
+                        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                                .title("Muted Role Info")
+                                .color(Color.SEA_GREEN)
+                                .description("There is currently no muted role set in this server. Muting a player while no muted role is set will cause the automatic creation of a muted role.")
+                                .footer("Run /settings mutedrole set <role> to set a role as the muted role", "")
+                                .timestamp(Instant.now())
+                                .build();
+
+                        return Notifier.sendResultsEmbed(event, embed);
+                    }
+
+                    return guild.getRoleById(Snowflake.of(mutedRoleId)).flatMap(mutedRole -> {
+                        EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                                .title("Muted Role Info")
+                                .color(Color.SEA_GREEN)
+                                .description("The current muted role for this server. Muting a player while no muted role is set will cause the automatic creation of a muted role.")
+                                .addField("Current Muted Role", "`" + mutedRole.getName() + "`:<@&" + mutedRoleId + ">:`" + mutedRoleId + "`", false)
+                                .footer("Run /settings mutedrole set <role> to set a role as the muted role", "")
+                                .timestamp(Instant.now())
+                                .build();
+                        return Notifier.sendResultsEmbed(event, embed);
+                    });
+                }
+
+                return Mono.error(new MalformedInputException("Malformed Input"));
+            }
         });
     }
 }
