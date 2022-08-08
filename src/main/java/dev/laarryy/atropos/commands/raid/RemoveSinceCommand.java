@@ -3,6 +3,7 @@ package dev.laarryy.atropos.commands.raid;
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.EmojiManager;
 import dev.laarryy.atropos.exceptions.DurationTooLongException;
+import dev.laarryy.atropos.exceptions.InvalidDurationException;
 import dev.laarryy.atropos.exceptions.MalformedInputException;
 import dev.laarryy.atropos.exceptions.NotFoundException;
 import dev.laarryy.atropos.exceptions.NullServerException;
@@ -93,7 +94,14 @@ public class RemoveSinceCommand implements Command {
 
                 type = event.getOption("type").get().getValue().get().asString();
                 String durationInput = event.getOption("duration").get().getValue().get().asString();
-                Duration duration = DurationParser.parseDuration(durationInput);
+
+                Duration duration;
+                try {
+                    duration = DurationParser.parseDuration(durationInput);
+                } catch (Exception e) {
+                    return Mono.error(new InvalidDurationException("Invalid Duration"));
+                }
+
                 if (duration.toDays() > 2) {
                     return AuditLogger.addCommandToDB(event, false).then(Mono.error(new DurationTooLongException("Duration Too Long")));
                 }
