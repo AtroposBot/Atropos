@@ -51,59 +51,59 @@ public class ModMailCommand implements Command {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
         Mono<Guild> guildMono = event.getInteraction().getGuild();
 
-        return guildMono
-                .flatMap(guild -> {
+        return guildMono.flatMap(guild -> {
+            if (guild == null) {
+                return Mono.error(new NullServerException("No Server"));
+            }
 
-                    if (guild == null) {
-                        return Mono.error(new NullServerException("No Server"));
-                    }
+            Member member = event.getInteraction().getMember().get();
 
-                    Member member = event.getInteraction().getMember().get();
+            if (event.getOption("message").isEmpty() || event.getOption("message").get().getValue().isEmpty()) {
+                return Mono.error(new MalformedInputException("Malformed Input"));
+            }
 
-                    DatabaseLoader.openConnectionIfClosed();
-                    DiscordServerProperties properties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+            String input = event.getOption("message").get().getValue().get().asString();
 
-                    if (event.getOption("message").isEmpty() || event.getOption("message").get().getValue().isEmpty()) {
-                        return Mono.error(new MalformedInputException("Malformed Input"));
-                    }
+            final Long snowflake;
+            try (final var usage = DatabaseLoader.use()) {
+                DiscordServerProperties properties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+                snowflake = properties.getModMailChannelSnowflake();
+            }
 
+            if (snowflake != null) {
+                Mono<TextChannel> channelMono = guild.getChannelById(Snowflake.of(snowflake)).ofType(TextChannel.class);
 
-                    String input = event.getOption("message").get().getValue().get().asString();
-
-                    if (properties.getModMailChannelSnowflake() != null) {
-                        Mono<TextChannel> channelMono = guild.getChannelById(Snowflake.of(properties.getModMailChannelSnowflake())).ofType(TextChannel.class);
-
-                        return channelMono.flatMap(channel -> {
-                            String content;
-                            if (input.length() > 3985) {
-                                content = "```\n" + input.substring(0, 3975) + "\n```";
-                            } else {
-                                content = "```\n" + input + "\n```";
-                            }
-
-                            EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                                    .title("ModMail from: " + member.getUsername() + "#" + member.getDiscriminator())
-                                    .description(content)
-                                    .color(Color.ENDEAVOUR)
-                                    .thumbnail(event.getInteraction().getMember().get().getAvatarUrl())
-                                    .footer("Sent on the least laden swallows available", "")
-                                    .timestamp(Instant.now())
-                                    .build();
-
-                            return channel.createMessage(embed).flatMap(message -> {
-                                EmbedCreateSpec embed2 = EmbedCreateSpec.builder()
-                                        .title("Success")
-                                        .description("Sent to ModMail successfully.")
-                                        .color(Color.SEA_GREEN)
-                                        .timestamp(Instant.now())
-                                        .build();
-
-                                return Notifier.sendResultsEmbed(event, embed2);
-                            });
-                        });
+                return channelMono.flatMap(channel -> {
+                    String content;
+                    if (input.length() > 3985) {
+                        content = "```\n" + input.substring(0, 3975) + "\n```";
                     } else {
-                        return Mono.error(new CannotSendModMailException("Cannot Send ModMail"));
+                        content = "```\n" + input + "\n```";
                     }
+
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("ModMail from: " + member.getUsername() + "#" + member.getDiscriminator())
+                            .description(content)
+                            .color(Color.ENDEAVOUR)
+                            .thumbnail(event.getInteraction().getMember().get().getAvatarUrl())
+                            .footer("Sent on the least laden swallows available", "")
+                            .timestamp(Instant.now())
+                            .build();
+
+                    return channel.createMessage(embed).flatMap(message -> {
+                        EmbedCreateSpec embed2 = EmbedCreateSpec.builder()
+                                .title("Success")
+                                .description("Sent to ModMail successfully.")
+                                .color(Color.SEA_GREEN)
+                                .timestamp(Instant.now())
+                                .build();
+
+                        return Notifier.sendResultsEmbed(event, embed2);
+                    });
                 });
+            } else {
+                return Mono.error(new CannotSendModMailException("Cannot Send ModMail"));
+            }
+        });
     }
 }

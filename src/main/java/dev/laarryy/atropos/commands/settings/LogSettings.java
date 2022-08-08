@@ -22,27 +22,29 @@ import org.checkerframework.checker.units.qual.N;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.Optional;
+import java.util.StringJoiner;
 
 public class LogSettings {
     private final Logger logger = LogManager.getLogger(this);
     private final AddServerToDB addServerToDB = new AddServerToDB();
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
+        return Mono.defer(() -> {
+            if (event.getOption("log").get().getOption("info").isPresent()) {
+                return logSettingsInfo(event);
+            }
 
-        if (event.getOption("log").get().getOption("info").isPresent()) {
-            return logSettingsInfo(event);
-        }
+            if (event.getOption("log").get().getOption("set").isPresent()) {
+                return setLogChannel(event);
+            }
 
-        if (event.getOption("log").get().getOption("set").isPresent()) {
-            return setLogChannel(event);
-        }
+            if (event.getOption("log").get().getOption("unset").isPresent()) {
+                return unsetLogChannel(event);
+            }
 
-        if (event.getOption("log").get().getOption("unset").isPresent()) {
-            return unsetLogChannel(event);
-        }
-
-        DatabaseLoader.closeConnectionIfOpen();
-        return Mono.error(new MalformedInputException("Malformed Input"));
+            return Mono.error(new MalformedInputException("Malformed Input"));
+        });
     }
 
     private Mono<Void> unsetLogChannel(ChatInputInteractionEvent event) {
@@ -50,55 +52,49 @@ public class LogSettings {
             return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
-        return event.getInteraction().getGuild().flatMap(guild -> {
-            DatabaseLoader.openConnectionIfClosed();
-
-            PropertiesCacheManager.getManager().getPropertiesCache().invalidate(guild.getId().asLong());
-
-            String logType = event.getOption("log").get().getOption("unset").get().getOption("type").get().getValue().get().asString();
-
-            DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
-
-            return event.getInteraction().getChannel().flatMap(channel -> {
-                if (!(channel instanceof TextChannel)) {
-                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new InvalidChannelException("Invalid Channel")));
-                }
-
-                if (serverProperties == null) {
-                    return addServerToDB.addServerToDatabase(guild)
-                            .then(AuditLogger.addCommandToDB(event, false))
-                            .then(Mono.error(new NullServerException("Null Server")));
-                }
-
-                switch (logType) {
-                    case "message" -> serverProperties.setMessageLogChannelSnowflake(null);
-                    case "member" -> serverProperties.setMemberLogChannelSnowflake(null);
-                    case "guild" -> serverProperties.setGuildLogChannelSnowflake(null);
-                    case "punishment" -> serverProperties.setPunishmentLogChannelSnowflake(null);
-                    case "all" -> {
-                        serverProperties.setMessageLogChannelSnowflake(null);
-                        serverProperties.setMemberLogChannelSnowflake(null);
-                        serverProperties.setGuildLogChannelSnowflake(null);
-                        serverProperties.setPunishmentLogChannelSnowflake(null);
+        return event.getInteraction().getGuild().flatMap(guild ->
+                event.getInteraction().getChannel().flatMap(channel -> DatabaseLoader.use(() -> {
+                    PropertiesCacheManager.getManager().getPropertiesCache().invalidate(guild.getId().asLong());
+                    String logType = event.getOption("log").get().getOption("unset").get().getOption("type").get().getValue().get().asString();
+                    DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+                    if (!(channel instanceof TextChannel)) {
+                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new InvalidChannelException("Invalid Channel")));
                     }
-                    default -> {
-                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+
+                    if (serverProperties == null) {
+                        return addServerToDB.addServerToDatabase(guild)
+                                .then(AuditLogger.addCommandToDB(event, false))
+                                .then(Mono.error(new NullServerException("Null Server")));
                     }
-                }
 
-                serverProperties.save();
+                    switch (logType) {
+                        case "message" -> serverProperties.setMessageLogChannelSnowflake(null);
+                        case "member" -> serverProperties.setMemberLogChannelSnowflake(null);
+                        case "guild" -> serverProperties.setGuildLogChannelSnowflake(null);
+                        case "punishment" -> serverProperties.setPunishmentLogChannelSnowflake(null);
+                        case "all" -> {
+                            serverProperties.setMessageLogChannelSnowflake(null);
+                            serverProperties.setMemberLogChannelSnowflake(null);
+                            serverProperties.setGuildLogChannelSnowflake(null);
+                            serverProperties.setPunishmentLogChannelSnowflake(null);
+                        }
+                        default -> {
+                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                        }
+                    }
 
-                EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                        .title("Unset Log Channel Successfully")
-                        .color(Color.ENDEAVOUR)
-                        .description("Unset this channel as a logging channel of type: `" + logType + "`. Run `/settings log info` " +
-                                "to learn more and `/settings log set " + logType + "` in this channel to undo.")
-                        .timestamp(Instant.now())
-                        .build();
+                    serverProperties.save();
 
-                return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
-            });
-        });
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("Unset Log Channel Successfully")
+                            .color(Color.ENDEAVOUR)
+                            .description("Unset this channel as a logging channel of type: `" + logType + "`. Run `/settings log info` " +
+                                    "to learn more and `/settings log set " + logType + "` in this channel to undo.")
+                            .timestamp(Instant.now())
+                            .build();
+
+                    return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+                })));
     }
 
     private Mono<Void> setLogChannel(ChatInputInteractionEvent event) {
@@ -111,16 +107,12 @@ public class LogSettings {
                 return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
             }
 
-            DatabaseLoader.openConnectionIfClosed();
-
             String logType = event.getOption("log").get().getOption("set").get().getOption("type").get().getValue().get().asString();
-
             PropertiesCacheManager.getManager().getPropertiesCache().invalidate(guild.getId().asLong());
-
-            DiscordServerProperties serverProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
-
+            DiscordServerProperties serverProperties = DatabaseLoader.use(() ->
+                    DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong())
+            );
             if (serverProperties == null) {
-
                 return addServerToDB.addServerToDatabase(guild)
                         .then(AuditLogger.addCommandToDB(event, false))
                         .then(Mono.error(new NullServerException("Null Server")));
@@ -131,25 +123,25 @@ public class LogSettings {
                     return AuditLogger.addCommandToDB(event, false).then(Mono.error(new InvalidChannelException("Invalid Channel")));
                 }
 
-                Long targetChannelId = textChannel.getId().asLong();
-
-                switch (logType) {
-                    case "message" -> serverProperties.setMessageLogChannelSnowflake(targetChannelId);
-                    case "member" -> serverProperties.setMemberLogChannelSnowflake(targetChannelId);
-                    case "guild" -> serverProperties.setGuildLogChannelSnowflake(targetChannelId);
-                    case "punishment" -> serverProperties.setPunishmentLogChannelSnowflake(targetChannelId);
-                    case "all" -> {
-                        serverProperties.setMessageLogChannelSnowflake(targetChannelId);
-                        serverProperties.setMemberLogChannelSnowflake(targetChannelId);
-                        serverProperties.setGuildLogChannelSnowflake(targetChannelId);
-                        serverProperties.setPunishmentLogChannelSnowflake(targetChannelId);
+                try (final var usage = DatabaseLoader.use()) {
+                    Long targetChannelId = textChannel.getId().asLong();
+                    switch (logType) {
+                        case "message" -> serverProperties.setMessageLogChannelSnowflake(targetChannelId);
+                        case "member" -> serverProperties.setMemberLogChannelSnowflake(targetChannelId);
+                        case "guild" -> serverProperties.setGuildLogChannelSnowflake(targetChannelId);
+                        case "punishment" -> serverProperties.setPunishmentLogChannelSnowflake(targetChannelId);
+                        case "all" -> {
+                            serverProperties.setMessageLogChannelSnowflake(targetChannelId);
+                            serverProperties.setMemberLogChannelSnowflake(targetChannelId);
+                            serverProperties.setGuildLogChannelSnowflake(targetChannelId);
+                            serverProperties.setPunishmentLogChannelSnowflake(targetChannelId);
+                        }
+                        default -> {
+                            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                        }
                     }
-                    default -> {
-                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
-                    }
+                    serverProperties.save();
                 }
-                serverProperties.save();
-
 
                 EmbedCreateSpec embed = EmbedCreateSpec.builder()
                         .title("Set Log Channel Successfully")
@@ -167,23 +159,21 @@ public class LogSettings {
     private Mono<Void> logSettingsInfo(ChatInputInteractionEvent event) {
 
         return event.getInteraction().getGuild().flatMap(guild -> {
-            DatabaseLoader.openConnectionIfClosed();
-            LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
-            StringBuilder sb = new StringBuilder();
-            sb.append("**Current Log Settings:**\n");
-            if (cache.get(guild.getId().asLong()).getMemberLogChannelSnowflake() != null) {
-                sb.append("Member Log: `").append(cache.get(guild.getId().asLong()).getMemberLogChannelSnowflake()).append("`\n");
-            }
-            if (cache.get(guild.getId().asLong()).getMessageLogChannelSnowflake() != null) {
-                sb.append("Message Log: `").append(cache.get(guild.getId().asLong()).getMessageLogChannelSnowflake()).append("`\n");
-            }
-            if (cache.get(guild.getId().asLong()).getGuildLogChannelSnowflake() != null) {
-                sb.append("Guild Log: `").append(cache.get(guild.getId().asLong()).getGuildLogChannelSnowflake()).append("`\n");
-            }
-            if (cache.get(guild.getId().asLong()).getPunishmentLogChannelSnowflake() != null) {
-                sb.append("Punishment Log: `").append(cache.get(guild.getId().asLong()).getPunishmentLogChannelSnowflake()).append("`\n");
-            }
-            String settings = sb.toString();
+            String settings = DatabaseLoader.use(() -> {
+                LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
+                StringJoiner joiner = new StringJoiner("\n");
+                joiner.add("**Current Log Settings:**");
+                final DiscordServerProperties serverProperties = cache.get(guild.getId().asLong());
+                Optional.ofNullable(serverProperties.getMemberLogChannelSnowflake())
+                        .ifPresent(id -> joiner.add("Member Log: `" + id + '`'));
+                Optional.ofNullable(serverProperties.getMessageLogChannelSnowflake())
+                        .ifPresent(id -> joiner.add("Message Log: `" + id + '`'));
+                Optional.ofNullable(serverProperties.getGuildLogChannelSnowflake())
+                        .ifPresent(id -> joiner.add("Guild Log: `" + id + '`'));
+                Optional.ofNullable(serverProperties.getPunishmentLogChannelSnowflake())
+                        .ifPresent(id -> joiner.add("Punishment Log: `" + id + '`'));
+                return joiner.toString();
+            });
 
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Log Settings")

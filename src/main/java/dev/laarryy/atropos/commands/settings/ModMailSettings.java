@@ -23,8 +23,7 @@ public class ModMailSettings {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         return event.getInteraction().getGuild().flatMap(guild -> {
-            return event.getInteraction().getChannel().ofType(TextChannel.class).flatMap(messageChannel -> {
-                DatabaseLoader.openConnectionIfClosed();
+            return event.getInteraction().getChannel().ofType(TextChannel.class).flatMap(messageChannel -> DatabaseLoader.use(() ->{
                 DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
                 if (event.getOption("modmail").get().getOption("set").isPresent()) {
@@ -37,7 +36,6 @@ public class ModMailSettings {
                             .timestamp(Instant.now())
                             .build();
 
-                    DatabaseLoader.closeConnectionIfOpen();
                     return Notifier.sendResultsEmbed(event, embed);
                 }
 
@@ -51,13 +49,11 @@ public class ModMailSettings {
                             .timestamp(Instant.now())
                             .build();
 
-                    DatabaseLoader.closeConnectionIfOpen();
                     return Notifier.sendResultsEmbed(event, embed);
                 }
 
-                DatabaseLoader.closeConnectionIfOpen();
                 return Mono.error(new MalformedInputException("Malformed Input"));
-            });
+            }));
         });
     }
 }

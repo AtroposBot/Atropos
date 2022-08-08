@@ -29,7 +29,6 @@ public class MutedRoleSettings {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         return event.getInteraction().getGuild().flatMap(guild -> {
-            DatabaseLoader.openConnectionIfClosed();
             DiscordServerProperties discordServerProperties = propertiesCache.get(guild.getId().asLong());
 
             if (event.getOption("mutedrole").get().getOption("set").isPresent()
@@ -56,15 +55,13 @@ public class MutedRoleSettings {
                            .timestamp(Instant.now())
                            .build();
 
-                   DatabaseLoader.closeConnectionIfOpen();
                    return Notifier.sendResultsEmbed(event, embed);
                });
             }
 
             if (event.getOption("mutedrole").get().getOption("info").isPresent()) {
 
-                DatabaseLoader.openConnectionIfClosed();
-                Long mutedRoleId = discordServerProperties.getMutedRoleSnowflake();
+                Long mutedRoleId = DatabaseLoader.use(discordServerProperties::getMutedRoleSnowflake);
 
                 if (mutedRoleId == null) {
                     EmbedCreateSpec embed = EmbedCreateSpec.builder()
@@ -75,7 +72,6 @@ public class MutedRoleSettings {
                             .timestamp(Instant.now())
                             .build();
 
-                    DatabaseLoader.closeConnectionIfOpen();
                     return Notifier.sendResultsEmbed(event, embed);
                 }
 
@@ -92,7 +88,6 @@ public class MutedRoleSettings {
                 });
             }
 
-            DatabaseLoader.closeConnectionIfOpen();
             return Mono.error(new MalformedInputException("Malformed Input"));
         });
     }

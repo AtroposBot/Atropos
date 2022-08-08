@@ -1,6 +1,5 @@
 package dev.laarryy.atropos.utils;
 
-import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.ServerMessage;
 import dev.laarryy.atropos.models.users.DiscordUser;
 import dev.laarryy.atropos.models.users.Punishment;
@@ -8,17 +7,11 @@ import dev.laarryy.atropos.storage.DatabaseLoader;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.object.Embed;
 import discord4j.core.object.command.ApplicationCommandInteraction;
 import discord4j.core.object.component.ActionRow;
 import discord4j.core.object.component.Button;
-import discord4j.core.object.entity.Attachment;
 import discord4j.core.object.entity.Guild;
-import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.PrivateChannel;
 import discord4j.core.spec.EmbedCreateSpec;
-import discord4j.core.spec.InteractionFollowupCreateSpec;
-import discord4j.discordjson.json.MessageData;
 import discord4j.discordjson.json.WebhookExecuteRequest;
 import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
@@ -37,16 +30,11 @@ public final class Notifier {
     private final Logger logger = LogManager.getLogger(this);
 
     public static Mono<Void> sendResultsEmbed(ChatInputInteractionEvent event, EmbedCreateSpec embed) {
-
-        String commandName = event.getInteraction().getCommandInteraction().flatMap(ApplicationCommandInteraction::getName).orElse("unknown");
-        boolean shouldAllowNonEphemeralDisplay = true;
-
-        if (commandName.equals("wipe")) {
-            shouldAllowNonEphemeralDisplay = false;
-        }
-
-        return replyDeferredInteraction(event, embed, shouldAllowNonEphemeralDisplay);
-
+        return Mono.defer(() -> {
+            String commandName = event.getInteraction().getCommandInteraction().flatMap(ApplicationCommandInteraction::getName).orElse("unknown");
+            boolean shouldAllowNonEphemeralDisplay = !commandName.equals("wipe");
+            return replyDeferredInteraction(event, embed, shouldAllowNonEphemeralDisplay);
+        });
     }
 
     private static Mono<Void> replyDeferredInteraction(ButtonInteractionEvent event, EmbedCreateSpec embed) {
@@ -66,60 +54,57 @@ public final class Notifier {
     }
 
     private static Mono<Void> replyDeferredInteraction(ChatInputInteractionEvent event, EmbedCreateSpec embed, boolean shouldAllowNonEphemeral) {
-        Button deEphemeralize = Button.primary("deephemeralize", "Display Non-Ephemerally");
+        return Mono.defer(() -> {
+            Button deEphemeralize = Button.primary("deephemeralize", "Display Non-Ephemerally");
 
-        WebhookMessageEditRequest webhook = WebhookMessageEditRequest.builder()
-                .addEmbed(embed.asRequest())
-                .build();
-
-        if (shouldAllowNonEphemeral) {
-            webhook = WebhookMessageEditRequest.builder()
+            WebhookMessageEditRequest webhook = WebhookMessageEditRequest.builder()
                     .addEmbed(embed.asRequest())
-                    .addComponent(ActionRow.of(deEphemeralize).getData())
                     .build();
-        }
 
-        return event.getInteractionResponse().editInitialResponse(webhook)
-                .flatMap(messageData -> {
+            if (shouldAllowNonEphemeral) {
+                webhook = WebhookMessageEditRequest.builder()
+                        .addEmbed(embed.asRequest())
+                        .addComponent(ActionRow.of(deEphemeralize).getData())
+                        .build();
+            }
 
-                    if (!shouldAllowNonEphemeral) {
-                        return Mono.empty();
-                    }
+            return event.getInteractionResponse().editInitialResponse(webhook).flatMap(messageData -> {
+                if (shouldAllowNonEphemeral) {
+                    DatabaseLoader.use(() -> {
+                        long messageIdSnowflake = messageData.id().asLong();
+                        long userIdSnowflake = messageData.author().id().asLong();
 
-                    DatabaseLoader.openConnectionIfClosed();
+                        int serverId = 0;
 
-                    long messageIdSnowflake = messageData.id().asLong();
-                    long userIdSnowflake = messageData.author().id().asLong();
+                        DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
 
-                    int serverId = 0;
+                        if (user == null) {
+                            user = DiscordUser.createIt("user_id_snowflake", userIdSnowflake, "date", Instant.now().toEpochMilli());
+                        }
 
-                    DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+                        int userId = user.getUserId();
+                        user.save();
+                        user.refresh();
 
-                    if (user == null) {
-                        user = DiscordUser.createIt("user_id_snowflake", userIdSnowflake, "date", Instant.now().toEpochMilli());
-                    }
+                        // Create message row in the table
+                        ServerMessage message = ServerMessage.findOrCreateIt("message_id_snowflake", messageIdSnowflake, "server_id", serverId, "user_id", userId);
 
-                    int userId = user.getUserId();
-                    user.save();
-                    user.refresh();
+                        // Populate it
 
-                    // Create message row in the table
-                    ServerMessage message = ServerMessage.findOrCreateIt("message_id_snowflake", messageIdSnowflake, "server_id", serverId, "user_id", userId);
+                        message.setServerId(serverId);
+                        message.setUserId(userId);
+                        message.setUserSnowflake(userIdSnowflake);
+                        message.setDateEpochMilli(Instant.now().toEpochMilli());
+                        message.setMessageData(messageData);
+                        message.setDeleted(false);
 
-                    // Populate it
+                        message.save();
+                    });
+                }
 
-                    message.setServerId(serverId);
-                    message.setUserId(userId);
-                    message.setUserSnowflake(userIdSnowflake);
-                    message.setDateEpochMilli(Instant.now().toEpochMilli());
-                    message.setMessageData(messageData);
-                    message.setDeleted(false);
-
-                    message.save();
-
-                    DatabaseLoader.closeConnectionIfOpen();
-                    return Mono.empty();
-                }).then();
+                return Mono.empty();
+            });
+        });
     }
 
     public static Mono<Void> notifyPunisherForcebanComplete(ChatInputInteractionEvent event, String idInput) {
@@ -127,133 +112,146 @@ public final class Notifier {
     }
 
     public static Mono<Void> notifyPunisher(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
-            return handlePunisherNotification(event, punishment, punishmentReason);
+        return handlePunisherNotification(event, punishment, punishmentReason);
     }
 
     private static Mono<Void> handlePunisherNotification(ChatInputInteractionEvent event, Punishment punishment, String punishmentReason) {
-        String punishmentEnd;
-        if (punishment.getEndDate() != null) {
-            Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
-            punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
-                    endDate.getEpochSecond(),
-                    TimestampMaker.TimestampType.RELATIVE);
-        } else {
-            punishmentEnd = "Never.";
-        }
+        return Mono.defer(() -> {
+            String punishmentEnd = DatabaseLoader.use(() -> {
+                final Long maybeEndDate = punishment.getEndDate();
+                if (maybeEndDate != null) {
+                    Instant endDate = Instant.ofEpochMilli(maybeEndDate);
+                    return TimestampMaker.getTimestampFromEpochSecond(
+                            endDate.getEpochSecond(),
+                            TimestampMaker.TimestampType.RELATIVE);
+                } else {
+                    return  "Never.";
+                }
+            });
 
-        return event.getOption("user").get().getValue().get().asUser().flatMap(user -> {
-            String userName = user.getUsername();
-            String caseId = String.valueOf(punishment.getPunishmentId());
+            return event.getOption("user").get().getValue().get().asUser().flatMap(user -> {
+                String userName = user.getUsername();
+                String caseId;
+                String type;
+                try (final var usage = DatabaseLoader.use()) {
+                    caseId = String.valueOf(punishment.getPunishmentId());
+                    type = punishment.getPunishmentType();
+                }
 
-            switch (punishment.getPunishmentType()) {
-                case "warn" -> {
-                    return replyDeferredInteraction(event, warnEmbed(userName, punishmentReason, caseId), true);
+                switch (type) {
+                    case "warn" -> {
+                        return replyDeferredInteraction(event, warnEmbed(userName, punishmentReason, caseId), true);
+                    }
+                    case "kick" -> {
+                        return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId), true);
+                    }
+                    case "ban" -> {
+                        return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId), true);
+                    }
+                    case "mute" -> {
+                        return replyDeferredInteraction(event, muteEmbed(userName, punishmentEnd, punishmentReason, caseId), true);
+                    }
+                    case "note" -> {
+                        return replyDeferredInteraction(event, noteEmbed(userName, punishmentReason, caseId), false);
+                    }
+                    default -> {
+                        return Mono.empty();
+                    }
                 }
-                case "kick" -> {
-                    return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId), true);
-                }
-                case "ban" -> {
-                    return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId), true);
-                }
-                case "mute" -> {
-                    return replyDeferredInteraction(event, muteEmbed(userName, punishmentEnd, punishmentReason, caseId), true);
-                }
-                case "note" -> {
-                    return replyDeferredInteraction(event, noteEmbed(userName, punishmentReason, caseId), false);
-                }
-                default -> {
-                    return Mono.empty();
-                }
-            }
+            });
         });
     }
 
     public static Mono<Void> notifyPunisherOfBan(ButtonInteractionEvent event, Punishment punishment, String punishmentReason) {
+        return Mono.defer(() -> {
+            String punishmentEnd;
+            String userName;
+            String caseId;
+            try (final var usage = DatabaseLoader.use()) {
+                DiscordUser user = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+                userName = String.valueOf(user.getUserIdSnowflake());
+                caseId = String.valueOf(punishment.getPunishmentId());
 
-        String punishmentEnd;
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser user = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-        String userName = String.valueOf(user.getUserIdSnowflake());
-        if (punishment.getEndDate() != null) {
-            Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
-            punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
-                    endDate.getEpochSecond(),
-                    TimestampMaker.TimestampType.RELATIVE);
-        } else {
-            punishmentEnd = "Never.";
-        }
+                final Long maybeEndDate = punishment.getEndDate();
+                if (maybeEndDate != null) {
+                    Instant endDate = Instant.ofEpochMilli(maybeEndDate);
+                    punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
+                            endDate.getEpochSecond(),
+                            TimestampMaker.TimestampType.RELATIVE);
+                } else {
+                    punishmentEnd = "Never.";
+                }
+            }
 
-        String caseId = String.valueOf(punishment.getPunishmentId());
-        DatabaseLoader.closeConnectionIfOpen();
-
-        return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
-
+            return replyDeferredInteraction(event, banEmbed(userName, punishmentEnd, punishmentReason, caseId));
+        });
     }
 
     public static Mono<Void> notifyPunisherOfKick(ButtonInteractionEvent event, Punishment punishment, String punishmentReason) {
-
-        String punishmentEnd;
-        DatabaseLoader.openConnectionIfClosed();
-        DiscordUser user = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-        String userName = String.valueOf(user.getUserIdSnowflake());
-        if (punishment.getEndDate() != null) {
-            Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
-            punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
-                    endDate.getEpochSecond(),
-                    TimestampMaker.TimestampType.RELATIVE);
-        } else {
-            punishmentEnd = "Never.";
-        }
-
-        String caseId = String.valueOf(punishment.getPunishmentId());
-        DatabaseLoader.closeConnectionIfOpen();
-
-        return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
-    }
-
-    public static Mono<Void> notifyPunished(Guild guild, Punishment punishment, String punishmentReason) {
-        DatabaseLoader.openConnectionIfClosed();
-
-        if (punishment.getPunishmentType().equals("note")) {
-            // Never notify of cases
-            return Mono.empty();
-        }
-
-        DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
-        return guild.getClient().getUserById(Snowflake.of(discordUser.getUserIdSnowflake())).flatMap(punishedUser -> {
+        return Mono.defer(() -> DatabaseLoader.use(() -> {
             String punishmentEnd;
+            DiscordUser user = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+            String userName = String.valueOf(user.getUserIdSnowflake());
             if (punishment.getEndDate() != null) {
                 Instant endDate = Instant.ofEpochMilli(punishment.getEndDate());
                 punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
                         endDate.getEpochSecond(),
                         TimestampMaker.TimestampType.RELATIVE);
             } else {
-                punishmentEnd = "No end date provided.";
+                punishmentEnd = "Never.";
             }
 
-            return guild.getSelfMember().flatMap(selfMember -> {
+            String caseId = String.valueOf(punishment.getPunishmentId());
 
-                DatabaseLoader.openConnectionIfClosed();
+            return replyDeferredInteraction(event, kickEmbed(userName, punishmentReason, caseId));
+        }));
+    }
 
-                EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                        .title(guild.getName())
-                        .author("Notice from Guild:", "", guild.getIconUrl(Image.Format.PNG).orElse(selfMember.getAvatarUrl()))
-                        .description(punishedUser.getMention() + ", this message is to notify you of moderation action taken by the staff of "
-                                + guild.getName()
-                                + ". This incident will be recorded.")
-                        .addField("Action Taken", punishment.getPunishmentType().toUpperCase(), true)
-                        .addField("Reason", punishmentReason, false)
-                        .addField("End Date", punishmentEnd, false)
-                        .color(Color.RUST)
-                        .footer("Case: " + punishment.getPunishmentId(), "")
-                        .timestamp(Instant.now())
-                        .build();
+    public static Mono<Void> notifyPunished(Guild guild, Punishment punishment, String punishmentReason) {
+        return Mono.defer(() -> {
+            if (DatabaseLoader.use(punishment::getPunishmentType).equals("note")) {
+                // Never notify of cases
+                return Mono.empty();
+            }
 
-                punishment.setDMed(true);
-                punishment.save();
-                DatabaseLoader.closeConnectionIfOpen();
+            final Long snowflake = DatabaseLoader.use(() -> {
+                DiscordUser discordUser = DiscordUser.findFirst("id = ?", punishment.getPunishedUserId());
+                return discordUser.getUserIdSnowflake();
+            });
 
-                return punishedUser.getPrivateChannel().flatMap(privateChannel -> privateChannel.createMessage(embed).then());
+            return guild.getClient().getUserById(Snowflake.of(snowflake)).flatMap(punishedUser -> {
+                String punishmentEnd;
+                final Long maybeEndDate = DatabaseLoader.use(punishment::getEndDate);
+                if (maybeEndDate != null) {
+                    Instant endDate = Instant.ofEpochMilli(maybeEndDate);
+                    punishmentEnd = TimestampMaker.getTimestampFromEpochSecond(
+                            endDate.getEpochSecond(),
+                            TimestampMaker.TimestampType.RELATIVE);
+                } else {
+                    punishmentEnd = "No end date provided.";
+                }
+
+                return guild.getSelfMember().flatMap(selfMember -> {
+                    EmbedCreateSpec embed = DatabaseLoader.use(() -> {
+                        punishment.setDMed(true);
+                        punishment.save();
+                        return EmbedCreateSpec.builder()
+                                .title(guild.getName())
+                                .author("Notice from Guild:", "", guild.getIconUrl(Image.Format.PNG).orElse(selfMember.getAvatarUrl()))
+                                .description(punishedUser.getMention() + ", this message is to notify you of moderation action taken by the staff of "
+                                        + guild.getName()
+                                        + ". This incident will be recorded.")
+                                .addField("Action Taken", punishment.getPunishmentType().toUpperCase(), true)
+                                .addField("Reason", punishmentReason, false)
+                                .addField("End Date", punishmentEnd, false)
+                                .color(Color.RUST)
+                                .footer("Case: " + punishment.getPunishmentId(), "")
+                                .timestamp(Instant.now())
+                                .build();
+                    });
+
+                    return punishedUser.getPrivateChannel().flatMap(privateChannel -> privateChannel.createMessage(embed).then());
+                });
             });
         });
     }

@@ -42,12 +42,6 @@ public class UnmuteCommand implements Command {
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
-        return CommandChecks.commandChecks(event, request.name()).flatMap(aBoolean -> {
-            if (aBoolean) {
-                return manualPunishmentEnder.endPunishment(event);
-            } else {
-                return Mono.error(new NoPermissionsException("No Permission"));
-            }
-        }).then();
+        return CommandChecks.commandChecks(event, request.name()).then(manualPunishmentEnder.endPunishment(event));
     }
 }

@@ -18,7 +18,7 @@ public class CommandChecks {
      * @return a true {@link Mono}<{@link Boolean}> if command is permitted in event's guild, or an error signal indicating no permission.
      */
 
-    public static Mono<Boolean> commandChecks(ChatInputInteractionEvent event, String requestName) {
+    public static Mono<Void> commandChecks(ChatInputInteractionEvent event, String requestName) {
 
         return event.getInteraction().getGuild()
                 .flatMap(guild -> {
@@ -31,7 +31,7 @@ public class CommandChecks {
                                     return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoPermissionsException("No Permission")));
 
                                 } else {
-                                    return Mono.just(true);
+                                    return Mono.empty();
                                 }
                             });
                 });
@@ -44,7 +44,7 @@ public class CommandChecks {
      * @return a true {@link Mono}<{@link Boolean}> if button-use command is permitted in event's guild, or an error signal indicating no permission.
      */
 
-    public static Mono<Boolean> commandChecks(ButtonInteractionEvent event, String requestName, String auditString) {
+    public static Mono<Void> commandChecks(ButtonInteractionEvent event, String requestName, String auditString) {
 
         return event.getInteraction().getGuild()
                 .flatMap(guild -> {
@@ -56,7 +56,7 @@ public class CommandChecks {
                                 if (!aBoolean) {
                                     return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
                                 } else {
-                                    return Mono.just(true);
+                                    return Mono.empty();
                                 }
                             });
                 });

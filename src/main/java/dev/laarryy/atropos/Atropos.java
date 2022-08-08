@@ -19,16 +19,11 @@ import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
-import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
-import discord4j.core.object.entity.channel.PrivateChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.checkerframework.checker.units.qual.A;
-import org.javalite.activejdbc.DBException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.ReactorBlockHoundIntegration;
 
 import java.util.List;
 
@@ -71,7 +66,7 @@ public class Atropos {
 
         logger.debug("Connecting to Database...");
 
-        DatabaseLoader.openConnection();
+        DatabaseLoader.use(() -> { }); // opens a connection
 
         logger.info("Connected to Database!");
 
@@ -103,8 +98,6 @@ public class Atropos {
                 .doFinally(signalType -> logger.info("Servers Added to Database."))
                 .then();
 
-        DatabaseLoader.openConnectionIfClosed();
-
         Mono.when(
                         ready,
                         commandRegistration,
@@ -120,5 +113,6 @@ public class Atropos {
                 .subscribe();
 
         client.onDisconnect().block();
+        DatabaseLoader.shutdown();
     }
 }

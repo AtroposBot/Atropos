@@ -26,36 +26,38 @@ import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import java.util.StringJoiner;
 
 public class BlacklistSettings {
 
     private final Logger logger = LogManager.getLogger(this);
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
+        return Mono.defer(() -> {
+            if (event.getOption("blacklist").get().getOption("add").isPresent()) {
+                return addBlacklistEntry(event);
+            }
 
-        if (event.getOption("blacklist").get().getOption("add").isPresent()) {
-            return addBlacklistEntry(event);
-        }
+            if (event.getOption("blacklist").get().getOption("remove").isPresent()) {
+                return removeBlacklistEntry(event);
+            }
 
-        if (event.getOption("blacklist").get().getOption("remove").isPresent()) {
-            return removeBlacklistEntry(event);
-        }
+            if (event.getOption("blacklist").get().getOption("list").isPresent()) {
+                return listBlacklistEntries(event);
+            }
 
-        if (event.getOption("blacklist").get().getOption("list").isPresent()) {
-            return listBlacklistEntries(event);
-        }
+            if (event.getOption("blacklist").get().getOption("info").isPresent()) {
+                return getBlacklistEntryInfo(event);
+            }
 
-        if (event.getOption("blacklist").get().getOption("info").isPresent()) {
-            return getBlacklistEntryInfo(event);
-        }
-
-        DatabaseLoader.closeConnectionIfOpen();
-        return Mono.error(new MalformedInputException("Malformed Input"));
+            return Mono.error(new MalformedInputException("Malformed Input"));
+        });
     }
 
     private Mono<Void> getBlacklistEntryInfo(ChatInputInteractionEvent event) {
 
-        return event.getInteraction().getGuild().flatMap(guild -> {
+        return event.getInteraction().getGuild().flatMap(guild -> DatabaseLoader.use(() -> {
             long guildId = guild.getId().asLong();
 
             if (event.getOption("blacklist").get().getOption("info").get().getOption("id").isEmpty() || event.getOption("blacklist").get().getOption("info").get().getOption("id").get().getValue().isEmpty()) {
@@ -63,7 +65,6 @@ public class BlacklistSettings {
                 return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
             }
 
-            DatabaseLoader.openConnectionIfClosed();
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
 
             if (discordServer == null) {
@@ -94,7 +95,7 @@ public class BlacklistSettings {
 
             return Notifier.sendResultsEmbed(event, embed)
                     .then(AuditLogger.addCommandToDB(event, true));
-        });
+        }));
     }
 
     private Mono<Void> listBlacklistEntries(ChatInputInteractionEvent event) {
@@ -106,54 +107,39 @@ public class BlacklistSettings {
 
             List<Blacklist> blacklistList = cache.get(guildId);
 
-            String blacklistInfo;
+            Optional<String> maybeBlacklistInfo;
             if (blacklistList == null || blacklistList.isEmpty()) {
-                blacklistInfo = "none";
+                maybeBlacklistInfo = Optional.empty();
             } else {
-                blacklistInfo = getBlacklistListInfo(blacklistList);
+                maybeBlacklistInfo = Optional.of(getBlacklistListInfo(blacklistList));
             }
 
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Blacklist Entries")
                     .color(Color.ENDEAVOUR)
                     .timestamp(Instant.now())
+                    .description(maybeBlacklistInfo.orElse("> No blacklist entries found in this guild"))
                     .build();
 
-            if (!blacklistInfo.equals("none")) {
-                embed = EmbedCreateSpec.builder().from(embed)
-                        .description(blacklistInfo)
-                        .build();
-            } else {
-                embed = EmbedCreateSpec.builder().from(embed)
-                        .description("> No blacklist entries found in this guild")
-                        .build();
-            }
-
-            return Notifier.sendResultsEmbed(event, embed)
-                    .then(AuditLogger.addCommandToDB(event, true));
+            return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
         });
     }
 
     private String getBlacklistListInfo(List<Blacklist> serverBlacklistList) {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("```");
-        stringBuilder.append(String.format("| %-4s | %-7s | %-25s |\n", "ID", "Type", "Entry"));
-        stringBuilder.append("----------------------------------------------\n");
+        StringJoiner joiner = new StringJoiner("\n");
+        joiner.add("```");
+        joiner.add(String.format("| %-4s | %-7s | %-25s |", "ID", "Type", "Entry"));
+        joiner.add("----------------------------------------------");
         for (Blacklist blacklist : serverBlacklistList) {
-            String trigger;
-            if (blacklist.getServerBlacklist().getTrigger().length() >= 25) {
-                trigger = blacklist.getServerBlacklist().getTrigger().substring(0, 22) + "...";
-            } else {
-                trigger = blacklist.getServerBlacklist().getTrigger();
+            final ServerBlacklist serverBlacklist = blacklist.getServerBlacklist();
+            String trigger = serverBlacklist.getTrigger();
+            if (trigger.length() >= 25) {
+                trigger = trigger.substring(0, 22) + "...";
             }
-            if (serverBlacklistList.indexOf(blacklist) == serverBlacklistList.size() - 1) {
-                stringBuilder.append(String.format("| %-4s | %-7s | %-25s |", blacklist.getServerBlacklist().getBlacklistId(), blacklist.getServerBlacklist().getType(), trigger));
-            } else {
-                stringBuilder.append(String.format("| %-4s | %-7s | %-25s |\n", blacklist.getServerBlacklist().getBlacklistId(), blacklist.getServerBlacklist().getType(), trigger));
-            }
+
+            joiner.add(String.format("| %-4s | %-7s | %-25s |", serverBlacklist.getBlacklistId(), serverBlacklist.getType(), trigger));
         }
-        stringBuilder.append("```");
-        return stringBuilder.toString();
+        return joiner.add("```").toString();
     }
 
     private Mono<Void> removeBlacklistEntry(ChatInputInteractionEvent event) {
@@ -161,8 +147,7 @@ public class BlacklistSettings {
             return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
-        return event.getInteraction().getGuild().flatMap(guild -> {
-            DatabaseLoader.openConnectionIfClosed();
+        return event.getInteraction().getGuild().flatMap(guild -> DatabaseLoader.use(() -> {
 
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
@@ -194,7 +179,7 @@ public class BlacklistSettings {
                     .build();
 
             return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
-        });
+        }));
     }
 
     private Mono<Void> addBlacklistEntry(ChatInputInteractionEvent event) {
@@ -205,8 +190,7 @@ public class BlacklistSettings {
             return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
         }
 
-        return event.getInteraction().getGuild().flatMap(guild -> {
-            DatabaseLoader.openConnectionIfClosed();
+        return event.getInteraction().getGuild().flatMap(guild -> DatabaseLoader.use(() -> {
 
             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
@@ -262,6 +246,6 @@ public class BlacklistSettings {
                     .build();
 
             return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
-        });
+        }));
     }
 }

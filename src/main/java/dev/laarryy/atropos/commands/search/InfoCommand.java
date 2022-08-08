@@ -40,7 +40,11 @@ import reactor.core.publisher.Mono;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
+import java.util.StringJoiner;
 import java.util.regex.Pattern;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 public class InfoCommand implements Command {
 
@@ -85,12 +89,8 @@ public class InfoCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-
         logger.info("Execute Received");
-        return CommandChecks.commandChecks(event, request.name()).flatMap(aBoolean -> {
-            if (!aBoolean) {
-                return Mono.error(new NoPermissionsException("No Permission"));
-            }
+        return CommandChecks.commandChecks(event, request.name()).then(Mono.defer(() -> {
 
             logger.info("Command checks done");
 
@@ -107,14 +107,12 @@ public class InfoCommand implements Command {
             }
 
             return Mono.error(new MalformedInputException("Malformed Input"));
-        });
+        }));
     }
 
     private Mono<Void> sendBotInfo(ChatInputInteractionEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
-
         return event.getInteraction().getGuild().flatMap(guild ->
-                guild.getSelfMember().flatMap(selfMember -> {
+                guild.getSelfMember().flatMap(selfMember -> DatabaseLoader.use(() -> {
                     DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
                     DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
 
@@ -160,23 +158,25 @@ public class InfoCommand implements Command {
                             .timestamp(Instant.now())
                             .build();
 
-                    DatabaseLoader.closeConnectionIfOpen();
                     return Notifier.sendResultsEmbed(event, embed);
-                }));
+                })));
     }
 
     private Mono<Void> sendUserInfo(ChatInputInteractionEvent event) {
+        return Mono.defer(() -> {
+            if (event.getOption("user").get().getOption("snowflake").isEmpty() && event.getOption("user").get().getOption("mention").isEmpty()) {
+                return Mono.error(new MalformedInputException("Malformed Input"));
+            }
 
-        if (event.getOption("user").get().getOption("snowflake").isEmpty() && event.getOption("user").get().getOption("mention").isEmpty()) {
-            return Mono.error(new MalformedInputException("Malformed Input"));
-        }
+            if (event.getOption("user").get().getOption("mention").isEmpty()) {
+                return Mono.error(new NotFoundException("404 Not Found"));
+            }
 
-        if (event.getOption("user").get().getOption("mention").isPresent()) {
             return event.getOption("user").get().getOption("mention").get().getValue().get().asUser().flatMap(user -> {
                 Snowflake userIdSnowflake = user.getId();
 
                 return event.getInteraction().getGuild().flatMap(guild ->
-                        guild.getMemberById(userIdSnowflake).flatMap(member -> {
+                        guild.getMemberById(userIdSnowflake).flatMap(member -> DatabaseLoader.use(() -> {
                             if (member == null) {
                                 StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
                                         .append("Profile: ").append(user.getMention()).append("\n")
@@ -186,26 +186,22 @@ public class InfoCommand implements Command {
                                                 userIdSnowflake.getTimestamp().getEpochSecond(),
                                                 TimestampMaker.TimestampType.RELATIVE)).append("\n");
 
-
-                                return sendUserInfoEmbed(event, user, field1Content);
+                                return sendUserInfoEmbed(event, user, field1Content.toString());
                             }
 
-                            DatabaseLoader.openConnectionIfClosed();
                             DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake.asLong());
                             DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
 
                             //todo: test this>
                             if (discordUser == null) {
-                                return addServerToDB.addUserToDatabase(member, guild)
-                                        .then(Mono.error(new TryAgainException("Try Again")));
+                                return addServerToDB.addUserToDatabase(member, guild).then(Mono.error(new TryAgainException("Try Again")));
                             }
 
                             discordUser.refresh();
 
-
                             ServerUser serverUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId());
 
-                            return guild.getSelfMember().flatMap(selfMember -> {
+                            return guild.getSelfMember().flatMap(selfMember -> DatabaseLoader.use(() -> {
                                 DiscordUser discordSelfUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
                                 ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
 
@@ -234,27 +230,23 @@ public class InfoCommand implements Command {
                                                 userIdSnowflake.getTimestamp().getEpochSecond(),
                                                 TimestampMaker.TimestampType.RELATIVE)).append("\n")
                                         .append("First Joined: ").append(joinTimestamp);
-                                DatabaseLoader.closeConnectionIfOpen();
-                                return sendUserInfoEmbed(event, user, field1Content);
-                            });
-                        }));
+                                return sendUserInfoEmbed(event, user, field1Content.toString());
+                            }));
+                        })));
             });
-        } else {
-            return Mono.error(new NotFoundException("404 Not Found"));
-        }
+        });
     }
 
-    private Mono<Void> sendUserInfoEmbed(ChatInputInteractionEvent event, User user, StringBuilder field1Content) {
-
-        String username = user.getUsername() + "#" + user.getDiscriminator();
-        String eventUser = event.getInteraction().getUser().getUsername() + "#" + event.getInteraction().getUser().getDiscriminator();
+    private Mono<Void> sendUserInfoEmbed(ChatInputInteractionEvent event, User user, String description) {
+        String username = user.getTag();
+        String eventUser = event.getInteraction().getUser().getTag();
 
         String avatarUrl = user.getAvatarUrl();
 
         EmbedCreateSpec embed = EmbedCreateSpec.builder()
                 .title(username)
                 .color(Color.ENDEAVOUR)
-                .description(field1Content.toString())
+                .description(description)
                 .thumbnail(avatarUrl)
                 .footer("Requested by " + eventUser, event.getInteraction().getUser().getAvatarUrl())
                 .timestamp(Instant.now())
@@ -264,174 +256,160 @@ public class InfoCommand implements Command {
     }
 
     private Mono<Void> sendServerInfo(ChatInputInteractionEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
-
         logger.info("Sending server info");
 
         return event.getInteraction().getGuild().flatMap(guild -> {
             Long guildId = guild.getId().asLong();
 
-            DiscordServer server = DiscordServer.findOrCreateIt("server_id", guildId);
-            int serverId = server.getServerId();
-            DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", guildId);
+            final int larryWhatIsThis = DatabaseLoader.use(() -> {
+                DiscordServer server = DiscordServer.findOrCreateIt("server_id", guildId);
+                int serverId = server.getServerId();
+                DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", guildId);
+                return properties.getMembersOnFirstJoin();
+            });
 
-            String url;
-            if (guild.getIconUrl(Image.Format.GIF).isPresent()) {
-                url = guild.getIconUrl(Image.Format.GIF).get();
-            } else if (guild.getIconUrl(Image.Format.PNG).isPresent()) {
-                url = guild.getIconUrl(Image.Format.PNG).get();
-            } else if (guild.getIconUrl(Image.Format.JPEG).isPresent()) {
-                url = guild.getIconUrl(Image.Format.JPEG).get();
-            } else {
-                url = guild.getIconUrl(Image.Format.UNKNOWN).orElse("");
-            }
+            Optional<String> maybeUrl = guild.getIconUrl(Image.Format.GIF)
+                    .or(() -> guild.getIconUrl(Image.Format.PNG))
+                    .or(() -> guild.getIconUrl(Image.Format.JPEG))
+                    .or(() -> guild.getIconUrl(Image.Format.UNKNOWN));
 
             Instant created = guild.getId().getTimestamp();
 
             return guild.getOwner().flatMap(guildOwner -> {
-                StringBuilder sb = new StringBuilder();
-                sb.append("**Guild Information**\n");
-                sb.append(EmojiManager.getModeratorBadge()).append(" **Owner:** ").append(guildOwner.getNicknameMention()).append("\n");
-                sb.append(EmojiManager.getUserJoin()).append(" **Created:** ")
-                        .append(TimestampMaker.getTimestampFromEpochSecond(created.getEpochSecond(), TimestampMaker.TimestampType.RELATIVE))
-                        .append("\n");
+                StringBuilder descriptionBuilder = new StringBuilder();
+                descriptionBuilder.append("**Guild Information**\n")
+                        .append(EmojiManager.getModeratorBadge()).append(" **Owner:** ").append(guildOwner.getNicknameMention()).append("\n")
+                        .append(EmojiManager.getUserJoin()).append(" **Created:** ").append(TimestampMaker.getTimestampFromEpochSecond(created.getEpochSecond(), TimestampMaker.TimestampType.RELATIVE)).append("\n");
 
 
                 //TODO: Wait for this to work on D4J's end (issue #999)
 
         /*List<Region> regions = guild.getRegions().collectList().block();
         if (regions != null && !regions.isEmpty()) {
-            sb.append(EmojiManager.getVoiceChannel()).append(" **Voice Regions:** ");
+            descriptionBuilder.append(EmojiManager.getVoiceChannel()).append(" **Voice Regions:** ");
             for (Region region : regions) {
                 if (regions.indexOf(region) == regions.size() - 1) {
-                    sb.append("`").append(region.getName()).append("`\n");
+                    descriptionBuilder.append("`").append(region.getName()).append("`\n");
                 } else {
-                    sb.append("`").append(region.getName()).append("`, ");
+                    descriptionBuilder.append("`").append(region.getName()).append("`, ");
                 }
             }
         }
         */
 
-                List<String> features = guild.getFeatures().stream().toList();
-                if (!features.isEmpty()) {
-                    sb.append("**Features:** ");
-                    for (String f : features) {
-                        if (features.indexOf(f) == features.size() - 1) {
-                            sb.append("`").append(f.toLowerCase().replaceAll("_", " ")).append("`\n\n");
-                        } else {
-                            sb.append("`").append(f.toLowerCase().replaceAll("_", " ")).append("`, ");
-                        }
-                    }
-                }
+                descriptionBuilder.append(
+                        guild.getFeatures().stream()
+                                .map(feat -> feat.replace('_', ' '))
+                                .collect(Collector.of(
+                                        () -> new StringJoiner("`, `", "**Features:** `", "`\n\n").setEmptyValue(""),
+                                        StringJoiner::add,
+                                        StringJoiner::merge,
+                                        StringJoiner::toString
+                                ))
+                );
 
-                sb.append(EmojiManager.getUserIdentification()).append(" **Members**\n");
-                sb.append("When I first joined: `").append(properties.getMembersOnFirstJoin()).append("`\n");
-                if (guild.getMaxMembers().isPresent()) {
-                    sb.append("Now: `").append(guild.getMemberCount()).append("`\n");
-                    sb.append("Max Members: `").append(guild.getMaxMembers().getAsInt()).append("`");
-                } else {
-                    sb.append("Now: `").append(guild.getMemberCount()).append("`");
-                }
+                descriptionBuilder.append(EmojiManager.getUserIdentification()).append(" **Members**\n");
+                descriptionBuilder.append("When I first joined: `").append(larryWhatIsThis).append("`\n");
+                descriptionBuilder.append("Now: `").append(guild.getMemberCount()).append('`');
+                guild.getMaxMembers().ifPresent(maxMembers ->
+                        descriptionBuilder.append("\nMax Members: `").append(maxMembers).append('`')
+                );
 
-                String description = sb.toString();
+                String description = descriptionBuilder.toString();
 
                 return roleCount(guild).flatMap(roleLong ->
                         categoryCount(guild).flatMap(categoryLong ->
-                        voiceCount(guild).flatMap(voiceLong ->
-                                textCount(guild).flatMap(textLong ->
-                                        stageCount(guild).flatMap(stageLong ->
-                                                storeCount(guild).flatMap(storeLong ->
-                                                        newsCount(guild).flatMap(newsLong -> {
-                                                            String field1Content = EmojiManager.getServerCategory() + " `" +
-                                                                    categoryLong +
-                                                                    "` Categories\n" +
-                                                                    EmojiManager.getVoiceChannel() + " `" +
-                                                                    voiceLong +
-                                                                    "` Voice Channels\n" +
-                                                                    EmojiManager.getTextChannel() + " `" +
-                                                                    textLong +
-                                                                    "` Text Channels\n" +
-                                                                    EmojiManager.getServerRole() + " `" +
-                                                                    roleLong + "` Roles\n";
+                                voiceCount(guild).flatMap(voiceLong ->
+                                        textCount(guild).flatMap(textLong ->
+                                                stageCount(guild).flatMap(stageLong ->
+                                                        storeCount(guild).flatMap(storeLong ->
+                                                                newsCount(guild).flatMap(newsLong -> {
+                                                                    String field1Content = EmojiManager.getServerCategory() + " `" +
+                                                                            categoryLong +
+                                                                            "` Categories\n" +
+                                                                            EmojiManager.getVoiceChannel() + " `" +
+                                                                            voiceLong +
+                                                                            "` Voice Channels\n" +
+                                                                            EmojiManager.getTextChannel() + " `" +
+                                                                            textLong +
+                                                                            "` Text Channels\n" +
+                                                                            EmojiManager.getServerRole() + " `" +
+                                                                            roleLong + "` Roles\n";
 
-                                                            String field2Content = EmojiManager.getStageChannel() + " `" +
-                                                                    stageLong +
-                                                                    "` Stage Channels\n" +
-                                                                    EmojiManager.getStoreChannel() + " `" +
-                                                                    storeLong +
-                                                                    "` Store Channels\n" +
-                                                                    EmojiManager.getNewsChannel() + " `" +
-                                                                    newsLong +
-                                                                    "` News Channels\n";
+                                                                    String field2Content = EmojiManager.getStageChannel() + " `" +
+                                                                            stageLong +
+                                                                            "` Stage Channels\n" +
+                                                                            EmojiManager.getStoreChannel() + " `" +
+                                                                            storeLong +
+                                                                            "` Store Channels\n" +
+                                                                            EmojiManager.getNewsChannel() + " `" +
+                                                                            newsLong +
+                                                                            "` News Channels\n";
 
-                                                            String field3Content;
-                                                            StringBuilder f3 = new StringBuilder();
-                                                            f3.append(EmojiManager.getBoosted()).append(" **Nitro**\n");
-                                                            int boostLevel = guild.getPremiumTier().getValue();
-                                                            f3.append("Level: `").append(boostLevel).append("`");
-                                                            if (guild.getPremiumSubscriptionCount().isPresent()) {
-                                                                int boosters = guild.getPremiumSubscriptionCount().getAsInt();
-                                                                f3.append(" with `").append(boosters).append("` boosters ").append(EmojiManager.getServerBoostBadge()).append("\n");
-                                                            } else {
-                                                                f3.append("\n");
-                                                            }
-                                                            field3Content = f3.toString();
+                                                                    String field3Content;
+                                                                    StringBuilder f3 = new StringBuilder();
+                                                                    f3.append(EmojiManager.getBoosted()).append(" **Nitro**\n");
+                                                                    int boostLevel = guild.getPremiumTier().getValue();
+                                                                    f3.append("Level: `").append(boostLevel).append("`");
+                                                                    if (guild.getPremiumSubscriptionCount().isPresent()) {
+                                                                        int boosters = guild.getPremiumSubscriptionCount().getAsInt();
+                                                                        f3.append(" with `").append(boosters).append("` boosters ").append(EmojiManager.getServerBoostBadge());
+                                                                    }
 
-                                                            Member requester = event.getInteraction().getMember().get();
-                                                            String username = requester.getUsername() + "#" + requester.getDiscriminator();
-
-                                                            EmbedCreateSpec embedCreateSpec = EmbedCreateSpec.builder()
-                                                                    .title(guild.getName())
-                                                                    .color(Color.ENDEAVOUR)
-                                                                    .thumbnail(url)
-                                                                    .description(description)
-                                                                    .addField("\u200B", field1Content, true)
-                                                                    .addField("\u200B", field2Content, true)
-                                                                    .addField("\u200B", field3Content, false)
-                                                                    .footer("Requested by " + username, requester.getAvatarUrl())
-                                                                    .build();
-                                                            DatabaseLoader.closeConnectionIfOpen();
-                                                            return Notifier.sendResultsEmbed(event, embedCreateSpec);
-                                                        })))))));
+                                                                    field3Content = f3.append("\n").toString();
+                                                                    Member requester = event.getInteraction().getMember().get();
+                                                                    EmbedCreateSpec.Builder embedBuilder = EmbedCreateSpec.builder()
+                                                                            .title(guild.getName())
+                                                                            .color(Color.ENDEAVOUR)
+                                                                            .description(description)
+                                                                            .addField("\u200B", field1Content, true)
+                                                                            .addField("\u200B", field2Content, true)
+                                                                            .addField("\u200B", field3Content, false)
+                                                                            .footer("Requested by " + requester.getTag(), requester.getAvatarUrl());
+                                                                    maybeUrl.ifPresent(embedBuilder::thumbnail);
+                                                                    return Notifier.sendResultsEmbed(event, embedBuilder.build());
+                                                                }
+                                                                )))))));
             });
         });
     }
 
     private Mono<Long> categoryCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_CATEGORY))
+                .filter(guildChannel -> guildChannel.getType() == Channel.Type.GUILD_CATEGORY)
                 .count();
     }
 
     private Mono<Long> voiceCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_VOICE))
+                .filter(guildChannel -> guildChannel.getType() == Channel.Type.GUILD_VOICE)
                 .count();
     }
 
     private Mono<Long> textCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_TEXT))
+                .filter(guildChannel -> guildChannel.getType() == Channel.Type.GUILD_TEXT)
                 .count();
     }
 
     private Mono<Long> stageCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_STAGE_VOICE))
+                .filter(guildChannel -> guildChannel.getType() == Channel.Type.GUILD_STAGE_VOICE)
                 .count();
     }
 
     private Mono<Long> storeCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_STORE))
+                .filter(guildChannel -> guildChannel.getType() == Channel.Type.GUILD_STORE)
                 .count();
     }
 
     private Mono<Long> newsCount(Guild guild) {
         return guild.getChannels()
-                .filter(guildChannel -> guildChannel.getType().equals(Channel.Type.GUILD_NEWS))
+                .filter(guildChannel -> guildChannel.getType() == Channel.Type.GUILD_NEWS)
                 .count();
     }
+
     private Mono<Long> roleCount(Guild guild) {
         return guild.getRoles().count();
     }

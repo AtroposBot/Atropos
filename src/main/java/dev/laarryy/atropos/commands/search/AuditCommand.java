@@ -94,96 +94,83 @@ public class AuditCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-
-        return CommandChecks.commandChecks(event, request.name())
-                .flatMap(aBoolean -> {
-            if (!aBoolean) {
-                return Mono.error(new NoPermissionsException("No Permission"));
-            }
-
+        return CommandChecks.commandChecks(event, request.name()).then(Mono.defer(() -> {
             if (event.getOption("user").isPresent()) {
-                return Mono.just(event).flatMap(this::searchAuditByUser).then();
+                return searchAuditByUser(event);
             }
 
             if (event.getOption("recent").isPresent()) {
-                return Mono.just(event).flatMap(this::recentAudits).then();
+                return recentAudits(event);
             }
 
             if (event.getOption("id").isPresent()) {
-                return Mono.just(event).flatMap(this::searchAuditById).then();
+                return searchAuditById(event);
             }
+
             return Mono.error(new NotFoundException("404 Not Found"));
-        });
+        }));
     }
 
     private Mono<Void> searchAuditById(ChatInputInteractionEvent event) {
-        DatabaseLoader.openConnectionIfClosed();
+        return Mono.defer(() -> {
+            try (final var usage = DatabaseLoader.use()) {
+                if (event.getOption("id").get().getOption("number").isEmpty() || event.getOption("id").get().getOption("number").get().getValue().isEmpty()) {
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                }
 
-        if (event.getOption("id").get().getOption("number").isEmpty() || event.getOption("id").get().getOption("number").get().getValue().isEmpty()) {
-            DatabaseLoader.closeConnectionIfOpen();
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
-        }
+                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+                if (discordServer == null) {
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
+                }
 
-        DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
-        int auditInt = (int) event.getOption("id").get().getOption("number").get().getValue().get().asLong();
+                int auditInt = (int) event.getOption("id").get().getOption("number").get().getValue().get().asLong();
+                int serverId = discordServer.getServerId();
+                CommandUse commandUse = CommandUse.findFirst("id = ? and server_id = ?", auditInt, serverId);
+                if (commandUse == null) {
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
+                }
 
-        if (discordServer == null) {
-            DatabaseLoader.closeConnectionIfOpen();
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
-        }
+                DiscordUser discordUser = DiscordUser.findFirst("id = ?", commandUse.getUserId());
+                if (discordUser == null) {
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
+                }
 
-        int serverId = discordServer.getServerId();
-        CommandUse commandUse = CommandUse.findFirst("id = ? and server_id = ?", auditInt, serverId);
+                String succeeded;
+                if (commandUse.getSucceeded()) {
+                    succeeded = "Command succeeded.";
+                } else {
+                    succeeded = "Command failed.";
+                }
 
-        if (commandUse == null) {
-            DatabaseLoader.closeConnectionIfOpen();
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
-        }
+                Long userSnowflake = discordUser.getUserIdSnowflake();
+                String date = TimestampMaker.getTimestampFromEpochSecond(
+                        Instant.ofEpochMilli(commandUse.getDate()).getEpochSecond(),
+                        TimestampMaker.TimestampType.LONG_DATETIME);
 
-        DiscordUser discordUser = DiscordUser.findFirst("id = ?", commandUse.getUserId());
+                EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                        .color(Color.ENDEAVOUR)
+                        .title("Audit: " + auditInt)
+                        .description("Command contents: `" + commandUse.getCommandContents() + "`")
+                        .addField("User", "`%d`:<@%d>".formatted(userSnowflake, userSnowflake), false)
+                        .addField("Date", date, false)
+                        .addField("Result", succeeded, false)
+                        .build();
 
-        if (discordUser == null) {
-            DatabaseLoader.closeConnectionIfOpen();
-            return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
-        }
-
-        String succeeded;
-        if (commandUse.getSucceeded()) {
-            succeeded = "Command succeeded.";
-        } else {
-            succeeded = "Command failed.";
-        }
-
-        Long userSnowflake = discordUser.getUserIdSnowflake();
-        String date = TimestampMaker.getTimestampFromEpochSecond(
-                Instant.ofEpochMilli(commandUse.getDate()).getEpochSecond(),
-                TimestampMaker.TimestampType.LONG_DATETIME);
-
-        EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                .color(Color.ENDEAVOUR)
-                .title("Audit: " + auditInt)
-                .description("Command contents: `" + commandUse.getCommandContents() + "`")
-                .addField("User", "`" + userSnowflake + "`:<@" + userSnowflake + ">", false)
-                .addField("Date", date, false)
-                .addField("Result", succeeded, false)
-                .build();
-
-        DatabaseLoader.closeConnectionIfOpen();
-
-        return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+                return Notifier.sendResultsEmbed(event, embed).then(AuditLogger.addCommandToDB(event, true));
+            }
+        });
     }
 
     private Mono<Void> recentAudits(ChatInputInteractionEvent event) {
-
         return event.getInteraction().getGuild().flatMap(guild -> {
-            DatabaseLoader.openConnectionIfClosed();
+            LazyList<CommandUse> commandUseLazyList;
+            try (final var usage = DatabaseLoader.use()) {
+                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
+                Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
+                long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
 
-            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
-
-            Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
-            long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
-
-            LazyList<CommandUse> commandUseLazyList = CommandUse.where("server_id = ? and date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
+                commandUseLazyList = CommandUse.where("server_id = ? and date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
+            }
 
             logger.info("Got the list");
 
@@ -197,7 +184,6 @@ public class AuditCommand implements Command {
                         .timestamp(Instant.now())
                         .build();
 
-                DatabaseLoader.closeConnectionIfOpen();
                 logger.info("Sending results");
                 return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
             }
@@ -214,7 +200,6 @@ public class AuditCommand implements Command {
                         .timestamp(Instant.now())
                         .build();
 
-                DatabaseLoader.closeConnectionIfOpen();
                 logger.info("Sending results");
                 return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
             });
@@ -222,52 +207,54 @@ public class AuditCommand implements Command {
     }
 
     private Mono<Void> searchAuditByUser(ChatInputInteractionEvent event) {
+        return Mono.defer(() -> {
+            long userIdSnowflake;
+            if (event.getOption("user").get().getOption("snowflake").isPresent()) {
+                String snowflakeString = event.getOption("user").get().getOption("snowflake").get().getValue().get().asString();
+                Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
 
-        DatabaseLoader.openConnectionIfClosed();
-        long userIdSnowflake;
-        if (event.getOption("user").get().getOption("snowflake").isPresent()) {
-            String snowflakeString = event.getOption("user").get().getOption("snowflake").get().getValue().get().asString();
-            Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
+                if (!snowflakePattern.matcher(snowflakeString).matches()) {
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                }
 
-            if (!snowflakePattern.matcher(snowflakeString).matches()) {
-                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new MalformedInputException("Malformed Input")));
+                userIdSnowflake = Long.parseLong(snowflakeString);
+            } else if (event.getOption("user").get().getOption("mention").isPresent()) {
+                return event.getOption("user").get().getOption("mention").get().getValue().get().asUser().flatMap(user ->
+                        handleUserSearch(event, user.getId().asLong()));
+            } else {
+                userIdSnowflake = 0L;
             }
 
-            userIdSnowflake = Long.parseLong(snowflakeString);
-        } else if (event.getOption("user").get().getOption("mention").isPresent()) {
-            return event.getOption("user").get().getOption("mention").get().getValue().get().asUser().flatMap(user ->
-                    handleUserSearch(event, user.getId().asLong()));
-        } else {
-            userIdSnowflake = 0L;
-        }
-        return handleUserSearch(event, userIdSnowflake);
+            return handleUserSearch(event, userIdSnowflake);
+        });
     }
 
     private Mono<Void> handleUserSearch(ChatInputInteractionEvent event, Long userIdSnowflake) {
-
         return event.getInteraction().getGuild().flatMap(guild -> {
-            long guildId = event.getInteraction().getGuildId().get().asLong();
-            DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
-            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
+            LazyList<CommandUse> commandUsesLazyList;
+            try (final var usage = DatabaseLoader.use()) {
+                long guildId = event.getInteraction().getGuildId().get().asLong();
+                DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake);
+                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildId);
 
-            if (discordUser == null) {
-                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
-            }
+                if (discordUser == null) {
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoUserException("No User")));
+                }
 
-            if (discordServer == null) {
-                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
-            }
+                if (discordServer == null) {
+                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("Null Server")));
+                }
 
-            int userId = discordUser.getUserId();
-            int serverId = discordServer.getServerId();
+                int userId = discordUser.getUserId();
+                int serverId = discordServer.getServerId();
 
-            Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
-            long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
+                Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
+                long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
 
-            LazyList<CommandUse> commandUsesLazyList = CommandUse.find("command_user_id = ? and server_id = ? and date > ?", userId, serverId, tenDaysAgoStamp).limit(30).orderBy("id desc");
-
-            if (commandUsesLazyList.isEmpty()) {
-                return AuditLogger.addCommandToDB(event, true).then(Mono.error(new NoResultsException("No Results")));
+                commandUsesLazyList = CommandUse.find("command_user_id = ? and server_id = ? and date > ?", userId, serverId, tenDaysAgoStamp).limit(30).orderBy("id desc");
+                if (commandUsesLazyList.isEmpty()) {
+                    return AuditLogger.addCommandToDB(event, true).then(Mono.error(new NoResultsException("No Results")));
+                }
             }
 
             return createFormattedAuditTable(commandUsesLazyList, guild).flatMap(results -> {
@@ -279,53 +266,46 @@ public class AuditCommand implements Command {
                         .timestamp(Instant.now())
                         .build();
 
-                DatabaseLoader.closeConnectionIfOpen();
                 return Notifier.sendResultsEmbed(event, resultEmbed).then(AuditLogger.addCommandToDB(event, true));
             });
         });
     }
 
     private Mono<String> createFormattedAuditTable(LazyList<CommandUse> commandUseLazyList, Guild guild) {
-        List<String> rowList = new ArrayList<>();
+        return Flux.just(
+                        "```",
+                        String.format("| %-6s | %-12s | %-15s | %-11s |", "ID", "Date", "User", "Preview"),
+                        "---------------------------------------------------------"
+                )
+                .concatWith(
+                        Flux.fromIterable(commandUseLazyList)
+                                .filter(Objects::nonNull)
+                                .flatMap(c -> {
+                                    DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
+                                    String userId = discordUser.getUserIdSnowflake().toString();
+                                    return guild.getClient().getUserById(Snowflake.of(userId)).map(member -> {
+                                        String username = member.getTag();
+                                        if (username.length() > 15) {
+                                            username = username.substring(0, 12) + "...";
+                                        }
+                                        String auditId = c.getInteger("id").toString();
+                                        Instant date = Instant.ofEpochMilli(c.getDate());
+                                        String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT)
+                                                .withLocale(Locale.CANADA)
+                                                .withZone(ZoneId.systemDefault())
+                                                .format(date);
+                                        String preview;
+                                        if (c.getCommandContents().length() > 7) {
+                                            preview = c.getCommandContents().substring(0, 7) + "...";
+                                        } else {
+                                            preview = c.getCommandContents();
+                                        }
 
-        Mono<List<String>> populateTable = Flux.fromIterable(commandUseLazyList)
-                .filter(Objects::nonNull)
-                .flatMap(c -> {
-                    DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
-                    String userId = discordUser.getUserIdSnowflake().toString();
-                    return guild.getClient().getUserById(Snowflake.of(userId))
-                            .map(member -> {
-                                String username = member.getTag();
-                                if (username.length() > 15) {
-                                    username = username.substring(0, 12) + "...";
-                                }
-                                String auditId = c.getInteger("id").toString();
-                                Instant date = Instant.ofEpochMilli(c.getDate());
-                                String dateString = DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(Locale.CANADA).withZone(ZoneId.systemDefault()).format(date);
-                                String preview;
-                                if (c.getCommandContents().length() > 7) {
-                                    preview = c.getCommandContents().substring(0, 7) + "...";
-                                } else preview = c.getCommandContents();
-
-                                return String.format("| %-6s | %-12s | %-15s | %-11s |\n", auditId, dateString, username, preview);
-                            });
-                }).collectList();
-
-
-        return Mono.just(rowList).flatMap(rows -> {
-            rows.add("```");
-            rows.add(String.format("| %-6s | %-12s | %-15s | %-11s |\n", "ID", "Date", "User", "Preview"));
-            rows.add("---------------------------------------------------------\n");
-            return populateTable.flatMap(stringList -> {
-                rows.addAll(stringList);
-                rows.add("```");
-                StringBuilder stringBuffer = new StringBuilder();
-                for (String row : rows) {
-                    stringBuffer.append(row);
-                }
-
-                return Mono.just(stringBuffer.toString());
-            });
-        });
+                                        return String.format("| %-6s | %-12s | %-15s | %-11s |", auditId, dateString, username, preview);
+                                    });
+                                })
+                )
+                .concatWithValues("```")
+                .reduce("%s%n%s"::formatted);
     }
 }
