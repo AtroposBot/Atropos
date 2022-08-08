@@ -69,7 +69,7 @@ public class ConfigManager {
     }
 
     public static String getEncryptionKey() {
-        return  configSettings.getEncryptionKey();
+        return configSettings.getEncryptionKey();
     }
 
 }

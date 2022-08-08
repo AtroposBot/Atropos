@@ -7,7 +7,6 @@ import dev.laarryy.atropos.managers.PropertiesCacheManager;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import discord4j.core.event.domain.role.RoleDeleteEvent;
-import discord4j.core.object.entity.Guild;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;

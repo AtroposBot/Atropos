@@ -41,6 +41,7 @@ public class ErrorHandler {
     //TODO: Make each error's embed a field of the Exception class and not stored here, then just get the error's EmbedCreateSpec
 
     private static final Logger logger = LogManager.getLogger(ErrorHandler.class);
+
     public static Mono<Void> handleError(Throwable error, ChatInputInteractionEvent event) {
 
         if (error instanceof NoPermissionsException) {
@@ -61,9 +62,9 @@ public class ErrorHandler {
 
         if (error instanceof ClientException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(discordSideError().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(discordSideError().asRequest())
+                            .build())
                     .then();
         }
 
@@ -125,105 +126,105 @@ public class ErrorHandler {
 
         if (error instanceof InputTooLongException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(inputTooLongEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(inputTooLongEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof InvalidChannelException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(invalidChannelEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(invalidChannelEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof InvalidDurationException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(invalidDurationEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(invalidDurationEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof MalformedInputException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(malformedInputEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(malformedInputEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof NoMemberException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(noMemberEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(noMemberEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof NoMutedRoleException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(noMutedRoleEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(noMutedRoleEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof NoResultsException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(noResultsEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(noResultsEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof NotFoundException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(fourOhFourEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(fourOhFourEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof NoUserException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(noUserEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(noUserEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof TooManyEntriesException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(tooManyEntriesEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(tooManyEntriesEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof UserNotMutedException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(userNotMutedEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(userNotMutedEmbed().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof CannotSendModMailException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(cannotSendModmail().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(cannotSendModmail().asRequest())
+                            .build())
                     .then();
         }
 
         if (error instanceof TryAgainException) {
             return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                    .builder()
-                                    .addEmbed(tryAgainEmbed().asRequest())
-                                    .build())
+                            .builder()
+                            .addEmbed(tryAgainEmbed().asRequest())
+                            .build())
                     .then();
         }
 
@@ -231,9 +232,9 @@ public class ErrorHandler {
 
 
         return event.getInteractionResponse().editInitialResponse(WebhookMessageEditRequest
-                                .builder()
-                                .addEmbed(unknownErrorEmbed().asRequest())
-                                .build())
+                        .builder()
+                        .addEmbed(unknownErrorEmbed().asRequest())
+                        .build())
                 .then();
 
     }

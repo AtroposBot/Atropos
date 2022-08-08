@@ -3,11 +3,8 @@ package dev.laarryy.atropos.commands.settings;
 import dev.laarryy.atropos.exceptions.MalformedInputException;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
-import dev.laarryy.atropos.utils.AddServerToDB;
 import dev.laarryy.atropos.utils.Notifier;
-import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
@@ -23,7 +20,7 @@ public class ModMailSettings {
     public Mono<Void> execute(ChatInputInteractionEvent event) {
 
         return event.getInteraction().getGuild().flatMap(guild -> {
-            return event.getInteraction().getChannel().ofType(TextChannel.class).flatMap(messageChannel -> DatabaseLoader.use(() ->{
+            return event.getInteraction().getChannel().ofType(TextChannel.class).flatMap(messageChannel -> DatabaseLoader.use(() -> {
                 DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
 
                 if (event.getOption("modmail").get().getOption("set").isPresent()) {

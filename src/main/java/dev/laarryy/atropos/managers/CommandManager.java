@@ -3,13 +3,11 @@ package dev.laarryy.atropos.managers;
 import dev.laarryy.atropos.Atropos;
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.ConfigManager;
-import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.ErrorHandler;
 import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.discordjson.json.ApplicationCommandData;
-import discord4j.discordjson.json.ApplicationCommandRequest;
 import discord4j.rest.service.ApplicationService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -17,13 +15,11 @@ import org.reflections.Reflections;
 import org.reflections.scanners.SubTypesScanner;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class CommandManager {
     private final List<Command> COMMANDS = new ArrayList<>();

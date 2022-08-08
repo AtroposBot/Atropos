@@ -103,7 +103,7 @@ public class EmojiManager {
 
     public static String getServerCategory() {
         return emojiConfig.getServerCategory();
-        }
+    }
 
     public static String getServerRole() {
         return emojiConfig.getServerRole();

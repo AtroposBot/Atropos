@@ -1,6 +1,14 @@
 package dev.laarryy.atropos.commands.punishments;
 
-import dev.laarryy.atropos.exceptions.*;
+import dev.laarryy.atropos.exceptions.AlreadyAppliedException;
+import dev.laarryy.atropos.exceptions.BotPermissionsException;
+import dev.laarryy.atropos.exceptions.BotRoleException;
+import dev.laarryy.atropos.exceptions.CannotTargetBotsException;
+import dev.laarryy.atropos.exceptions.InvalidDurationException;
+import dev.laarryy.atropos.exceptions.NoMemberException;
+import dev.laarryy.atropos.exceptions.NoPermissionsException;
+import dev.laarryy.atropos.exceptions.NoUserException;
+import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
 import dev.laarryy.atropos.managers.LoggingListenerManager;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
@@ -507,8 +515,8 @@ public class PunishmentManager {
     /**
      * @param punisher The {@link Member} doing the punishment
      * @param punished The punished {@link Member}
-     * @param guild The {@link Guild} to check in
-     * @param event The {@link ChatInputInteractionEvent} to check for
+     * @param guild    The {@link Guild} to check in
+     * @param event    The {@link ChatInputInteractionEvent} to check for
      * @return A {@link Mono}<{@link Boolean}> that is true if the punisher has the highest role and error signal if not, or if bot's role is too low to effect the punished member
      */
 
@@ -586,8 +594,8 @@ public class PunishmentManager {
     /**
      * @param punisher The {@link Member} doing the punishment
      * @param punished The punished {@link Member}
-     * @param guild The {@link Guild} to check in
-     * @param event The {@link ButtonInteractionEvent} to check for
+     * @param guild    The {@link Guild} to check in
+     * @param event    The {@link ButtonInteractionEvent} to check for
      * @return A {@link Mono}<{@link Boolean}> that is true if the punisher has the highest role and false if not. Returns error signal if bot's role is too low to effect the punished member
      */
 
@@ -598,14 +606,14 @@ public class PunishmentManager {
         }
 
         Mono<Boolean> adminDiff = permissionChecker.checkIsAdministrator(punisher).flatMap(punisherIsAdmin ->
-                        permissionChecker.checkIsAdministrator(punished).flatMap(punishedIsAdmin -> {
-                            if (punisherIsAdmin && !punishedIsAdmin) {
-                                return Mono.just(true);
-                            } else if (punishedIsAdmin && punisherIsAdmin) {
-                                return loggingListener.onAttemptedInsubordination(event, punished).thenReturn(false);
-                            }
-                            return Mono.just(false);
-                        }));
+                permissionChecker.checkIsAdministrator(punished).flatMap(punishedIsAdmin -> {
+                    if (punisherIsAdmin && !punishedIsAdmin) {
+                        return Mono.just(true);
+                    } else if (punishedIsAdmin && punisherIsAdmin) {
+                        return loggingListener.onAttemptedInsubordination(event, punished).thenReturn(false);
+                    }
+                    return Mono.just(false);
+                }));
 
         return punished.getRoles().map(Role::getId).collectList()
                 .flatMap(snowflakes -> adminDiff.flatMap(aBoolean -> {

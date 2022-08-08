@@ -3,7 +3,6 @@ package dev.laarryy.atropos.commands.search;
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.EmojiManager;
 import dev.laarryy.atropos.exceptions.MalformedInputException;
-import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NoUserException;
 import dev.laarryy.atropos.exceptions.NotFoundException;
 import dev.laarryy.atropos.exceptions.NullServerException;
@@ -30,7 +29,6 @@ import discord4j.core.object.entity.channel.Channel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;
-import discord4j.discordjson.json.WebhookMessageEditRequest;
 import discord4j.rest.util.Color;
 import discord4j.rest.util.Image;
 import org.apache.logging.log4j.LogManager;
@@ -44,7 +42,6 @@ import java.util.Optional;
 import java.util.StringJoiner;
 import java.util.regex.Pattern;
 import java.util.stream.Collector;
-import java.util.stream.Collectors;
 
 public class InfoCommand implements Command {
 
@@ -324,51 +321,51 @@ public class InfoCommand implements Command {
                                                 stageCount(guild).flatMap(stageLong ->
                                                         storeCount(guild).flatMap(storeLong ->
                                                                 newsCount(guild).flatMap(newsLong -> {
-                                                                    String field1Content = EmojiManager.getServerCategory() + " `" +
-                                                                            categoryLong +
-                                                                            "` Categories\n" +
-                                                                            EmojiManager.getVoiceChannel() + " `" +
-                                                                            voiceLong +
-                                                                            "` Voice Channels\n" +
-                                                                            EmojiManager.getTextChannel() + " `" +
-                                                                            textLong +
-                                                                            "` Text Channels\n" +
-                                                                            EmojiManager.getServerRole() + " `" +
-                                                                            roleLong + "` Roles\n";
+                                                                            String field1Content = EmojiManager.getServerCategory() + " `" +
+                                                                                    categoryLong +
+                                                                                    "` Categories\n" +
+                                                                                    EmojiManager.getVoiceChannel() + " `" +
+                                                                                    voiceLong +
+                                                                                    "` Voice Channels\n" +
+                                                                                    EmojiManager.getTextChannel() + " `" +
+                                                                                    textLong +
+                                                                                    "` Text Channels\n" +
+                                                                                    EmojiManager.getServerRole() + " `" +
+                                                                                    roleLong + "` Roles\n";
 
-                                                                    String field2Content = EmojiManager.getStageChannel() + " `" +
-                                                                            stageLong +
-                                                                            "` Stage Channels\n" +
-                                                                            EmojiManager.getStoreChannel() + " `" +
-                                                                            storeLong +
-                                                                            "` Store Channels\n" +
-                                                                            EmojiManager.getNewsChannel() + " `" +
-                                                                            newsLong +
-                                                                            "` News Channels\n";
+                                                                            String field2Content = EmojiManager.getStageChannel() + " `" +
+                                                                                    stageLong +
+                                                                                    "` Stage Channels\n" +
+                                                                                    EmojiManager.getStoreChannel() + " `" +
+                                                                                    storeLong +
+                                                                                    "` Store Channels\n" +
+                                                                                    EmojiManager.getNewsChannel() + " `" +
+                                                                                    newsLong +
+                                                                                    "` News Channels\n";
 
-                                                                    String field3Content;
-                                                                    StringBuilder f3 = new StringBuilder();
-                                                                    f3.append(EmojiManager.getBoosted()).append(" **Nitro**\n");
-                                                                    int boostLevel = guild.getPremiumTier().getValue();
-                                                                    f3.append("Level: `").append(boostLevel).append("`");
-                                                                    if (guild.getPremiumSubscriptionCount().isPresent()) {
-                                                                        int boosters = guild.getPremiumSubscriptionCount().getAsInt();
-                                                                        f3.append(" with `").append(boosters).append("` boosters ").append(EmojiManager.getServerBoostBadge());
-                                                                    }
+                                                                            String field3Content;
+                                                                            StringBuilder f3 = new StringBuilder();
+                                                                            f3.append(EmojiManager.getBoosted()).append(" **Nitro**\n");
+                                                                            int boostLevel = guild.getPremiumTier().getValue();
+                                                                            f3.append("Level: `").append(boostLevel).append("`");
+                                                                            if (guild.getPremiumSubscriptionCount().isPresent()) {
+                                                                                int boosters = guild.getPremiumSubscriptionCount().getAsInt();
+                                                                                f3.append(" with `").append(boosters).append("` boosters ").append(EmojiManager.getServerBoostBadge());
+                                                                            }
 
-                                                                    field3Content = f3.append("\n").toString();
-                                                                    Member requester = event.getInteraction().getMember().get();
-                                                                    EmbedCreateSpec.Builder embedBuilder = EmbedCreateSpec.builder()
-                                                                            .title(guild.getName())
-                                                                            .color(Color.ENDEAVOUR)
-                                                                            .description(description)
-                                                                            .addField("\u200B", field1Content, true)
-                                                                            .addField("\u200B", field2Content, true)
-                                                                            .addField("\u200B", field3Content, false)
-                                                                            .footer("Requested by " + requester.getTag(), requester.getAvatarUrl());
-                                                                    maybeUrl.ifPresent(embedBuilder::thumbnail);
-                                                                    return Notifier.sendResultsEmbed(event, embedBuilder.build());
-                                                                }
+                                                                            field3Content = f3.append("\n").toString();
+                                                                            Member requester = event.getInteraction().getMember().get();
+                                                                            EmbedCreateSpec.Builder embedBuilder = EmbedCreateSpec.builder()
+                                                                                    .title(guild.getName())
+                                                                                    .color(Color.ENDEAVOUR)
+                                                                                    .description(description)
+                                                                                    .addField("\u200B", field1Content, true)
+                                                                                    .addField("\u200B", field2Content, true)
+                                                                                    .addField("\u200B", field3Content, false)
+                                                                                    .footer("Requested by " + requester.getTag(), requester.getAvatarUrl());
+                                                                            maybeUrl.ifPresent(embedBuilder::thumbnail);
+                                                                            return Notifier.sendResultsEmbed(event, embedBuilder.build());
+                                                                        }
                                                                 )))))));
             });
         });

@@ -10,11 +10,9 @@ import dev.laarryy.atropos.models.users.DiscordUser;
 import dev.laarryy.atropos.models.users.Punishment;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
-import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.guild.MemberJoinEvent;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.channel.PrivateChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
@@ -52,7 +50,7 @@ public class MemberJoinListener {
     private Mono<Void> applyEvadedMutes(MemberJoinEvent event, Guild guild) {
         // Apply evaded mutes
 
-        DiscordUser user = DatabaseLoader.use(() ->DiscordUser.findFirst("user_id_snowflake = ?", event.getMember().getId().asLong()));
+        DiscordUser user = DatabaseLoader.use(() -> DiscordUser.findFirst("user_id_snowflake = ?", event.getMember().getId().asLong()));
         DiscordServer discordServer = DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()));
 
         if (user != null) {

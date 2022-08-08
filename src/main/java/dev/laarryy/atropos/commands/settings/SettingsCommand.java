@@ -2,10 +2,7 @@ package dev.laarryy.atropos.commands.settings;
 
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.exceptions.MalformedInputException;
-import dev.laarryy.atropos.exceptions.NoPermissionsException;
-import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.CommandChecks;
-import dev.laarryy.atropos.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
 import discord4j.discordjson.json.ApplicationCommandOptionChoiceData;

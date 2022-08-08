@@ -2,7 +2,6 @@ package dev.laarryy.atropos.commands.raid;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.atropos.commands.Command;
-import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
 import dev.laarryy.atropos.managers.LoggingListenerManager;
 import dev.laarryy.atropos.managers.PropertiesCacheManager;
@@ -13,7 +12,6 @@ import dev.laarryy.atropos.utils.CommandChecks;
 import dev.laarryy.atropos.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
-import discord4j.core.object.entity.Guild;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
 import discord4j.discordjson.json.ApplicationCommandRequest;

@@ -19,14 +19,14 @@ public class DatabaseLoader {
     private static final HikariDataSource ds;
 
     static {
-            config.setJdbcUrl(ConfigManager.getAddress());
-            config.setUsername(ConfigManager.getUsername());
-            config.setPassword(ConfigManager.getPassword());
-            config.addDataSourceProperty("cachePrepStmts", "true");
-            config.addDataSourceProperty("prepStmtCacheSize", "250");
-            config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-            config.addDataSourceProperty("autoReconnect", true);
-            ds = new HikariDataSource(config);
+        config.setJdbcUrl(ConfigManager.getAddress());
+        config.setUsername(ConfigManager.getUsername());
+        config.setPassword(ConfigManager.getPassword());
+        config.addDataSourceProperty("cachePrepStmts", "true");
+        config.addDataSourceProperty("prepStmtCacheSize", "250");
+        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+        config.addDataSourceProperty("autoReconnect", true);
+        ds = new HikariDataSource(config);
     }
 
     public static Usage use() {

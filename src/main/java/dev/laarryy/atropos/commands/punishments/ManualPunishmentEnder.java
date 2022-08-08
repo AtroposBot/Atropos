@@ -40,41 +40,41 @@ public final class ManualPunishmentEnder {
         Mono<Guild> guildMono = event.getInteraction().getGuild();
 
         return guildMono.flatMap(guild -> {
-                    if (guild == null) {
-                        return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("No Server")));
-                    }
+            if (guild == null) {
+                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NullServerException("No Server")));
+            }
 
-                    String reason;
-                    if (event.getOption("reason").isPresent() && event.getOption("reason").get().getValue().isPresent()) {
-                        reason = event.getOption("reason").get().getValue().get().asString();
-                    } else reason = "No reason provided.";
+            String reason;
+            if (event.getOption("reason").isPresent() && event.getOption("reason").get().getValue().isPresent()) {
+                reason = event.getOption("reason").get().getValue().get().asString();
+            } else reason = "No reason provided.";
 
-                    if (event.getOption("id").isPresent() && event.getOption("id").get().getValue().isPresent()) {
-                        return Flux.fromArray(event.getOption("id").get().getValue().get().asString().split(" "))
-                                .map(Long::valueOf)
-                                .onErrorReturn(Exception.class, 0L)
-                                .filter(aLong -> aLong != 0)
-                                .flatMap(lo -> event.getClient().getUserById(Snowflake.of(lo)).flatMap(user ->
-                                        databaseEndPunishment(lo, guild, event.getCommandName(), reason, event.getInteraction().getUser(), user)
-                                                .flatMap(unused -> guild.unban(Snowflake.of(lo), reason))
-                                                .then(Notifier.notifyModOfUnban(event, reason, lo))))
-                                .then();
-                    }
+            if (event.getOption("id").isPresent() && event.getOption("id").get().getValue().isPresent()) {
+                return Flux.fromArray(event.getOption("id").get().getValue().get().asString().split(" "))
+                        .map(Long::valueOf)
+                        .onErrorReturn(Exception.class, 0L)
+                        .filter(aLong -> aLong != 0)
+                        .flatMap(lo -> event.getClient().getUserById(Snowflake.of(lo)).flatMap(user ->
+                                databaseEndPunishment(lo, guild, event.getCommandName(), reason, event.getInteraction().getUser(), user)
+                                        .flatMap(unused -> guild.unban(Snowflake.of(lo), reason))
+                                        .then(Notifier.notifyModOfUnban(event, reason, lo))))
+                        .then();
+            }
 
-                    if (event.getOption("user").isPresent() && event.getOption("user").get().getValue().isPresent()) {
-                        return Mono.just(event.getOption("user").get().getValue().get())
-                                .flatMap(ApplicationCommandInteractionOptionValue::asUser)
-                                .filter(Objects::nonNull)
-                                .flatMap(user -> user.asMember(guild.getId()))
-                                .flatMap(member -> Mono.when(
-                                        discordUnmute(member, event, reason),
-                                        databaseEndPunishment(member.getId().asLong(), guild, event.getCommandName(), reason, event.getInteraction().getUser(), member)
-                                ));
-                    }
+            if (event.getOption("user").isPresent() && event.getOption("user").get().getValue().isPresent()) {
+                return Mono.just(event.getOption("user").get().getValue().get())
+                        .flatMap(ApplicationCommandInteractionOptionValue::asUser)
+                        .filter(Objects::nonNull)
+                        .flatMap(user -> user.asMember(guild.getId()))
+                        .flatMap(member -> Mono.when(
+                                discordUnmute(member, event, reason),
+                                databaseEndPunishment(member.getId().asLong(), guild, event.getCommandName(), reason, event.getInteraction().getUser(), member)
+                        ));
+            }
 
 
-                    return Mono.empty();
-                });
+            return Mono.empty();
+        });
     }
 
     public Mono<Boolean> discordUnmute(Member member, ChatInputInteractionEvent event, String reason) {

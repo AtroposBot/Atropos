@@ -42,7 +42,9 @@ public class ConfigSettings {
         return token;
     }
 
-    public void setToken(@Nullable String token) { this.token = token; }
+    public void setToken(@Nullable String token) {
+        this.token = token;
+    }
 
     public @Nullable String getControlGuildId() {
         return controlGuildId;
@@ -60,8 +62,12 @@ public class ConfigSettings {
         this.controllerId = controllerId;
     }
 
-    public @Nullable String getEncryptionKey() { return encryptionKey; }
+    public @Nullable String getEncryptionKey() {
+        return encryptionKey;
+    }
 
-    public void setEncryptionKey(@Nullable String encryptionKey) { this.encryptionKey = encryptionKey; }
+    public void setEncryptionKey(@Nullable String encryptionKey) {
+        this.encryptionKey = encryptionKey;
+    }
 
 }

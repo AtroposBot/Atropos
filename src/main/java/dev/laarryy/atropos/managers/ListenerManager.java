@@ -2,7 +2,6 @@ package dev.laarryy.atropos.managers;
 
 import dev.laarryy.atropos.listeners.EventListener;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
-import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.ErrorHandler;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.Event;
@@ -12,12 +11,10 @@ import org.reflections.Reflections;
 import org.reflections.scanners.MethodAnnotationsScanner;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.Set;
 
 public class ListenerManager {
     private final Logger logger = LogManager.getLogger(this);
@@ -36,7 +33,8 @@ public class ListenerManager {
                     } else {
                         try {
                             listener = listenerMethod.getDeclaringClass().getDeclaredConstructor().newInstance();
-                        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                        } catch (InstantiationException | IllegalAccessException | InvocationTargetException |
+                                 NoSuchMethodException e) {
                             e.printStackTrace();
                             return Mono.empty();
                         }
@@ -54,16 +52,16 @@ public class ListenerManager {
                     Class<? extends Event> type = (Class<? extends Event>) params[0].getType();
 
                     return client.getEventDispatcher().on(type)
-                                        .flatMap(event -> {
-                                            try {
-                                                return ((Mono<Void>) listenerMethod.invoke(listener, event))
-                                                        .onErrorResume(e -> ErrorHandler.handleListenerError(e, event));
-                                            } catch (Exception e) {
-                                                logger.error("Error in Listener");
-                                                return Flux.error(new RuntimeException(e));
-                                            }
-                                            //.log()
-                                    //.doFinally(signalType -> logger.info("Done Listener"));
+                            .flatMap(event -> {
+                                try {
+                                    return ((Mono<Void>) listenerMethod.invoke(listener, event))
+                                            .onErrorResume(e -> ErrorHandler.handleListenerError(e, event));
+                                } catch (Exception e) {
+                                    logger.error("Error in Listener");
+                                    return Flux.error(new RuntimeException(e));
+                                }
+                                //.log()
+                                //.doFinally(signalType -> logger.info("Done Listener"));
 
                             });
                 })

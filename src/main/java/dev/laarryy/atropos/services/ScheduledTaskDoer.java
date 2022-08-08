@@ -17,7 +17,6 @@ import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.LazyList;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -177,12 +176,12 @@ public class ScheduledTaskDoer {
                         punishment.save();
                         punishment.refresh();
                     }
-                        if (member != null && mutedRoleSnowflake != null) {
-                            return member.removeRole(Snowflake.of(mutedRoleSnowflake))
-                                    .then(loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment));
-                        } else {
-                            return loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment);
-                        }
+                    if (member != null && mutedRoleSnowflake != null) {
+                        return member.removeRole(Snowflake.of(mutedRoleSnowflake))
+                                .then(loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment));
+                    } else {
+                        return loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment);
+                    }
 
 
                 });

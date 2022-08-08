@@ -11,14 +11,11 @@ import dev.laarryy.atropos.utils.AddServerToDB;
 import dev.laarryy.atropos.utils.AuditLogger;
 import dev.laarryy.atropos.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.object.entity.Guild;
-import discord4j.core.object.entity.channel.MessageChannel;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.checkerframework.checker.units.qual.N;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;

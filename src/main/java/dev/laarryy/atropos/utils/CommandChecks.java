@@ -4,7 +4,6 @@ import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.object.entity.Guild;
 import reactor.core.publisher.Mono;
 
 public class CommandChecks {
@@ -12,8 +11,7 @@ public class CommandChecks {
     static final PermissionChecker permissionChecker = new PermissionChecker();
 
     /**
-     *
-     * @param event {@link ChatInputInteractionEvent} to check command validity and permissions for
+     * @param event       {@link ChatInputInteractionEvent} to check command validity and permissions for
      * @param requestName Command name to check validity and permission of
      * @return a true {@link Mono}<{@link Boolean}> if command is permitted in event's guild, or an error signal indicating no permission.
      */
@@ -38,8 +36,7 @@ public class CommandChecks {
     }
 
     /**
-     *
-     * @param event {@link ButtonInteractionEvent} to check button-use command validity and permissions for
+     * @param event       {@link ButtonInteractionEvent} to check button-use command validity and permissions for
      * @param requestName Command name to check validity and permission of
      * @return a true {@link Mono}<{@link Boolean}> if button-use command is permitted in event's guild, or an error signal indicating no permission.
      */

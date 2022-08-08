@@ -3,7 +3,6 @@ package dev.laarryy.atropos.models.guilds;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import discord4j.common.JacksonResources;
-import discord4j.discordjson.json.ImmutableMessageData;
 import discord4j.discordjson.json.MessageData;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

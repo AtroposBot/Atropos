@@ -2,7 +2,6 @@ package dev.laarryy.atropos.commands.raid;
 
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.exceptions.MalformedInputException;
-import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.utils.AuditLogger;
 import dev.laarryy.atropos.utils.CommandChecks;
 import dev.laarryy.atropos.utils.Notifier;
@@ -10,7 +9,6 @@ import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
-import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Message;
 import discord4j.core.object.entity.channel.TextChannel;
 import discord4j.core.spec.EmbedCreateSpec;
@@ -21,7 +19,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
 

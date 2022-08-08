@@ -1,7 +1,6 @@
 package dev.laarryy.atropos.commands.punishments;
 
 import dev.laarryy.atropos.commands.Command;
-import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.utils.CommandChecks;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
@@ -10,7 +9,6 @@ import discord4j.discordjson.json.ApplicationCommandRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 public class UnbanCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);

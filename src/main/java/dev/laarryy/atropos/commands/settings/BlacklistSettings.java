@@ -15,13 +15,10 @@ import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AuditLogger;
 import dev.laarryy.atropos.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
-import discord4j.core.object.entity.Guild;
-import discord4j.core.object.entity.User;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.checkerframework.checker.units.qual.A;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;

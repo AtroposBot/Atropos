@@ -66,7 +66,8 @@ public class Atropos {
 
         logger.debug("Connecting to Database...");
 
-        DatabaseLoader.use(() -> { }); // opens a connection
+        DatabaseLoader.use(() -> {
+        }); // opens a connection
 
         logger.info("Connected to Database!");
 

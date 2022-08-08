@@ -2,7 +2,6 @@ package dev.laarryy.atropos.listeners;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
 import dev.laarryy.atropos.commands.punishments.PunishmentManager;
-import dev.laarryy.atropos.exceptions.NotFoundException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
 import dev.laarryy.atropos.managers.BlacklistCacheManager;
@@ -18,7 +17,6 @@ import discord4j.core.event.domain.message.MessageCreateEvent;
 import discord4j.core.object.entity.Attachment;
 import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
-import discord4j.core.object.entity.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
@@ -82,7 +80,7 @@ public class BlacklistListener {
 
                 for (Blacklist b : blacklistList) {
                     Pattern pattern = b.getPattern();
-                    String action =  b.getServerBlacklist().getAction();
+                    String action = b.getServerBlacklist().getAction();
                     String type = b.getServerBlacklist().getType();
 
                     if (type.equals("file")) {
@@ -113,35 +111,35 @@ public class BlacklistListener {
         return createPunishment(event, b, type).flatMap(p ->
                 guild.getSelfMember().flatMap(selfMember ->
                         punishmentManager.onlyCheckIfPunisherHasHighestRole(selfMember, event.getMember().get(), guild).flatMap(aBoolean -> {
-            if (!aBoolean) {
-                return loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);
-            }
+                            if (!aBoolean) {
+                                return loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);
+                            }
 
-            if (action.equals("delete")){
-                return event.getMessage().delete()
-                        .then(loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p));
-            }
+                            if (action.equals("delete")) {
+                                return event.getMessage().delete()
+                                        .then(loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p));
+                            }
 
-            if (action.equals("warn")) {
-                return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Warned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
-                        .then(loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p));
-            }
+                            if (action.equals("warn")) {
+                                return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Warned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
+                                        .then(loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p));
+                            }
 
-            if (action.equals("mute")) {
-                return event.getMessage().delete().then(
-                                Notifier.notifyPunished(guild, p, "Muted for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
-                        .then(punishmentManager.discordMuteUser(guild, userIdSnowflake))
-                        .then(loggingListener.onBlacklistMute(event, p));
-            }
+                            if (action.equals("mute")) {
+                                return event.getMessage().delete().then(
+                                                Notifier.notifyPunished(guild, p, "Muted for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
+                                        .then(punishmentManager.discordMuteUser(guild, userIdSnowflake))
+                                        .then(loggingListener.onBlacklistMute(event, p));
+                            }
 
-            if (action.equals("ban")) {
-                return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Banned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
-                        .then(punishmentManager.discordBanUser(guild, userIdSnowflake, 0, "Triggered the blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
-                        .then(loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p));
-            }
+                            if (action.equals("ban")) {
+                                return event.getMessage().delete().then(Notifier.notifyPunished(guild, p, "Banned for triggering blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
+                                        .then(punishmentManager.discordBanUser(guild, userIdSnowflake, 0, "Triggered the blacklist: `" + b.getServerBlacklist().getTrigger() + "`"))
+                                        .then(loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p));
+                            }
 
-            return loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);
-    })));
+                            return loggingListener.onBlacklistTrigger(event, b.getServerBlacklist(), p);
+                        })));
     }
 
     private Mono<Punishment> createPunishment(MessageCreateEvent event, Blacklist blacklist, String type) {
@@ -152,33 +150,33 @@ public class BlacklistListener {
             long punisherSnowflake = self.getId().asLong();
 
             Punishment punishment = DatabaseLoader.use(() -> {
-                        DiscordUser punishedUser = DiscordUser.findOrCreateIt("user_id_snowflake", punishedSnowflake);
-                        DiscordUser punisherUser = DiscordUser.findOrCreateIt("user_id_snowflake", punisherSnowflake);
-                        DiscordServer server = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-                        long date = Instant.now().toEpochMilli();
+                DiscordUser punishedUser = DiscordUser.findOrCreateIt("user_id_snowflake", punishedSnowflake);
+                DiscordUser punisherUser = DiscordUser.findOrCreateIt("user_id_snowflake", punisherSnowflake);
+                DiscordServer server = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                long date = Instant.now().toEpochMilli();
 
-                        String reason = "Triggered the blacklist, which matched to the guild-level filter `" + blacklist.getServerBlacklist().getTrigger() + "`. This action will be reviewed by moderators.";
+                String reason = "Triggered the blacklist, which matched to the guild-level filter `" + blacklist.getServerBlacklist().getTrigger() + "`. This action will be reviewed by moderators.";
 
-                        Punishment punishment1 = Punishment.create(
-                                "user_id_punished", punishedUser.getUserId(),
-                                "name_punished", punishedMember.getUsername(),
-                                "discrim_punished", punishedMember.getDiscriminator(),
-                                "user_id_punisher", punisherUser.getUserId(),
-                                "name_punisher", self.getUsername(),
-                                "discrim_punisher", self.getDiscriminator(),
-                                "server_id", server.getServerId(),
-                                "punishment_type", type,
-                                "punishment_date", date,
-                                "punishment_message", reason,
-                                "automatic", true,
-                                "end_date_passed", false,
-                                "permanent", true
-                        );
+                Punishment punishment1 = Punishment.create(
+                        "user_id_punished", punishedUser.getUserId(),
+                        "name_punished", punishedMember.getUsername(),
+                        "discrim_punished", punishedMember.getDiscriminator(),
+                        "user_id_punisher", punisherUser.getUserId(),
+                        "name_punisher", self.getUsername(),
+                        "discrim_punisher", self.getDiscriminator(),
+                        "server_id", server.getServerId(),
+                        "punishment_type", type,
+                        "punishment_date", date,
+                        "punishment_message", reason,
+                        "automatic", true,
+                        "end_date_passed", false,
+                        "permanent", true
+                );
 
-                        punishment1.save();
-                        punishment1.refresh();
-                        return punishment1;
-                    });
+                punishment1.save();
+                punishment1.refresh();
+                return punishment1;
+            });
             return Mono.just(punishment);
         }));
     }

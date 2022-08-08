@@ -125,7 +125,7 @@ public final class Notifier {
                             endDate.getEpochSecond(),
                             TimestampMaker.TimestampType.RELATIVE);
                 } else {
-                    return  "Never.";
+                    return "Never.";
                 }
             });
 

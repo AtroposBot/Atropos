@@ -1,6 +1,5 @@
 package dev.laarryy.atropos.listeners;
 
-import dev.laarryy.atropos.exceptions.NotFoundException;
 import dev.laarryy.atropos.models.guilds.ServerMessage;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import discord4j.core.event.domain.message.MessageDeleteEvent;

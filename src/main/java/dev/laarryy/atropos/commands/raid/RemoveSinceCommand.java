@@ -10,7 +10,11 @@ import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.joins.ServerUser;
 import dev.laarryy.atropos.models.users.DiscordUser;
 import dev.laarryy.atropos.storage.DatabaseLoader;
-import dev.laarryy.atropos.utils.*;
+import dev.laarryy.atropos.utils.AuditLogger;
+import dev.laarryy.atropos.utils.CommandChecks;
+import dev.laarryy.atropos.utils.DurationParser;
+import dev.laarryy.atropos.utils.Notifier;
+import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
@@ -149,63 +153,61 @@ public class RemoveSinceCommand implements Command {
         }));
     }
 
-        private Mono<String> banUsers(ServerUser serverUser, Guild guild, Member member){
-            long userId = DatabaseLoader.use(() -> {
-                DiscordUser discordUser = DiscordUser.findFirst("id = ?", serverUser.getUserId());
-                return discordUser.getUserIdSnowflake();
-            });
+    private Mono<String> banUsers(ServerUser serverUser, Guild guild, Member member) {
+        long userId = DatabaseLoader.use(() -> {
+            DiscordUser discordUser = DiscordUser.findFirst("id = ?", serverUser.getUserId());
+            return discordUser.getUserIdSnowflake();
+        });
 
-            return guild.getSelfMember().flatMap(selfMember -> {
-                if (selfMember.getId().asLong() == userId) {
-                    return Mono.empty();
-                } else {
-                    return guild.getMemberById(Snowflake.of(userId)).flatMap(memberById -> {
-                        if (memberById.isBot()) {
-                            return Mono.empty();
-                        }
-                        else {
-                            Set<Snowflake> snowflakeSet = memberById.getRoleIds();
-                            return member.hasHigherRoles(snowflakeSet).flatMap(memberHasHigherRoles -> {
-                                if (!snowflakeSet.isEmpty() && !memberHasHigherRoles) {
-                                    return Mono.empty();
-                                } else {
-                                    return guild.ban(Snowflake.of(userId)).withReason("Banned as part of anti-raid measures").withDeleteMessageDays(2)
-                                            .thenReturn(String.valueOf(userId));
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-        }
-
-        private Mono<String> kickUsers(ServerUser serverUser, Guild guild, Member member) {
-            long userId = DatabaseLoader.use(() -> {
-                DiscordUser discordUser = DiscordUser.findFirst("id = ?", serverUser.getUserId());
-                return discordUser.getUserIdSnowflake();
-            });
-
-            return guild.getSelfMember().flatMap(selfMember -> {
-                if (selfMember.getId().asLong() == userId) {
-                    return Mono.empty();
-                } else {
-                    return guild.getMemberById(Snowflake.of(userId)).flatMap(memberById -> {
-                        if (memberById.isBot()) {
-                            return Mono.empty();
-                        }
-                        else {
-                            Set<Snowflake> snowflakeSet = memberById.getRoleIds();
-                            return member.hasHigherRoles(snowflakeSet).flatMap(memberHasHigherRoles -> {
-                                if (!snowflakeSet.isEmpty() && !memberHasHigherRoles) {
-                                    return Mono.empty();
-                                } else {
-                                    return guild.kick(Snowflake.of(userId), "Kicked as part of Anti-Raid Measures")
-                                            .thenReturn(String.valueOf(userId));
-                                }
-                            });
-                        }
-                    });
-                }
-            });
-        }
+        return guild.getSelfMember().flatMap(selfMember -> {
+            if (selfMember.getId().asLong() == userId) {
+                return Mono.empty();
+            } else {
+                return guild.getMemberById(Snowflake.of(userId)).flatMap(memberById -> {
+                    if (memberById.isBot()) {
+                        return Mono.empty();
+                    } else {
+                        Set<Snowflake> snowflakeSet = memberById.getRoleIds();
+                        return member.hasHigherRoles(snowflakeSet).flatMap(memberHasHigherRoles -> {
+                            if (!snowflakeSet.isEmpty() && !memberHasHigherRoles) {
+                                return Mono.empty();
+                            } else {
+                                return guild.ban(Snowflake.of(userId)).withReason("Banned as part of anti-raid measures").withDeleteMessageDays(2)
+                                        .thenReturn(String.valueOf(userId));
+                            }
+                        });
+                    }
+                });
+            }
+        });
     }
+
+    private Mono<String> kickUsers(ServerUser serverUser, Guild guild, Member member) {
+        long userId = DatabaseLoader.use(() -> {
+            DiscordUser discordUser = DiscordUser.findFirst("id = ?", serverUser.getUserId());
+            return discordUser.getUserIdSnowflake();
+        });
+
+        return guild.getSelfMember().flatMap(selfMember -> {
+            if (selfMember.getId().asLong() == userId) {
+                return Mono.empty();
+            } else {
+                return guild.getMemberById(Snowflake.of(userId)).flatMap(memberById -> {
+                    if (memberById.isBot()) {
+                        return Mono.empty();
+                    } else {
+                        Set<Snowflake> snowflakeSet = memberById.getRoleIds();
+                        return member.hasHigherRoles(snowflakeSet).flatMap(memberHasHigherRoles -> {
+                            if (!snowflakeSet.isEmpty() && !memberHasHigherRoles) {
+                                return Mono.empty();
+                            } else {
+                                return guild.kick(Snowflake.of(userId), "Kicked as part of Anti-Raid Measures")
+                                        .thenReturn(String.valueOf(userId));
+                            }
+                        });
+                    }
+                });
+            }
+        });
+    }
+}

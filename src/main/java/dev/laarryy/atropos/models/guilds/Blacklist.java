@@ -5,10 +5,11 @@ import java.util.regex.Pattern;
 public class Blacklist {
     Pattern pattern;
     ServerBlacklist serverBlacklist;
+
     public Blacklist(ServerBlacklist serverBlacklist) {
         this.serverBlacklist = serverBlacklist;
         this.pattern = Pattern.compile((("(?:.*)?" + serverBlacklist.getTrigger() + "(?:.*)?")),
-                    Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.MULTILINE);
+                Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.MULTILINE);
 
     }
 

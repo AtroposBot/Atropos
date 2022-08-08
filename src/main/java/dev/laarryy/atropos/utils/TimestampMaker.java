@@ -12,11 +12,11 @@ public final class TimestampMaker {
         RELATIVE
     }
 
-    private TimestampMaker() {}
+    private TimestampMaker() {
+    }
 
     /**
-     *
-     * @param epochSecond Epoch second time point
+     * @param epochSecond   Epoch second time point
      * @param timestampType Which type of Discord-style timestamp is needed
      * @return a {@link String} representing a formatted Discord-style timestamp for the provided epochSecond
      */

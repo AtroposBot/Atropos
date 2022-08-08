@@ -2,7 +2,6 @@ package dev.laarryy.atropos.commands.controls;
 
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.EmojiManager;
-import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.users.DiscordUser;
@@ -11,7 +10,6 @@ import dev.laarryy.atropos.utils.Notifier;
 import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandOption;
-import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.User;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.discordjson.json.ApplicationCommandOptionData;
@@ -19,7 +17,6 @@ import discord4j.discordjson.json.ApplicationCommandRequest;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.time.Instant;
 import java.util.Objects;

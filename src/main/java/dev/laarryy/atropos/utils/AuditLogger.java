@@ -18,11 +18,11 @@ import java.time.Instant;
 public final class AuditLogger {
     private static final Logger logger = LogManager.getLogger(ManualPunishmentEnder.class);
 
-    private AuditLogger() {}
+    private AuditLogger() {
+    }
 
     /**
-     *
-     * @param event {@link ChatInputInteractionEvent} to add command use to audit database
+     * @param event   {@link ChatInputInteractionEvent} to add command use to audit database
      * @param success Whether the command use was successful or not
      * @return a {@link Mono}<{@link Void}> on completion or if unable to complete
      */
@@ -64,9 +64,8 @@ public final class AuditLogger {
     }
 
     /**
-     *
-     * @param event {@link ButtonInteractionEvent} to add button interaction to audit database
-     * @param entry The button interaction's content to be added
+     * @param event   {@link ButtonInteractionEvent} to add button interaction to audit database
+     * @param entry   The button interaction's content to be added
      * @param success Whether the button interaction was successful or not
      * @return a {@link Mono}<{@link Void}> on completion or if unable to complete
      */

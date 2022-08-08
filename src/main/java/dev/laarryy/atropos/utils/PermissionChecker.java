@@ -1,7 +1,6 @@
 package dev.laarryy.atropos.utils;
 
 import dev.laarryy.atropos.exceptions.BotPermissionsException;
-import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.permissions.ServerRolePermission;
@@ -16,7 +15,6 @@ import discord4j.rest.util.Permission;
 import discord4j.rest.util.PermissionSet;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public final class PermissionChecker {
@@ -35,38 +33,38 @@ public final class PermissionChecker {
         return user.asMember(guildIdSnowflake)
                 .flatMap(member ->
                         checkIsAdministrator(member).flatMap(aBoolean -> {
-                    if (aBoolean) {
-                        return Mono.just(true);
-                    }
+                            if (aBoolean) {
+                                return Mono.just(true);
+                            }
 
-                    try (final var usage = DatabaseLoader.use()) {
-                        dev.laarryy.atropos.models.guilds.permissions.Permission permission = dev.laarryy.atropos.models.guilds.permissions.Permission.findOrCreateIt("permission", requestName);
-                        permission.save();
-                        permission.refresh();
-                        int permissionId = permission.getInteger("id");
+                            try (final var usage = DatabaseLoader.use()) {
+                                dev.laarryy.atropos.models.guilds.permissions.Permission permission = dev.laarryy.atropos.models.guilds.permissions.Permission.findOrCreateIt("permission", requestName);
+                                permission.save();
+                                permission.refresh();
+                                int permissionId = permission.getInteger("id");
 
-                        int guildId = DiscordServer.findFirst("server_id = ?", guildIdSnowflake.asLong()).getInteger("id");
+                                int guildId = DiscordServer.findFirst("server_id = ?", guildIdSnowflake.asLong()).getInteger("id");
 
-                        // This Mono.from() is necessary and not superficial
-                        return Mono.from(guild.getRoles()
-                                .filter(role ->
-                                        (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null)
-                                                || (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null)
-                                                || role.getPermissions().contains(Permission.ADMINISTRATOR))
-                                .flatMap(role -> member.getRoles()
-                                        .mergeWith(guild.getEveryoneRole())
-                                        .any(memberRole -> memberRole.equals(role))
+                                // This Mono.from() is necessary and not superficial
+                                return Mono.from(guild.getRoles()
+                                        .filter(role ->
+                                                (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null)
+                                                        || (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null)
+                                                        || role.getPermissions().contains(Permission.ADMINISTRATOR))
+                                        .flatMap(role -> member.getRoles()
+                                                .mergeWith(guild.getEveryoneRole())
+                                                .any(memberRole -> memberRole.equals(role))
 
-                                        .flatMap(bool -> {
-                                            if (!bool) {
-                                                return Mono.just(false);
-                                            } else {
-                                                return Mono.just(true);
-                                            }
-                                        }))
-                        );
-                    }
-                }));
+                                                .flatMap(bool -> {
+                                                    if (!bool) {
+                                                        return Mono.just(false);
+                                                    } else {
+                                                        return Mono.just(true);
+                                                    }
+                                                }))
+                                );
+                            }
+                        }));
     }
 
     /**

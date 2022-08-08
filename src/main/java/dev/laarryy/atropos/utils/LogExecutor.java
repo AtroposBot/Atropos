@@ -135,30 +135,30 @@ public final class LogExecutor {
 
     public static Mono<Void> logBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment, TextChannel logChannel) {
         return Mono.justOrEmpty(event.getMember()).flatMap(user -> {
-                long userId = user.getId().asLong();
+            long userId = user.getId().asLong();
 
-                String userInfo = "`%s`:`%d`:%s".formatted(user.getTag(), userId, user.getMention());
+            String userInfo = "`%s`:`%d`:%s".formatted(user.getTag(), userId, user.getMention());
 
-                String content = event.getMessage().getContent();
+            String content = event.getMessage().getContent();
 
-                int blacklistId = blacklist.getBlacklistId();
+            int blacklistId = blacklist.getBlacklistId();
 
-                EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
-                        .title(EmojiManager.getUserWarn() + " Blacklist Triggered")
-                        .color(Color.MOON_YELLOW)
-                        .description(
-                                "Blacklist ID #`" + blacklistId + "` was triggered and the message detected has been deleted. " +
-                                        "A case has been opened for the user who triggered it with ID #`" + punishment.getPunishmentId() + '`'
-                        ).addField("Content", getStringWithLegalLength(content, 1024), false)
-                        .addField("Responsible User", userInfo, false)
-                        .footer("To see information about this blacklist entry, run /settings blacklist info " + blacklistId, "")
-                        .timestamp(Instant.now());
+            EmbedCreateSpec.Builder embed = EmbedCreateSpec.builder()
+                    .title(EmojiManager.getUserWarn() + " Blacklist Triggered")
+                    .color(Color.MOON_YELLOW)
+                    .description(
+                            "Blacklist ID #`" + blacklistId + "` was triggered and the message detected has been deleted. " +
+                                    "A case has been opened for the user who triggered it with ID #`" + punishment.getPunishmentId() + '`'
+                    ).addField("Content", getStringWithLegalLength(content, 1024), false)
+                    .addField("Responsible User", userInfo, false)
+                    .footer("To see information about this blacklist entry, run /settings blacklist info " + blacklistId, "")
+                    .timestamp(Instant.now());
 
-                final List<Attachment> attachments = event.getMessage().getAttachments();
-                if (!attachments.isEmpty()) {
-                    embed.addField("Attachments", attachments.stream().map(Attachment::getFilename).collect(Collectors.joining("\n")), false);
-                }
-                return logChannel.createMessage(embed.build());
+            final List<Attachment> attachments = event.getMessage().getAttachments();
+            if (!attachments.isEmpty()) {
+                embed.addField("Attachments", attachments.stream().map(Attachment::getFilename).collect(Collectors.joining("\n")), false);
+            }
+            return logChannel.createMessage(embed.build());
 
         }).then();
     }
@@ -182,27 +182,27 @@ public final class LogExecutor {
 
     public static Mono<Void> logPunishment(Punishment punishment, TextChannel logChannel) {
         return Mono.defer(() -> {
-                DiscordUser punishedUser = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", punishment.getPunishedUserId()));
-                DiscordUser punishingUser = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", punishment.getPunishingUserId()));
-                String type = switch (punishment.getPunishmentType()) {
-                    case "warn" -> EmojiManager.getUserWarn() + " Warn";
-                    case "note" -> EmojiManager.getUserCase() + " Note";
-                    case "mute" -> EmojiManager.getUserMute() + " Mute";
-                    case "kick" -> EmojiManager.getUserKick() + " Kick";
-                    case "ban" -> EmojiManager.getUserBan() + " Ban";
-                    default -> punishment.getPunishmentType();
-                };
-                EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                        .title(type + ": ID #" + punishment.getPunishmentId())
-                        .color(Color.ENDEAVOUR)
-                        .addField("Punished User", "`%d`:<@%1$d>".formatted(punishedUser.getUserIdSnowflake()), false)
-                        .addField("Punishing User", "`%d`:<@%1$d>".formatted(punishingUser.getUserIdSnowflake()), false)
-                        .addField("Reason", punishment.getPunishmentMessage(), false)
-                        .footer("For more information, run /case search id " + punishment.getPunishmentId(), "")
-                        .timestamp(Instant.now())
-                        .build();
+            DiscordUser punishedUser = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", punishment.getPunishedUserId()));
+            DiscordUser punishingUser = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", punishment.getPunishingUserId()));
+            String type = switch (punishment.getPunishmentType()) {
+                case "warn" -> EmojiManager.getUserWarn() + " Warn";
+                case "note" -> EmojiManager.getUserCase() + " Note";
+                case "mute" -> EmojiManager.getUserMute() + " Mute";
+                case "kick" -> EmojiManager.getUserKick() + " Kick";
+                case "ban" -> EmojiManager.getUserBan() + " Ban";
+                default -> punishment.getPunishmentType();
+            };
+            EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                    .title(type + ": ID #" + punishment.getPunishmentId())
+                    .color(Color.ENDEAVOUR)
+                    .addField("Punished User", "`%d`:<@%1$d>".formatted(punishedUser.getUserIdSnowflake()), false)
+                    .addField("Punishing User", "`%d`:<@%1$d>".formatted(punishingUser.getUserIdSnowflake()), false)
+                    .addField("Reason", punishment.getPunishmentMessage(), false)
+                    .footer("For more information, run /case search id " + punishment.getPunishmentId(), "")
+                    .timestamp(Instant.now())
+                    .build();
 
-                return logChannel.createMessage(embed);
+            return logChannel.createMessage(embed);
         }).then();
     }
 

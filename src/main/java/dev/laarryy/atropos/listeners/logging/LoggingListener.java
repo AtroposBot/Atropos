@@ -1,7 +1,6 @@
 package dev.laarryy.atropos.listeners.logging;
 
 import com.github.benmanes.caffeine.cache.LoadingCache;
-import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NotFoundException;
 import dev.laarryy.atropos.listeners.EventListener;
 import dev.laarryy.atropos.managers.PropertiesCacheManager;
@@ -89,50 +88,50 @@ public final class LoggingListener {
 
     public Mono<Void> onAttemptedInsubordination(ChatInputInteractionEvent event, Member target) {
         return event.getInteraction().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "punishment"))
-            .flatMap(channel -> LogExecutor.logInsubordination(event, channel, target));
+                .flatMap(guild -> getLogChannel(guild, "punishment"))
+                .flatMap(channel -> LogExecutor.logInsubordination(event, channel, target));
     }
 
     public Mono<Void> onAttemptedInsubordination(ButtonInteractionEvent event, Member target) {
         return event.getInteraction().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "punishment"))
-            .flatMap(channel -> LogExecutor.logInsubordination(event, channel, target));
+                .flatMap(guild -> getLogChannel(guild, "punishment"))
+                .flatMap(channel -> LogExecutor.logInsubordination(event, channel, target));
     }
 
     public Mono<Void> onBlacklistTrigger(MessageCreateEvent event, ServerBlacklist blacklist, Punishment punishment) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "punishment"))
-            .flatMap(channel -> LogExecutor.logBlacklistTrigger(event, blacklist, punishment, channel));
+                .flatMap(guild -> getLogChannel(guild, "punishment"))
+                .flatMap(channel -> LogExecutor.logBlacklistTrigger(event, blacklist, punishment, channel));
     }
 
     public Mono<Void> onPunishment(ChatInputInteractionEvent event, Punishment punishment) {
         return event.getInteraction().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "punishment"))
-            .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
+                .flatMap(guild -> getLogChannel(guild, "punishment"))
+                .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
     }
 
     public Mono<Void> onPunishment(MessageCreateEvent event, Punishment punishment) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "punishment"))
-            .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
+                .flatMap(guild -> getLogChannel(guild, "punishment"))
+                .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
     }
 
     public Mono<Void> onPunishment(ButtonInteractionEvent event, Punishment punishment) {
         return event.getInteraction().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "punishment"))
-            .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
+                .flatMap(guild -> getLogChannel(guild, "punishment"))
+                .flatMap(channel -> LogExecutor.logPunishment(punishment, channel));
     }
 
     public Mono<Void> onScamMute(MessageCreateEvent event, Punishment punishment) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "modmail"))
-            .flatMap(channel -> LogExecutor.logAutoMute(punishment, channel));
+                .flatMap(guild -> getLogChannel(guild, "modmail"))
+                .flatMap(channel -> LogExecutor.logAutoMute(punishment, channel));
     }
 
     public Mono<Void> onBlacklistMute(MessageCreateEvent event, Punishment punishment) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "modmail"))
-            .flatMap(channel -> LogExecutor.logAutoMute(punishment, channel));
+                .flatMap(guild -> getLogChannel(guild, "modmail"))
+                .flatMap(channel -> LogExecutor.logAutoMute(punishment, channel));
     }
 
     public Mono<Void> onUnban(Guild guild, String reason, Punishment punishment) {
@@ -166,186 +165,186 @@ public final class LoggingListener {
     @EventListener
     public Mono<Void> on(MessageDeleteEvent event) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "message"))
-            .flatMap(channel -> LogExecutor.logMessageDelete(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "message"))
+                .flatMap(channel -> LogExecutor.logMessageDelete(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(MessageUpdateEvent event) {
 
         return event.getMessage()
-            .map(Message::getAuthor)
-            .filter(author -> !(author.isPresent() && author.get().isBot()))    // ignore bot messages
-            .flatMap($ -> event.getGuild())
-            .flatMap(guild -> getLogChannel(guild, "message"))
-            .flatMap(channel -> LogExecutor.logMessageUpdate(event, channel));
+                .map(Message::getAuthor)
+                .filter(author -> !(author.isPresent() && author.get().isBot()))    // ignore bot messages
+                .flatMap($ -> event.getGuild())
+                .flatMap(guild -> getLogChannel(guild, "message"))
+                .flatMap(channel -> LogExecutor.logMessageUpdate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(MessageBulkDeleteEvent event) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "message"))
-            .flatMap(channel -> LogExecutor.logBulkDelete(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "message"))
+                .flatMap(channel -> LogExecutor.logBulkDelete(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(MemberJoinEvent event) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logMemberJoin(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logMemberJoin(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(MemberLeaveEvent event) {
         return event.getClient().getSelf()
-            .map(event.getUser()::equals)
-            .filter(isSelf -> !isSelf)
-            .flatMap($ -> event.getGuild())
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logMemberLeave(event, channel));
+                .map(event.getUser()::equals)
+                .filter(isSelf -> !isSelf)
+                .flatMap($ -> event.getGuild())
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logMemberLeave(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(MemberUpdateEvent event) { // Nickname or role updates
         return event.getGuild()
-            .flatMap(Guild::getSelfMember)
-            .filterWhen(self -> event.getMember().map(self::equals).map(isSelf -> !isSelf))
-            .flatMap($ -> event.getGuild())
-            .flatMap(guild -> getLogChannel(guild, "member"))
-            .flatMap(channel -> LogExecutor.logMemberUpdate(event, channel));
+                .flatMap(Guild::getSelfMember)
+                .filterWhen(self -> event.getMember().map(self::equals).map(isSelf -> !isSelf))
+                .flatMap($ -> event.getGuild())
+                .flatMap(guild -> getLogChannel(guild, "member"))
+                .flatMap(channel -> LogExecutor.logMemberUpdate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(PresenceUpdateEvent event) { // Username, discrim, avatar changes
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "member"))
-            .flatMap(channel -> LogExecutor.logPresenceUpdate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "member"))
+                .flatMap(channel -> LogExecutor.logPresenceUpdate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(InviteCreateEvent event) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logInviteCreate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logInviteCreate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(NewsChannelCreateEvent event) {
         return event.getChannel().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logNewsCreate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logNewsCreate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(NewsChannelDeleteEvent event) {
         return event.getChannel().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logNewsDelete(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logNewsDelete(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(NewsChannelUpdateEvent event) {
         return event.getCurrent().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logNewsUpdate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logNewsUpdate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(StoreChannelCreateEvent event) {
         return event.getChannel().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logStoreCreate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logStoreCreate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(StoreChannelDeleteEvent event) {
         return event.getChannel().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logStoreDelete(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logStoreDelete(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(StoreChannelUpdateEvent event) {
         return event.getCurrent().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logStoreUpdate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logStoreUpdate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(VoiceChannelCreateEvent event) {
         return event.getChannel().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logVoiceCreate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logVoiceCreate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(VoiceChannelDeleteEvent event) {
         return event.getChannel().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logVoiceDelete(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logVoiceDelete(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(VoiceChannelUpdateEvent event) {
         return event.getCurrent().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logVoiceUpdate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logVoiceUpdate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(TextChannelCreateEvent event) {
         return event.getChannel().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logTextCreate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logTextCreate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(TextChannelDeleteEvent event) {
         return event.getChannel().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logTextDelete(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logTextDelete(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(TextChannelUpdateEvent event) {
         return event.getCurrent().getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logTextUpdate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logTextUpdate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(BanEvent event) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logBan(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logBan(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(UnbanEvent event) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logUnban(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logUnban(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(RoleCreateEvent event) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logRoleCreate(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logRoleCreate(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(RoleDeleteEvent event) {
         return event.getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logRoleDelete(event, channel));
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logRoleDelete(event, channel));
     }
 
     @EventListener
     public Mono<Void> on(RoleUpdateEvent event) {
         return event.getCurrent()
-            .getGuild()
-            .flatMap(guild -> getLogChannel(guild, "guild"))
-            .flatMap(channel -> LogExecutor.logRoleUpdate(event, channel));
+                .getGuild()
+                .flatMap(guild -> getLogChannel(guild, "guild"))
+                .flatMap(channel -> LogExecutor.logRoleUpdate(event, channel));
     }
 }

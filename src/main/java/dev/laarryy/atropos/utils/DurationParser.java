@@ -10,7 +10,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public final class DurationParser {
-    private DurationParser() {}
+    private DurationParser() {
+    }
 
     private static final Map<ChronoUnit, String> UNITS_PATTERNS = ImmutableMap.of(
             ChronoUnit.YEARS, "y(?:ear)?s?",
@@ -20,7 +21,7 @@ public final class DurationParser {
             ChronoUnit.HOURS, "h(?:our|r)?s?",
             ChronoUnit.MINUTES, "m(?:inute|in)?s?",
             ChronoUnit.SECONDS, "s(?:econd|ec)?s?"
-            );
+    );
 
     private static final ChronoUnit[] UNITS = UNITS_PATTERNS.keySet().toArray(new ChronoUnit[0]);
 

@@ -10,11 +10,9 @@ import discord4j.core.object.entity.Guild;
 import discord4j.core.object.entity.Member;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
-import java.util.List;
 
 public final class AddServerToDB {
     private static final Logger logger = LogManager.getLogger(Atropos.class);
