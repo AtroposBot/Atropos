@@ -32,7 +32,7 @@ public class ClientManager {
                             .setInitialPresence(shardInfo -> ClientPresence.of(Status.DO_NOT_DISTURB,
                                     ClientActivity.watching("/modmail")))
                             .login()
-                            .block(Duration.ofSeconds(30))
+                            .block()
             );
         }
         return instance;

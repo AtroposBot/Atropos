@@ -26,7 +26,7 @@ public class CommandManager {
     private final Logger logger = LogManager.getLogger(Atropos.class);
     private final PermissionChecker permissionChecker = new PermissionChecker();
 
-    public Mono<Void> registerCommands(GatewayDiscordClient client) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+    public Mono<Void> registerCommands(GatewayDiscordClient client) {
         // Register slash commands with Discord
         Reflections reflections = new Reflections("dev.laarryy.atropos.commands", new SubTypesScanner());
         Flux<Class<? extends Command>> commandsToRegister = Flux.fromIterable(reflections.getSubTypesOf(Command.class));
@@ -73,6 +73,7 @@ public class CommandManager {
             // Listen for command event and execute from map
 
             Mono<Void> commandInteraction = client.getEventDispatcher().on(ChatInputInteractionEvent.class)
+                    .doFirst(() -> logger.info("Command Initially Received"))
                     .filterWhen(permissionChecker::checkBotPermission) // make sure bot has perms
                     .flatMap(event -> Mono.just(event.getInteraction().getData().data().get().name().get())
                             .flatMap(content -> Flux.fromIterable(COMMANDS)

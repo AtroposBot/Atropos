@@ -78,7 +78,7 @@ public class ScheduledTaskDoer {
 
     private boolean checkIfOverDue(Punishment punishment) {
         logger.info("overdue check starting");
-        Long endDate = punishment.getEndDate();
+        Long endDate = DatabaseLoader.use(punishment::getEndDate);
         if (endDate == null) return false;
         Instant endInstant = Instant.ofEpochMilli(endDate);
         Instant nowInstant = Instant.now();
@@ -176,6 +176,7 @@ public class ScheduledTaskDoer {
                         punishment.save();
                         punishment.refresh();
                     }
+
                     if (member != null && mutedRoleSnowflake != null) {
                         return member.removeRole(Snowflake.of(mutedRoleSnowflake))
                                 .then(loggingListener.onUnmute(guild, "Automatically unmuted on timer.", punishment));

@@ -304,7 +304,6 @@ public class SettingsCommand implements Command {
         if (event.getOption("blacklist").isPresent()) {
 
             return CommandChecks.commandChecks(event, "blacklistsettings")
-
                     .flatMap(aBoolean -> blacklistSettings.execute(event));
         }
 

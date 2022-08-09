@@ -8,6 +8,7 @@ import dev.laarryy.atropos.exceptions.NotFoundException;
 import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.permissions.Permission;
 import dev.laarryy.atropos.models.guilds.permissions.ServerRolePermission;
+import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AuditLogger;
 import dev.laarryy.atropos.utils.CommandChecks;
 import dev.laarryy.atropos.utils.Notifier;
@@ -233,7 +234,7 @@ public class PermissionCommand implements Command {
                 Long userIdSnowflake = member.getId().asLong();
 
 
-                DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guildIdSnowflake);
+                DiscordServer discordServer = DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guildIdSnowflake));
                 int serverId;
 
                 if (discordServer != null) {
@@ -252,7 +253,7 @@ public class PermissionCommand implements Command {
                         String roleName = role.getName();
                         String roleInfo = "`" + roleName + "`:`" + roleId + "`:<@&" + roleId + ">";
 
-                        LazyList<ServerRolePermission> permissions = ServerRolePermission.find("role_id_snowflake = ? and server_id = ?", roleId, serverId);
+                        LazyList<ServerRolePermission> permissions = DatabaseLoader.use(() -> ServerRolePermission.find("role_id_snowflake = ? and server_id = ?", roleId, serverId));
 
                         String rolePermissionsInfo;
                         if (permissions == null || permissions.isEmpty()) {
@@ -300,15 +301,15 @@ public class PermissionCommand implements Command {
                     return option.getOption("role").get().getValue().get().asRole().flatMap(role -> {
                         int permissionToAddId = getIdOfPermissionToHandle(option);
 
-                        if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToAddId, role.getId().asLong()) != null) {
+                        if (DatabaseLoader.use(() -> ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToAddId, role.getId().asLong())) != null) {
                             return AuditLogger.addCommandToDB(event, false).then(Mono.error(new AlreadyAssignedException("Permission Already Assigned")));
                         }
 
 
-                        ServerRolePermission serverRolePermission = ServerRolePermission.createIt("server_id", serverId, "permission_id", permissionToAddId, "role_id_snowflake", role.getId().asLong());
+                        ServerRolePermission serverRolePermission = DatabaseLoader.use(() -> ServerRolePermission.createIt("server_id", serverId, "permission_id", permissionToAddId, "role_id_snowflake", role.getId().asLong()));
                         serverRolePermission.save();
                         serverRolePermission.refresh();
-                        Permission perm = Permission.findFirst("id = ?", serverRolePermission.getPermissionId());
+                        Permission perm = DatabaseLoader.use(() -> Permission.findFirst("id = ?", serverRolePermission.getPermissionId()));
                         String permName = "`/" + perm.getName() + "`";
 
                         long roleId = role.getId().asLong();
@@ -332,12 +333,14 @@ public class PermissionCommand implements Command {
                     return option.getOption("role").get().getValue().get().asRole().flatMap(role -> {
                         int permissionToRemoveId = getIdOfPermissionToHandle(option);
 
-                        if (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong()) == null) {
+                        ServerRolePermission serverRolePermission = DatabaseLoader.use(() -> ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong()));
+
+                        if (serverRolePermission == null) {
                             return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NotFoundException("404 Not Found")));
                         }
 
-                        ServerRolePermission serverRolePermission = ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", serverId, permissionToRemoveId, role.getId().asLong());
-                        Permission perm = Permission.findFirst("id = ?", serverRolePermission.getPermissionId());
+
+                        Permission perm = DatabaseLoader.use(() -> Permission.findFirst("id = ?", serverRolePermission.getPermissionId()));
 
                         long roleId = role.getId().asLong();
                         String roleName = role.getName();
