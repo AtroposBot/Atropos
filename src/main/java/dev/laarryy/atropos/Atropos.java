@@ -91,7 +91,7 @@ public class Atropos {
         // Register all guilds and users in them to database
 
         Mono<Void> addServersToDB = Flux.from(client.getGuilds())
-                .filter(guild -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) == null)
+                .filter(guild -> DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) == null))
                 .flatMap(guild -> {
                     AddServerToDB addServerToDB1 = new AddServerToDB();
                     return addServerToDB1.addServerToDatabase(guild);
@@ -113,7 +113,6 @@ public class Atropos {
                 })
                 .subscribe();
 
-        client.onDisconnect().block();
-        DatabaseLoader.shutdown();
+        client.onDisconnect().doFinally(s -> DatabaseLoader.shutdown()).block();
     }
 }
