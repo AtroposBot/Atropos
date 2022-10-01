@@ -35,7 +35,6 @@ public class DatabaseLoader {
 
     public static void use(final Runnable action) {
         try (final var db = Base.open(ds)) {
-            db.open();
             action.run();
         } catch (Exception e) {
             logger.error("SQL Error: ", e);
@@ -44,7 +43,6 @@ public class DatabaseLoader {
 
     public static <T> T use(final Supplier<? extends T> action) {
         try (final var db = Base.open(ds)) {
-            db.open();
             return action.get();
         } catch (Exception e) {
             logger.error("SQL Error: ", e);
