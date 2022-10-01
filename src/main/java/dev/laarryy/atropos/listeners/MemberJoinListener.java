@@ -54,8 +54,8 @@ public class MemberJoinListener {
         DiscordServer discordServer = DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()));
 
         if (user != null) {
-            LazyList<Punishment> activePunishments = Punishment.find("user_id_punished = ? and end_date_passed = ? and server_id = ?",
-                    user.getUserId(), false, discordServer.getServerId());
+            LazyList<Punishment> activePunishments = DatabaseLoader.use(() -> Punishment.find("user_id_punished = ? and end_date_passed = ? and server_id = ?",
+                    user.getUserId(), false, discordServer.getServerId()));
             if (!activePunishments.isEmpty()) {
                 for (Punishment activePunishment : activePunishments) {
                     if (activePunishment != null) {

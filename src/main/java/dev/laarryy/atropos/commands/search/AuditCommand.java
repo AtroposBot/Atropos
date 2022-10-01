@@ -158,14 +158,13 @@ public class AuditCommand implements Command {
 
     private Mono<Void> recentAudits(ChatInputInteractionEvent event) {
         return event.getInteraction().getGuild().flatMap(guild -> {
-            LazyList<CommandUse> commandUseLazyList;
-            try (final var usage = DatabaseLoader.use()) {
+            LazyList<CommandUse> commandUseLazyList = DatabaseLoader.use(() -> {
                 DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
                 Instant tenDaysAgo = Instant.now().minus(10, ChronoUnit.DAYS);
                 long tenDaysAgoStamp = tenDaysAgo.toEpochMilli();
 
-                commandUseLazyList = CommandUse.where("server_id = ? and date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
-            }
+                return CommandUse.where("server_id = ? and date > ?", discordServer.getServerId(), tenDaysAgoStamp).limit(25).orderBy("id desc");
+            });
 
             logger.info("Got the list");
 
