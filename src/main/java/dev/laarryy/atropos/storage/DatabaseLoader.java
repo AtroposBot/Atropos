@@ -7,6 +7,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.javalite.activejdbc.Base;
 import org.javalite.activejdbc.DB;
+import org.javalite.activejdbc.LazyList;
+import reactor.core.publisher.Mono;
 
 import java.util.function.Supplier;
 
@@ -43,7 +45,14 @@ public class DatabaseLoader {
 
     public static <T> T use(final Supplier<? extends T> action) {
         try (final var db = Base.open(ds)) {
-            return action.get();
+
+            T t = action.get();
+
+            if (t instanceof LazyList<?> l) {
+                l.isEmpty();
+            }
+
+            return t;
         } catch (Exception e) {
             logger.error("SQL Error: ", e);
             return null;
