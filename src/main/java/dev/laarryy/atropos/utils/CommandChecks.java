@@ -4,16 +4,19 @@ import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 
 public class CommandChecks {
 
     static final PermissionChecker permissionChecker = new PermissionChecker();
+    private static final Logger logger = LogManager.getLogger(CommandChecks.class);
 
     /**
      * @param event       {@link ChatInputInteractionEvent} to check command validity and permissions for
      * @param requestName Command name to check validity and permission of
-     * @return a true {@link Mono}<{@link Boolean}> if command is permitted in event's guild, or an error signal indicating no permission.
+     * @return a {@link Mono}<{@link Void}> if command is permitted in event's guild, or an error signal indicating no permission.
      */
 
     public static Mono<Void> commandChecks(ChatInputInteractionEvent event, String requestName) {
@@ -26,8 +29,8 @@ public class CommandChecks {
                     return permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName)
                             .flatMap(aBoolean -> {
                                 if (!aBoolean) {
+                                    logger.info("NO PERMS!");
                                     return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoPermissionsException("No Permission")));
-
                                 } else {
                                     return Mono.empty();
                                 }

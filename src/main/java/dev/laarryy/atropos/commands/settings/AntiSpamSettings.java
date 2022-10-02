@@ -9,6 +9,8 @@ import dev.laarryy.atropos.utils.Notifier;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.spec.EmbedCreateSpec;
 import discord4j.rest.util.Color;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -16,19 +18,24 @@ import java.time.Instant;
 public class AntiSpamSettings {
 
     LoadingCache<Long, DiscordServerProperties> propertiesCache = PropertiesCacheManager.getManager().getPropertiesCache();
+    private final Logger logger = LogManager.getLogger(this);
+
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        return Mono.defer(() -> {
-            if (event.getOption("antispam").get().getOption("info").isPresent()) {
-                return antiSpamInfo(event);
-            }
 
-            if (event.getOption("antispam").get().getOption("set").isPresent()) {
-                return setAntiSpam(event);
-            }
+        logger.info("1");
+        if (event.getOption("antispam").get().getOption("info").isPresent()) {
+            logger.info("2");
+            return antiSpamInfo(event);
+        }
 
-            return Mono.error(new MalformedInputException("Malformed Input"));
-        });
+        if (event.getOption("antispam").get().getOption("set").isPresent()) {
+            logger.info("2.1");
+            return setAntiSpam(event);
+        }
+
+        return Mono.error(new MalformedInputException("Malformed Input"));
+
     }
 
     private Mono<Void> setAntiSpam(ChatInputInteractionEvent event) {
@@ -41,91 +48,106 @@ public class AntiSpamSettings {
                     && event.getOption("antispam").get().getOption("set").get().getOption("dehoist").isEmpty()
 
             ) {
+                logger.info("2.2");
+
                 return Mono.error(new MalformedInputException("Malformed Input"));
             }
 
-            return event.getInteraction().getGuild().flatMap(guild -> DatabaseLoader.use(() -> {
-                DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
-                if (event.getOption("antispam").get().getOption("set").get().getOption("messages").isPresent()
-                        && event.getOption("antispam").get().getOption("set").get().getOption("messages").get().getValue().isPresent()) {
-                    long messagesToWarn = event.getOption("antispam").get().getOption("set").get().getOption("messages").get().getValue().get().asLong();
-                    if (messagesToWarn < 0) {
-                        return Mono.error(new MalformedInputException("Malformed Input"));
+            return event.getInteraction().getGuild().flatMap(guild -> {
+                try (final var usage = DatabaseLoader.use()) {
+
+                    logger.info("2.3");
+
+                    DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
+                    if (event.getOption("antispam").get().getOption("set").get().getOption("messages").isPresent()
+                            && event.getOption("antispam").get().getOption("set").get().getOption("messages").get().getValue().isPresent()) {
+                        long messagesToWarn = event.getOption("antispam").get().getOption("set").get().getOption("messages").get().getValue().get().asLong();
+                        if (messagesToWarn < 0) {
+                            return Mono.error(new MalformedInputException("Malformed Input"));
+                        }
+                        discordServerProperties.setMessagesToWarn((int) messagesToWarn);
                     }
-                    discordServerProperties.setMessagesToWarn((int) messagesToWarn);
-                }
 
-                if (event.getOption("antispam").get().getOption("set").get().getOption("pings").isPresent()
-                        && event.getOption("antispam").get().getOption("set").get().getOption("pings").get().getValue().isPresent()) {
-                    long pingsToWarn = event.getOption("antispam").get().getOption("set").get().getOption("pings").get().getValue().get().asLong();
-                    if (pingsToWarn < 0) {
-                        return Mono.error(new MalformedInputException("Malformed Input"));
+                    if (event.getOption("antispam").get().getOption("set").get().getOption("pings").isPresent()
+                            && event.getOption("antispam").get().getOption("set").get().getOption("pings").get().getValue().isPresent()) {
+                        long pingsToWarn = event.getOption("antispam").get().getOption("set").get().getOption("pings").get().getValue().get().asLong();
+                        if (pingsToWarn < 0) {
+                            return Mono.error(new MalformedInputException("Malformed Input"));
+                        }
+                        discordServerProperties.setPingsToWarn((int) pingsToWarn);
                     }
-                    discordServerProperties.setPingsToWarn((int) pingsToWarn);
-                }
 
-                if (event.getOption("antispam").get().getOption("set").get().getOption("warns").isPresent()
-                        && event.getOption("antispam").get().getOption("set").get().getOption("warns").get().getValue().isPresent()) {
-                    long warnsToMute = event.getOption("antispam").get().getOption("set").get().getOption("warns").get().getValue().get().asLong();
-                    if (warnsToMute < 0) {
-                        return Mono.error(new MalformedInputException("Malformed Input"));
+                    if (event.getOption("antispam").get().getOption("set").get().getOption("warns").isPresent()
+                            && event.getOption("antispam").get().getOption("set").get().getOption("warns").get().getValue().isPresent()) {
+                        long warnsToMute = event.getOption("antispam").get().getOption("set").get().getOption("warns").get().getValue().get().asLong();
+                        if (warnsToMute < 0) {
+                            return Mono.error(new MalformedInputException("Malformed Input"));
+                        }
+                        discordServerProperties.setWarnsToMute((int) warnsToMute);
                     }
-                    discordServerProperties.setWarnsToMute((int) warnsToMute);
-                }
 
-                if (event.getOption("antispam").get().getOption("set").get().getOption("antiraid").isPresent()
-                        && event.getOption("antispam").get().getOption("set").get().getOption("antiraid").get().getValue().isPresent()) {
-                    long joinsToAntiraid = event.getOption("antispam").get().getOption("set").get().getOption("antiraid").get().getValue().get().asLong();
-                    if (joinsToAntiraid < 0) {
-                        return Mono.error(new MalformedInputException("Malformed Input"));
+                    if (event.getOption("antispam").get().getOption("set").get().getOption("antiraid").isPresent()
+                            && event.getOption("antispam").get().getOption("set").get().getOption("antiraid").get().getValue().isPresent()) {
+                        long joinsToAntiraid = event.getOption("antispam").get().getOption("set").get().getOption("antiraid").get().getValue().get().asLong();
+                        if (joinsToAntiraid < 0) {
+                            return Mono.error(new MalformedInputException("Malformed Input"));
+                        }
+                        discordServerProperties.setJoinsToAntiraid((int) joinsToAntiraid);
                     }
-                    discordServerProperties.setJoinsToAntiraid((int) joinsToAntiraid);
+
+                    if (event.getOption("antispam").get().getOption("set").get().getOption("antiscam").isPresent()
+                            && event.getOption("antispam").get().getOption("set").get().getOption("antiscam").get().getValue().isPresent()) {
+                        boolean antiScam = event.getOption("antispam").get().getOption("set").get().getOption("antiscam").get().getValue().get().asBoolean();
+                        discordServerProperties.setAntiScam(antiScam);
+                    }
+
+                    if (event.getOption("antispam").get().getOption("set").get().getOption("dehoist").isPresent()
+                            && event.getOption("antispam").get().getOption("set").get().getOption("dehoist").get().getValue().isPresent()) {
+                        boolean dehoist = event.getOption("antispam").get().getOption("set").get().getOption("dehoist").get().getValue().get().asBoolean();
+                        discordServerProperties.setDehoist(dehoist);
+                    }
+
+                    logger.info("2.4");
+
+                    discordServerProperties.save();
+                    discordServerProperties.refresh();
+
+                    propertiesCache.invalidate(guild.getId().asLong());
+
+                    int messagesToWarn = discordServerProperties.getMessagesToWarn();
+                    int pingsToWarn = discordServerProperties.getPingsToWarn();
+                    int warnsToMute = discordServerProperties.getWarnsToMute();
+                    int joinsToAntiraid = discordServerProperties.getJoinsToAntiraid();
+                    boolean antiScam = discordServerProperties.getAntiScam();
+                    boolean dehoist = discordServerProperties.getDehoist();
+
+                    logger.info("2.5");
+
+                    EmbedCreateSpec embed = EmbedCreateSpec.builder()
+                            .title("Success")
+                            .color(Color.SEA_GREEN)
+                            .description("Set anti-spam values successfully. Current values are:\n" +
+                                    "Messages to Warn: `" + messagesToWarn + "`\n" +
+                                    "Pings to Warn: `" + pingsToWarn + "`\n" +
+                                    "Warns to Mute: `" + warnsToMute + "`\n" +
+                                    "Joins to Antiraid: `" + joinsToAntiraid + "`\n" +
+                                    "Anti-Scam Enabled: `" + String.valueOf(antiScam).toLowerCase() + "`\n" +
+                                    "De-Hoist Enabled: `" + String.valueOf(dehoist).toLowerCase() + "`")
+                            .footer("For more information, run /settings antispam info", "")
+                            .timestamp(Instant.now())
+                            .build();
+
+                    logger.info("2.6 - Sending");
+
+                    return Notifier.sendResultsEmbed(event, embed);
                 }
-
-                if (event.getOption("antispam").get().getOption("set").get().getOption("antiscam").isPresent()
-                        && event.getOption("antispam").get().getOption("set").get().getOption("antiscam").get().getValue().isPresent()) {
-                    boolean antiScam = event.getOption("antispam").get().getOption("set").get().getOption("antiscam").get().getValue().get().asBoolean();
-                    discordServerProperties.setAntiScam(antiScam);
-                }
-
-                if (event.getOption("antispam").get().getOption("set").get().getOption("dehoist").isPresent()
-                        && event.getOption("antispam").get().getOption("set").get().getOption("dehoist").get().getValue().isPresent()) {
-                    boolean dehoist = event.getOption("antispam").get().getOption("set").get().getOption("dehoist").get().getValue().get().asBoolean();
-                    discordServerProperties.setDehoist(dehoist);
-                }
-
-                discordServerProperties.save();
-                discordServerProperties.refresh();
-
-                propertiesCache.invalidate(guild.getId().asLong());
-
-                int messagesToWarn = discordServerProperties.getMessagesToWarn();
-                int pingsToWarn = discordServerProperties.getPingsToWarn();
-                int warnsToMute = discordServerProperties.getWarnsToMute();
-                int joinsToAntiraid = discordServerProperties.getJoinsToAntiraid();
-                boolean antiScam = discordServerProperties.getAntiScam();
-                boolean dehoist = discordServerProperties.getDehoist();
-
-                EmbedCreateSpec embed = EmbedCreateSpec.builder()
-                        .title("Success")
-                        .color(Color.SEA_GREEN)
-                        .description("Set anti-spam values successfully. Current values are:\n" +
-                                "Messages to Warn: `" + messagesToWarn + "`\n" +
-                                "Pings to Warn: `" + pingsToWarn + "`\n" +
-                                "Warns to Mute: `" + warnsToMute + "`\n" +
-                                "Joins to Antiraid: `" + joinsToAntiraid + "`\n" +
-                                "Anti-Scam Enabled: `" + String.valueOf(antiScam).toLowerCase() + "`\n" +
-                                "De-Hoist Enabled: `" + String.valueOf(dehoist).toLowerCase() + "`")
-                        .footer("For more information, run /settings antispam info", "")
-                        .timestamp(Instant.now())
-                        .build();
-
-                return Notifier.sendResultsEmbed(event, embed);
-            }));
+            });
         });
     }
 
     private Mono<Void> antiSpamInfo(ChatInputInteractionEvent event) {
+
+        logger.info("1.2");
 
         return event.getInteraction().getGuild().flatMap(guild -> {
             int messagesToWarn;
@@ -134,6 +156,8 @@ public class AntiSpamSettings {
             int joinsToAntiRaid;
             String antiScam;
             String dehoist;
+
+            logger.info("1.3");
             try (final var usage = DatabaseLoader.use()) {
                 DiscordServerProperties discordServerProperties = DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong());
                 messagesToWarn = discordServerProperties.getMessagesToWarn();
@@ -142,7 +166,11 @@ public class AntiSpamSettings {
                 joinsToAntiRaid = discordServerProperties.getJoinsToAntiraid();
                 antiScam = String.valueOf(discordServerProperties.getAntiScam()).toLowerCase();
                 dehoist = String.valueOf(discordServerProperties.getDehoist()).toLowerCase();
+            } catch (Exception e) {
+                return Mono.error(e);
             }
+
+            logger.info("1.4");
 
             EmbedCreateSpec embed = EmbedCreateSpec.builder()
                     .title("Anti-Spam Settings")
@@ -156,6 +184,8 @@ public class AntiSpamSettings {
                     .addField("De-Hoist Enabled: " + dehoist, "If enabled, users that join, update their nicknames, or change usernames will have any hoisting characters removed.", false)
                     .timestamp(Instant.now())
                     .build();
+
+            logger.info("1.5 - Sending");
 
             return Notifier.sendResultsEmbed(event, embed);
         });

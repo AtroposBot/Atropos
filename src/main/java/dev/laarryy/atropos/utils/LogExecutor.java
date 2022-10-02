@@ -575,11 +575,10 @@ public final class LogExecutor {
                         .addField("Channel", channelDescriptor, false)
                         .timestamp(Instant.now());
 
-                return reasonMono.switchIfEmpty(logChannel.createMessage(embed.build()).thenReturn(" "))
-                        .flatMap(reason -> {
+                return reasonMono.flatMap(reason -> {
                             embed.addField("Reason", reason, false);
                             return logChannel.createMessage(embed.build());
-                        });
+                        }).switchIfEmpty(logChannel.createMessage(embed.build()));
             }).flatMap(mono -> mono);
         }).then();
     }
