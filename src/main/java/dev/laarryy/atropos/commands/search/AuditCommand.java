@@ -275,7 +275,7 @@ public class AuditCommand implements Command {
                         Flux.fromIterable(commandUseLazyList)
                                 .filter(Objects::nonNull)
                                 .flatMap(c -> {
-                                    DiscordUser discordUser = DiscordUser.findFirst("id = ?", c.getUserId());
+                                    DiscordUser discordUser = DatabaseLoader.use(() -> DiscordUser.findFirst("id = ?", c.getUserId()));
                                     String userId = discordUser.getUserIdSnowflake().toString();
                                     return guild.getClient().getUserById(Snowflake.of(userId)).map(member -> {
                                         String username = member.getTag();

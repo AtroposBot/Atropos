@@ -55,7 +55,7 @@ public final class AuditLogger {
                         .flatMap(AuditLogger::generateOptionString)
                         .reduce(event.getCommandName(), String::concat)
                         .doOnNext(commandContent -> {
-                            CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", commandContent, "date", Instant.now().toEpochMilli(), "success", success);
+                            CommandUse commandUse = DatabaseLoader.use(() -> CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", commandContent, "date", Instant.now().toEpochMilli(), "success", success));
                             commandUse.save();
                         })
                         .then();
