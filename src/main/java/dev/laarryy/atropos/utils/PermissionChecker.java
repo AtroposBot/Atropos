@@ -48,13 +48,12 @@ public final class PermissionChecker {
                                 // This Mono.from() is necessary and not superficial
                                 return Mono.from(guild.getRoles()
                                         .filter(role ->
-                                                (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null)
-                                                        || (ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null)
+                                                (DatabaseLoader.use(() -> ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, permissionId, role.getId().asLong()) != null))
+                                                        || (DatabaseLoader.use(() -> ServerRolePermission.findFirst("server_id = ? and permission_id = ? and role_id_snowflake = ?", guildId, 69, role.getId().asLong()) != null))
                                                         || role.getPermissions().contains(Permission.ADMINISTRATOR))
                                         .flatMap(role -> member.getRoles()
                                                 .mergeWith(guild.getEveryoneRole())
                                                 .any(memberRole -> memberRole.equals(role))
-
                                                 .flatMap(bool -> {
                                                     if (!bool) {
                                                         return Mono.just(false);

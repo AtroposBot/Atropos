@@ -297,32 +297,34 @@ public class SettingsCommand implements Command {
 
         if (event.getOption("antispam").isPresent()) {
 
+            logger.info("ANTISPAM TRIGGERED");
+
             return CommandChecks.commandChecks(event, "antispamsettings")
-                    .flatMap(aBoolean -> antiSpamSettings.execute(event));
+                    .then(antiSpamSettings.execute(event));
         }
 
         if (event.getOption("blacklist").isPresent()) {
 
             return CommandChecks.commandChecks(event, "blacklistsettings")
-                    .flatMap(aBoolean -> blacklistSettings.execute(event));
+                    .then(blacklistSettings.execute(event));
         }
 
         if (event.getOption("log").isPresent()) {
 
             return CommandChecks.commandChecks(event, "logsettings")
-                    .flatMap(aBoolean -> logSettings.execute(event));
+                    .then(logSettings.execute(event));
         }
 
         if (event.getOption("modmail").isPresent()) {
 
             return CommandChecks.commandChecks(event, "modmailsettings")
-                    .flatMap(aBoolean -> modMailSettings.execute(event));
+                    .then(modMailSettings.execute(event));
         }
 
         if (event.getOption("mutedrole").isPresent()) {
 
             return CommandChecks.commandChecks(event, "mutedrolesettings")
-                    .flatMap(aBoolean -> mutedRoleSettings.execute(event));
+                    .then(mutedRoleSettings.execute(event));
         }
 
         return Mono.error(new MalformedInputException("Malformed Input"));
