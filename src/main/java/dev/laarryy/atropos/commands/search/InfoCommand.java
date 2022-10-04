@@ -109,9 +109,10 @@ public class InfoCommand implements Command {
 
     private Mono<Void> sendBotInfo(ChatInputInteractionEvent event) {
         return event.getInteraction().getGuild().flatMap(guild ->
-                guild.getSelfMember().flatMap(selfMember -> DatabaseLoader.use(() -> {
-                    DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
-                    DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
+                guild.getSelfMember().flatMap(selfMember -> {
+
+                    DiscordServer discordServer = DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()));
+                    DiscordUser discordUser = DatabaseLoader.use(() -> DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong()));
 
                     if (discordUser == null) {
                         return Mono.error(new NoUserException("No User"));
@@ -121,15 +122,17 @@ public class InfoCommand implements Command {
                         return Mono.error(new NullServerException("Null Server"));
                     }
 
-                    ServerUser serverUser = ServerUser.findFirst("user_id = ? and server_id = ?", discordUser.getUserId(), discordServer.getServerId());
+                    ServerUser serverUser = DatabaseLoader.use(() -> ServerUser.findFirst("user_id = ? and server_id = ?", discordUser.getUserId(), discordServer.getServerId()));
 
                     if (serverUser == null) {
-                        serverUser = ServerUser.create("user_id", discordUser.getUserId(), "server_id", discordServer.getServerId(), "date", Instant.now().toEpochMilli());
-                        serverUser.save();
-                        serverUser.refresh();
+                        DatabaseLoader.use(() -> {
+                            ServerUser serverUserCreate = ServerUser.create("user_id", discordUser.getUserId(), "server_id", discordServer.getServerId(), "date", Instant.now().toEpochMilli());
+                            serverUserCreate.save();
+                            serverUserCreate.refresh();
+                        });
                     }
 
-                    List<Punishment> punishments = Punishment.find("server_id = ?", discordServer.getServerId());
+                    List<Punishment> punishments = DatabaseLoader.use(() -> Punishment.find("server_id = ?", discordServer.getServerId()));
 
                     int punishmentsSize;
                     if (punishments == null || punishments.isEmpty()) {
@@ -138,10 +141,11 @@ public class InfoCommand implements Command {
                         punishmentsSize = punishments.size();
                     }
 
+                    long userDate = (serverUser != null && serverUser.getDate() != null) ? serverUser.getDate() : 0;
+                    String joinedWhen = userDate != 0 ? TimestampMaker.getTimestampFromEpochSecond(Instant.ofEpochMilli(userDate).getEpochSecond(), TimestampMaker.TimestampType.LONG_DATETIME) : "Unknown";
+
                     String botInfo = EmojiManager.getDeveloperBadge() + " **My Information**\n" +
-                            "First Joined: " + TimestampMaker.getTimestampFromEpochSecond(
-                            Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(),
-                            TimestampMaker.TimestampType.LONG_DATETIME) + "\n" +
+                            "First Joined: " + joinedWhen + "\n" +
                             "Infractions Handled Here: `" + punishmentsSize + "`\n\n" +
                             "**[Usage Guide](https://atropos.laarryy.dev)**\n" +
                             "**[Discord Server](https://discord.gg/zaUMT7rBsR)**";
@@ -156,7 +160,7 @@ public class InfoCommand implements Command {
                             .build();
 
                     return Notifier.sendResultsEmbed(event, embed);
-                })));
+                }));
     }
 
     private Mono<Void> sendUserInfo(ChatInputInteractionEvent event) {
@@ -173,7 +177,8 @@ public class InfoCommand implements Command {
                 Snowflake userIdSnowflake = user.getId();
 
                 return event.getInteraction().getGuild().flatMap(guild ->
-                        guild.getMemberById(userIdSnowflake).flatMap(member -> DatabaseLoader.use(() -> {
+                        guild.getMemberById(userIdSnowflake).flatMap(member -> {
+
                             if (member == null) {
                                 StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
                                         .append("Profile: ").append(user.getMention()).append("\n")
@@ -186,50 +191,60 @@ public class InfoCommand implements Command {
                                 return sendUserInfoEmbed(event, user, field1Content.toString());
                             }
 
-                            DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake.asLong());
-                            DiscordServer discordServer = DiscordServer.findFirst("server_id = ?", guild.getId().asLong());
+                            DiscordUser discordUser = DatabaseLoader.use(() -> DiscordUser.findFirst("user_id_snowflake = ?", userIdSnowflake.asLong()));
+                            DiscordServer discordServer = DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()));
 
                             //todo: test this>
                             if (discordUser == null) {
                                 return addServerToDB.addUserToDatabase(member, guild).then(Mono.error(new TryAgainException("Try Again")));
                             }
 
-                            discordUser.refresh();
+                            if (discordServer == null) {
+                                return addServerToDB.addServerToDatabase(guild).then(Mono.error(new TryAgainException("Try Again")));
+                            }
 
-                            ServerUser serverUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId());
+                            DatabaseLoader.use(discordUser::refresh);
 
-                            return guild.getSelfMember().flatMap(selfMember -> DatabaseLoader.use(() -> {
-                                DiscordUser discordSelfUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
-                                ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
+                            ServerUser serverUser = DatabaseLoader.use(() -> ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId()));
 
-                                if (serverSelfUser == null) {
-                                    return addServerToDB.addUserToDatabase(selfMember, guild).then(Mono.error(new TryAgainException("Try Again")));
+                            if (serverUser == null) {
+                                return addServerToDB.addUserToDatabase(member, guild).then(Mono.error(new TryAgainException("Try Again")));
+                            }
+
+                            return guild.getSelfMember().flatMap(selfMember -> {
+                                try (final var usage = DatabaseLoader.use()) {
+                                    DiscordUser discordSelfUser = DiscordUser.findFirst("user_id_snowflake = ?", selfMember.getId().asLong());
+                                    ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
+
+                                    if (serverSelfUser == null) {
+                                        return addServerToDB.addUserToDatabase(selfMember, guild).then(Mono.error(new TryAgainException("Try Again")));
+                                    }
+
+                                    serverSelfUser.refresh();
+                                    Instant discordJoin = Instant.ofEpochMilli(serverUser.getDate());
+                                    Instant discordBotJoin = Instant.ofEpochMilli(serverSelfUser.getDate());
+
+                                    String joinTimestamp;
+
+                                    if (Duration.between(discordBotJoin, discordJoin).toMinutes() < 30) {
+                                        joinTimestamp = "Unknown";
+                                    } else {
+                                        joinTimestamp = TimestampMaker.getTimestampFromEpochSecond(Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(), TimestampMaker.TimestampType.RELATIVE);
+                                    }
+
+                                    StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
+                                            .append("Profile: ").append(user.getMention()).append("\n")
+                                            .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
+                                    LogExecutor.getBadges(member).ifPresent(badges -> field1Content.append("Badges: ").append(badges).append("\n"));
+                                    field1Content.append("Created: ")
+                                            .append(TimestampMaker.getTimestampFromEpochSecond(
+                                                    userIdSnowflake.getTimestamp().getEpochSecond(),
+                                                    TimestampMaker.TimestampType.RELATIVE)).append("\n")
+                                            .append("First Joined: ").append(joinTimestamp);
+                                    return sendUserInfoEmbed(event, user, field1Content.toString());
                                 }
-
-                                serverSelfUser.refresh();
-                                Instant discordJoin = Instant.ofEpochMilli(serverUser.getDate());
-                                Instant discordBotJoin = Instant.ofEpochMilli(serverSelfUser.getDate());
-
-                                String joinTimestamp;
-
-                                if (Duration.between(discordBotJoin, discordJoin).toMinutes() < 30) {
-                                    joinTimestamp = "Unknown";
-                                } else {
-                                    joinTimestamp = TimestampMaker.getTimestampFromEpochSecond(Instant.ofEpochMilli(serverUser.getDate()).getEpochSecond(), TimestampMaker.TimestampType.RELATIVE);
-                                }
-
-                                StringBuilder field1Content = new StringBuilder(EmojiManager.getUserIdentification()).append(" **User Information**\n")
-                                        .append("Profile: ").append(user.getMention()).append("\n")
-                                        .append("ID: `").append(userIdSnowflake.asLong()).append("`\n");
-                                LogExecutor.getBadges(member).ifPresent(badges -> field1Content.append("Badges: ").append(badges).append("\n"));
-                                field1Content.append("Created: ")
-                                        .append(TimestampMaker.getTimestampFromEpochSecond(
-                                                userIdSnowflake.getTimestamp().getEpochSecond(),
-                                                TimestampMaker.TimestampType.RELATIVE)).append("\n")
-                                        .append("First Joined: ").append(joinTimestamp);
-                                return sendUserInfoEmbed(event, user, field1Content.toString());
-                            }));
-                        })));
+                            });
+                        }));
             });
         });
     }
@@ -258,12 +273,17 @@ public class InfoCommand implements Command {
         return event.getInteraction().getGuild().flatMap(guild -> {
             Long guildId = guild.getId().asLong();
 
-            final int larryWhatIsThis = DatabaseLoader.use(() -> {
+            final String membersOnFirstJoin;
+            String membersOnFirstJoinTemp;
+            try (final var usage = DatabaseLoader.use()) {
                 DiscordServer server = DiscordServer.findOrCreateIt("server_id", guildId);
                 int serverId = server.getServerId();
                 DiscordServerProperties properties = DiscordServerProperties.findOrCreateIt("server_id", serverId, "server_id_snowflake", guildId);
-                return properties.getMembersOnFirstJoin();
-            });
+                membersOnFirstJoinTemp = String.valueOf(properties.getMembersOnFirstJoin());
+            } catch (Exception e) {
+                membersOnFirstJoinTemp = "Unknown";
+            }
+            membersOnFirstJoin = membersOnFirstJoinTemp;
 
             Optional<String> maybeUrl = guild.getIconUrl(Image.Format.GIF)
                     .or(() -> guild.getIconUrl(Image.Format.PNG))
@@ -306,7 +326,7 @@ public class InfoCommand implements Command {
                 );
 
                 descriptionBuilder.append(EmojiManager.getUserIdentification()).append(" **Members**\n");
-                descriptionBuilder.append("When I first joined: `").append(larryWhatIsThis).append("`\n");
+                descriptionBuilder.append("When Atropos first joined: `").append(membersOnFirstJoin).append("`\n");
                 descriptionBuilder.append("Now: `").append(guild.getMemberCount()).append('`');
                 guild.getMaxMembers().ifPresent(maxMembers ->
                         descriptionBuilder.append("\nMax Members: `").append(maxMembers).append('`')
