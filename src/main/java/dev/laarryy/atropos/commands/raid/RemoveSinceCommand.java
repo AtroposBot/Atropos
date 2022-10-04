@@ -76,7 +76,8 @@ public class RemoveSinceCommand implements Command {
     }
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
-        return CommandChecks.commandChecks(event, request.name()).then(event.getInteraction().getGuild().flatMap(guild -> {
+        return CommandChecks.commandChecks(event, request.name())
+                .then(event.getInteraction().getGuild().flatMap(guild -> {
             if (event.getOption("type").isEmpty()
                     || event.getOption("duration").isEmpty()
                     || event.getOption("type").get().getValue().isEmpty()
