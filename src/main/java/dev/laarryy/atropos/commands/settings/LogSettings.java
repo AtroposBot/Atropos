@@ -24,7 +24,6 @@ import java.util.StringJoiner;
 
 public class LogSettings {
     private final Logger logger = LogManager.getLogger(this);
-    private final AddServerToDB addServerToDB = new AddServerToDB();
 
     public Mono<Void> execute(ChatInputInteractionEvent event) {
         return Mono.defer(() -> {
@@ -59,7 +58,7 @@ public class LogSettings {
                     }
 
                     if (serverProperties == null) {
-                        return addServerToDB.addServerToDatabase(guild)
+                        return AddServerToDB.addServerToDatabase(guild)
                                 .then(AuditLogger.addCommandToDB(event, false))
                                 .then(Mono.error(new NullServerException("Null Server")));
                     }
@@ -110,7 +109,7 @@ public class LogSettings {
                     DiscordServerProperties.findFirst("server_id_snowflake = ?", guild.getId().asLong())
             );
             if (serverProperties == null) {
-                return addServerToDB.addServerToDatabase(guild)
+                return AddServerToDB.addServerToDatabase(guild)
                         .then(AuditLogger.addCommandToDB(event, false))
                         .then(Mono.error(new NullServerException("Null Server")));
             }

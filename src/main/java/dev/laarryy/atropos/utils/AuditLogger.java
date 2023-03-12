@@ -1,10 +1,7 @@
 package dev.laarryy.atropos.utils;
 
 import dev.laarryy.atropos.commands.punishments.ManualPunishmentEnder;
-import dev.laarryy.atropos.models.guilds.CommandUse;
-import dev.laarryy.atropos.models.guilds.DiscordServer;
-import dev.laarryy.atropos.models.users.DiscordUser;
-import dev.laarryy.atropos.storage.DatabaseLoader;
+import discord4j.common.util.Snowflake;
 import discord4j.core.event.domain.interaction.ButtonInteractionEvent;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
 import discord4j.core.object.command.ApplicationCommandInteractionOption;
@@ -14,6 +11,12 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+
+import static dev.laarryy.atropos.jooq.Tables.SERVERS;
+import static dev.laarryy.atropos.jooq.Tables.SERVER_COMMAND_USES;
+import static dev.laarryy.atropos.jooq.Tables.USERS;
+import static dev.laarryy.atropos.storage.DatabaseLoader.sqlContext;
+import static org.jooq.impl.DSL.select;
 
 public final class AuditLogger {
     private static final Logger logger = LogManager.getLogger(ManualPunishmentEnder.class);
@@ -28,39 +31,13 @@ public final class AuditLogger {
      */
 
     public static Mono<Void> addCommandToDB(ChatInputInteractionEvent event, boolean success) {
-        return Mono.defer(() -> {
-
-            if (event.getInteraction().getGuildId().isEmpty()) {
-                return Mono.empty();
-            }
-
-            try (final var usage = DatabaseLoader.use()) {
-
-                DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
-
-                if (server == null) {
-                    return Mono.empty();
-                }
-
-                int serverId = server.getServerId();
-
-                DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());
-
-                if (user == null) {
-                    return Mono.empty();
-                }
-                int commandUserId = user.getUserId();
-
-                return Flux.fromIterable(event.getOptions())
+        final Snowflake userSnowflake = event.getInteraction().getUser().getId();
+        return Mono.justOrEmpty(event.getInteraction().getGuildId()).flatMap(serverSnowflake ->
+                Flux.fromIterable(event.getOptions())
                         .flatMap(AuditLogger::generateOptionString)
                         .reduce(event.getCommandName(), String::concat)
-                        .doOnNext(commandContent -> {
-                            CommandUse commandUse = DatabaseLoader.use(() -> CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", commandContent, "date", Instant.now().toEpochMilli(), "success", success));
-                            commandUse.save();
-                        })
-                        .then();
-            }
-        });
+                        .flatMap(commandContent -> addCommandToDB(serverSnowflake, userSnowflake, commandContent, success))
+        );
     }
 
     /**
@@ -71,42 +48,22 @@ public final class AuditLogger {
      */
 
     public static Mono<Void> addCommandToDB(ButtonInteractionEvent event, String entry, boolean success) {
-        return Mono.fromRunnable(() -> {
+        final Snowflake userSnowflake = event.getInteraction().getUser().getId();
+        return Mono.justOrEmpty(event.getInteraction().getGuildId()).flatMap(serverSnowflake -> addCommandToDB(serverSnowflake, userSnowflake, entry, success));
+    }
 
-            if (event.getInteraction().getGuildId().isEmpty()) {
-                return;
-            }
-
-            try (final var usage = DatabaseLoader.use()) {
-
-                DiscordServer server = DiscordServer.findFirst("server_id = ?", event.getInteraction().getGuildId().get().asLong());
-
-                if (server == null) {
-                    return;
-                }
-
-                int serverId = server.getServerId();
-
-                DiscordUser user = DiscordUser.findFirst("user_id_snowflake = ?", event.getInteraction().getUser().getId().asLong());
-
-                if (user == null) {
-                    return;
-                }
-                int commandUserId = user.getUserId();
-
-                CommandUse commandUse = CommandUse.findOrCreateIt("server_id", serverId, "command_user_id", commandUserId, "command_contents", entry, "date", Instant.now().toEpochMilli(), "success", success);
-                commandUse.save();
-            }
-        });
+    private static Mono<Void> addCommandToDB(final Snowflake serverSnowflake, final Snowflake userSnowflake, final String commandContent, final boolean success) {
+        return Mono.fromDirect(sqlContext.insertInto(SERVER_COMMAND_USES)
+                        .set(SERVER_COMMAND_USES.SERVER_ID, select(SERVERS.ID).from(SERVERS).where(SERVERS.SERVER_ID.eq(serverSnowflake)))
+                        .set(SERVER_COMMAND_USES.COMMAND_USER_ID, select(USERS.ID).from(USERS).where(USERS.USER_ID_SNOWFLAKE.eq(userSnowflake)))
+                        .set(SERVER_COMMAND_USES.COMMAND_CONTENTS, commandContent)
+                        .set(SERVER_COMMAND_USES.DATE, Instant.now())
+                        .set(SERVER_COMMAND_USES.SUCCESS, success))
+                .then();
     }
 
     public static Mono<String> generateOptionString(ApplicationCommandInteractionOption option) {
-        final Mono<String> nameAndValueMono;
-        if (option.getValue().isPresent()) {
-            nameAndValueMono = stringifyOptionValue(option).map(value -> ' ' + option.getName() + ':' + value);
-        } else {
-            nameAndValueMono = Mono.just(' ' + option.getName());
-        }
+        final Mono<String> nameAndValueMono = stringifyOptionValue(option).map(value -> ' ' + option.getName() + ':' + value).defaultIfEmpty(' ' + option.getName());
 
         return Flux.fromIterable(option.getOptions())
                 .flatMap(AuditLogger::generateOptionString)
@@ -170,19 +127,11 @@ public final class AuditLogger {
     }
 
     private static Mono<String> stringifyOptionValue(ApplicationCommandInteractionOption option) {
-
-        if (option.getValue().isEmpty()) {
-            return Mono.just("");
-        }
-
         return switch (option.getType()) {
-            case USER -> option.getValue().get().asUser().map(user -> user.getId().asString());
-            case STRING -> Mono.just(option.getValue().get().asString());
-            case INTEGER -> Mono.just(String.valueOf(option.getValue().get().asLong()));
-            case BOOLEAN -> Mono.just(String.valueOf(option.getValue().get().asBoolean()));
-            case CHANNEL -> option.getValue().get().asChannel().map(channel -> channel.getId().asString());
-            case ROLE -> option.getValue().get().asRole().map(role -> role.getId().asString());
-            case MENTIONABLE -> Mono.just(option.getValue().get().toString());
+            case STRING -> Mono.justOrEmpty(option.getValue()).map(value -> value.asString());
+            case INTEGER -> Mono.justOrEmpty(option.getValue()).map(value -> String.valueOf(value.asLong()));
+            case BOOLEAN -> Mono.justOrEmpty(option.getValue()).map(value -> String.valueOf(value.asBoolean()));
+            case MENTIONABLE -> Mono.justOrEmpty(option.getValue()).map(value -> value.asSnowflake().asString());
             default -> Mono.just(option.getName());
         };
     }

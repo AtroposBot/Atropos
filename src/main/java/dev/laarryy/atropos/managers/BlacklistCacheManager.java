@@ -1,25 +1,30 @@
 package dev.laarryy.atropos.managers;
 
+import com.github.benmanes.caffeine.cache.AsyncCacheLoader;
+import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.Scheduler;
+import dev.laarryy.atropos.jooq.tables.records.ServerBlacklistRecord;
 import dev.laarryy.atropos.models.guilds.Blacklist;
-import dev.laarryy.atropos.models.guilds.DiscordServer;
-import dev.laarryy.atropos.models.guilds.ServerBlacklist;
-import dev.laarryy.atropos.storage.DatabaseLoader;
+import discord4j.common.util.Snowflake;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import reactor.core.publisher.Flux;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+
+import static dev.laarryy.atropos.jooq.Tables.SERVERS;
+import static dev.laarryy.atropos.jooq.Tables.SERVER_BLACKLIST;
+import static dev.laarryy.atropos.storage.DatabaseLoader.sqlContext;
 
 public class BlacklistCacheManager {
     private static BlacklistCacheManager instance;
-    private final LoadingCache<Long, List<Blacklist>> cache;
+    private final AsyncLoadingCache<Snowflake, Collection<Blacklist>> cache;
     private static final Logger logger = LogManager.getLogger(PropertiesCacheManager.class);
 
 
-    public BlacklistCacheManager(LoadingCache<Long, List<Blacklist>> cache) {
+    public BlacklistCacheManager(AsyncLoadingCache<Snowflake, Collection<Blacklist>> cache) {
         this.cache = cache;
     }
 
@@ -27,21 +32,28 @@ public class BlacklistCacheManager {
         if (instance == null) {
             instance = new BlacklistCacheManager(Caffeine.newBuilder()
                     .expireAfterWrite(Duration.ofMinutes(10))
-                    .build(aLong -> {
-                            DiscordServer server = DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", aLong));
-                            List<ServerBlacklist> serverBlacklistList = DatabaseLoader.use(() -> ServerBlacklist.find("server_id = ?", server.getServerId()));
-                            List<Blacklist> blacklistList = new ArrayList<>();
-                            for (ServerBlacklist serverBlacklist : serverBlacklistList) {
-                                blacklistList.add(new Blacklist(serverBlacklist));
-                            }
-                            return blacklistList;
-                    }));
+                    .scheduler(Scheduler.systemScheduler())
+                    .buildAsync(AsyncCacheLoader.bulk((keys, executor) -> // ignore executor, we aren't defining any in the cache builder
+                            Flux.from(sqlContext.select(SERVERS.SERVER_ID.as("server_snowflake"), SERVER_BLACKLIST.asterisk())
+                                            .from(SERVER_BLACKLIST)
+                                            .join(SERVERS)
+                                            .on(SERVER_BLACKLIST.SERVER_ID.eq(SERVERS.ID))
+                                            .and(SERVERS.SERVER_ID.in(keys)))
+                                    .collectMultimap(
+                                            result -> result.get("server_snowflake", Snowflake.class),
+                                            result -> {
+                                                final ServerBlacklistRecord blacklist = new ServerBlacklistRecord();
+                                                blacklist.fromMap(result.intoMap());
+                                                return new Blacklist(blacklist);
+                                            }
+                                    )
+                                    .toFuture()
+                    )));
         }
         return instance;
     }
 
-    public LoadingCache<Long, List<Blacklist>> getBlacklistCache() {
+    public AsyncLoadingCache<Snowflake, Collection<Blacklist>> getBlacklistCache() {
         return cache;
     }
 }
-

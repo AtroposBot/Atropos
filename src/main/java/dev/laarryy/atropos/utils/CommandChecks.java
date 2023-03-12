@@ -22,20 +22,16 @@ public class CommandChecks {
     public static Mono<Void> commandChecks(ChatInputInteractionEvent event, String requestName) {
 
         return event.getInteraction().getGuild()
-                .flatMap(guild -> {
-                    if (guild == null) {
-                        return Mono.error(new NullServerException("No Guild"));
-                    }
-                    return permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName)
-                            .flatMap(aBoolean -> {
-                                if (!aBoolean) {
-                                    logger.info("NO PERMS!");
-                                    return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoPermissionsException("No Permission")));
-                                } else {
-                                    return Mono.empty();
-                                }
-                            });
-                });
+                .switchIfEmpty(Mono.error(new NullServerException("No Guild")))
+                .flatMap(guild ->
+                        permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName).flatMap(hasPerm -> {
+                            if (!hasPerm) {
+                                logger.info("NO PERMS!");
+                                return AuditLogger.addCommandToDB(event, false).then(Mono.error(new NoPermissionsException("No Permission")));
+                            } else {
+                                return Mono.empty();
+                            }
+                        }));
     }
 
     /**
@@ -47,18 +43,14 @@ public class CommandChecks {
     public static Mono<Void> commandChecks(ButtonInteractionEvent event, String requestName, String auditString) {
 
         return event.getInteraction().getGuild()
-                .flatMap(guild -> {
-                    if (guild == null) {
-                        return Mono.error(new NullServerException("No Guild"));
-                    }
-                    return permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName)
-                            .flatMap(aBoolean -> {
-                                if (!aBoolean) {
-                                    return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
-                                } else {
-                                    return Mono.empty();
-                                }
-                            });
-                });
+                .switchIfEmpty(Mono.error(new NullServerException("No Guild")))
+                .flatMap(guild ->
+                        permissionChecker.checkPermission(guild, event.getInteraction().getUser(), requestName).flatMap(hasPerm -> {
+                            if (!hasPerm) {
+                                return AuditLogger.addCommandToDB(event, auditString, false).then(Mono.error(new NoPermissionsException("No Permission")));
+                            } else {
+                                return Mono.empty();
+                            }
+                        }));
     }
 }

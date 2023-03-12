@@ -28,7 +28,6 @@ import java.time.Instant;
 public class ModMailCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
     private final PermissionChecker permissionChecker = new PermissionChecker();
-    private final AddServerToDB addServerToDB = new AddServerToDB();
 
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
