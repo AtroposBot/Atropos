@@ -3,7 +3,6 @@ plugins {
     id 'application'
     id 'com.github.johnrengelman.shadow' version '6.1.0'
     id "org.checkerframework" version "0.5.17"
-    id "de.schablinski.activejdbc-gradle-plugin" version "2.0"
 }
 
 mainClassName = 'dev.laarryy.atropos.Atropos'
@@ -12,43 +11,45 @@ version '1.0'
 sourceCompatibility = '17'
 
 def log4j2Version = '2.17.1'
-def activejdbcVersion = '3.1-j11'
-def mysqlconnectorjavaVersion = '8.0.28'
-def activeJdbcGradePluginVersion = '2.2'
+def activejdbcVersion = '3.1-j11' // TODO remove after migrating to r2dbc/jooq
 def reflectionsVersion = '0.10.2'
 def discord4jVersion = '3.2.1'
 def configurateVersion = '4.1.1'
 def caffeineVersion = '3.0.4'
-def hikariVersion = '5.0.0'
 def guavaVersion = '31.0.1-jre'
+def reactorBom = '2022.0.4'
+def r2dbcBom = 'Borca-SR2'
+def jooqVersion = '3.17.8'
 
 repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
-    maven { url 'https://oss.sonatype.org/content/repositories/snapshots/' }
-    maven { url 'https://repo.spring.io/milestone' }
-    maven { url 'https://repo.spring.io/snapshot' }
 }
 
 dependencies {
+    implementation platform("io.projectreactor:reactor-bom:$reactorBom")
+    implementation 'io.projectreactor.addons:reactor-extra'
     implementation "com.discord4j:discord4j-core:$discord4jVersion"
     implementation "org.spongepowered:configurate-yaml:$configurateVersion"
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: "$log4j2Version"
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: "$log4j2Version"
+    implementation "org.apache.logging.log4j:log4j-api:$log4j2Version"
+    implementation "org.apache.logging.log4j:log4j-core:$log4j2Version"
     implementation "org.apache.logging.log4j:log4j-slf4j-impl:$log4j2Version"
+
+    // TODO remove after migrating to r2dbc/jooq, keep it for now to have in-IDE sources for reference
     implementation "org.javalite:activejdbc:$activejdbcVersion"
-    implementation "mysql:mysql-connector-java:$mysqlconnectorjavaVersion"
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.10.3'
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.12.6.1'
-    implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.10.3'
-    implementation "org.javalite:activejdbc-gradle-plugin:$activeJdbcGradePluginVersion"
+
+    implementation 'com.fasterxml.jackson.core:jackson-core:2.10.3'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.6.1'
+    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:2.10.3'
     implementation "org.reflections:reflections:$reflectionsVersion"
     implementation "com.github.ben-manes.caffeine:caffeine:$caffeineVersion"
-    implementation "com.zaxxer:HikariCP:$hikariVersion"
     implementation "com.google.guava:guava:$guavaVersion"
 
+    implementation platform("io.r2dbc:r2dbc-bom:$r2dbcBom")
+    implementation 'io.r2dbc:r2dbc-pool'
+    implementation 'org.mariadb:r2dbc-mariadb'
+    implementation "org.jooq:jooq:$jooqVersion"
 }
 
 shadowJar {

@@ -2,10 +2,6 @@ package dev.laarryy.atropos.commands.controls;
 
 import dev.laarryy.atropos.commands.Command;
 import dev.laarryy.atropos.config.EmojiManager;
-import dev.laarryy.atropos.exceptions.NullServerException;
-import dev.laarryy.atropos.models.guilds.DiscordServer;
-import dev.laarryy.atropos.models.users.DiscordUser;
-import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.Notifier;
 import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.core.event.domain.interaction.ChatInputInteractionEvent;
@@ -19,7 +15,10 @@ import org.apache.logging.log4j.Logger;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
-import java.util.Objects;
+
+import static dev.laarryy.atropos.jooq.Tables.SERVERS;
+import static dev.laarryy.atropos.jooq.Tables.USERS;
+import static dev.laarryy.atropos.storage.DatabaseLoader.sqlContext;
 
 public class WipeCommand implements Command {
 
@@ -65,34 +64,21 @@ public class WipeCommand implements Command {
     private Mono<Void> wipeGuild(ChatInputInteractionEvent event) {
 
         return event.getInteraction().getGuild()
-                .onErrorResume(Mono::error)
-                .filter(Objects::nonNull)
                 .filterWhen(guild -> permissionChecker.checkIsAdministrator(event.getInteraction().getMember().get()))
-                .flatMap(guild -> event.getInteraction().getChannel().flatMap(messageChannel -> {
-                    DiscordServer discordServer = DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()));
-
-                    if (discordServer == null || discordServer.getServerId() == 0) {
-                        return Mono.error(new NullServerException("No Server"));
-                    }
-
-                    return messageChannel.createMessage("Administrator Server Wipe Activated. Farewell!").flatMap(message -> {
-                        DatabaseLoader.use(() -> discordServer.delete());
-                        return guild.leave().retry(10);
-                    });
-                }));
+                .flatMap(guild ->
+                        event.reply("Administrator Server Wipe Activated. Farewell!")
+                                .then(Mono.fromDirect(sqlContext.deleteFrom(SERVERS).where(SERVERS.SERVER_ID.eq(guild.getId()))))
+                                .then(guild.leave().retry(10))
+                );
     }
 
     private Mono<Void> wipeUser(ChatInputInteractionEvent event) {
 
         User user = event.getInteraction().getUser();
 
-        return event.getInteraction().getGuild()
-                .filter(Objects::nonNull)
-                .flatMap(guild -> DatabaseLoader.use(() -> {
-                    DiscordUser discordUser = DiscordUser.findFirst("user_id_snowflake = ?", user.getId().asLong());
-
-                    logger.info("User with ID " + user.getId().asLong() + " has requested the deletion of their data. Complying.");
-
+        return Mono.fromRunnable(() -> logger.info("User with ID " + user.getId().asString() + " has requested the deletion of their data. Complying."))
+                .then(Mono.fromDirect(sqlContext.deleteFrom(USERS).where(USERS.USER_ID_SNOWFLAKE.eq(user.getId()))))
+                .then(event.getInteraction().getGuild().flatMap(guild -> {
                     EmbedCreateSpec embed = EmbedCreateSpec.builder()
                             .title(EmojiManager.getMessageDelete() + " User Information Cleared")
                             .description("Leave this guild immediately if you do not want further information recorded in any manner. " +
@@ -100,8 +86,6 @@ public class WipeCommand implements Command {
                                     "and [the Terms of Use](https://atropos.laarryy.dev/terms-of-use/)")
                             .timestamp(Instant.now())
                             .build();
-
-                    discordUser.delete();
                     return Notifier.sendResultsEmbed(event, embed);
                 }));
     }

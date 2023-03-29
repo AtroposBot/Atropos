@@ -21,7 +21,6 @@ import reactor.core.publisher.Mono;
 public class MemberJoinListener {
     LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
     private final Logger logger = LogManager.getLogger(this);
-    private final AddServerToDB addServerToDB = new AddServerToDB();
     private final PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
 
@@ -43,7 +42,7 @@ public class MemberJoinListener {
                         .then(punishmentManager.discordKickUser(guild, member.getId().asLong(), "Automatically kicked as part of anti-raid measures")));
             }
 
-            return addServerToDB.addUserToDatabase(event.getMember(), guild).then(applyEvadedMutes(event, guild));
+            return AddServerToDB.addUserToDatabase(event.getMember(), guild).then(applyEvadedMutes(event, guild));
         });
     }
 

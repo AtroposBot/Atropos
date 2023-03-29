@@ -48,7 +48,6 @@ public class InfoCommand implements Command {
     private final Logger logger = LogManager.getLogger(this);
     private final Pattern snowflakePattern = Pattern.compile("\\d{10,20}");
     private final PermissionChecker permissionChecker = new PermissionChecker();
-    private final AddServerToDB addServerToDB = new AddServerToDB();
 
 
     private final ApplicationCommandRequest request = ApplicationCommandRequest.builder()
@@ -196,11 +195,11 @@ public class InfoCommand implements Command {
 
                             //todo: test this>
                             if (discordUser == null) {
-                                return addServerToDB.addUserToDatabase(member, guild).then(Mono.error(new TryAgainException("Try Again")));
+                                return AddServerToDB.addUserToDatabase(member, guild).then(Mono.error(new TryAgainException("Try Again")));
                             }
 
                             if (discordServer == null) {
-                                return addServerToDB.addServerToDatabase(guild).then(Mono.error(new TryAgainException("Try Again")));
+                                return AddServerToDB.addServerToDatabase(guild).then(Mono.error(new TryAgainException("Try Again")));
                             }
 
                             DatabaseLoader.use(discordUser::refresh);
@@ -208,7 +207,7 @@ public class InfoCommand implements Command {
                             ServerUser serverUser = DatabaseLoader.use(() -> ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordUser.getUserId()));
 
                             if (serverUser == null) {
-                                return addServerToDB.addUserToDatabase(member, guild).then(Mono.error(new TryAgainException("Try Again")));
+                                return AddServerToDB.addUserToDatabase(member, guild).then(Mono.error(new TryAgainException("Try Again")));
                             }
 
                             return guild.getSelfMember().flatMap(selfMember -> {
@@ -217,7 +216,7 @@ public class InfoCommand implements Command {
                                     ServerUser serverSelfUser = ServerUser.findFirst("server_id = ? and user_id = ?", discordServer.getServerId(), discordSelfUser.getUserId());
 
                                     if (serverSelfUser == null) {
-                                        return addServerToDB.addUserToDatabase(selfMember, guild).then(Mono.error(new TryAgainException("Try Again")));
+                                        return AddServerToDB.addUserToDatabase(selfMember, guild).then(Mono.error(new TryAgainException("Try Again")));
                                     }
 
                                     serverSelfUser.refresh();

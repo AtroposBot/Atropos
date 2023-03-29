@@ -1,9 +1,10 @@
 package dev.laarryy.atropos;
 
-import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import dev.laarryy.atropos.commands.punishments.PunishmentManager;
 import dev.laarryy.atropos.config.ConfigManager;
 import dev.laarryy.atropos.config.EmojiManager;
+import dev.laarryy.atropos.jooq.tables.records.ServerPropertiesRecord;
 import dev.laarryy.atropos.managers.BlacklistCacheManager;
 import dev.laarryy.atropos.managers.ClientManager;
 import dev.laarryy.atropos.managers.CommandManager;
@@ -11,21 +12,24 @@ import dev.laarryy.atropos.managers.ListenerManager;
 import dev.laarryy.atropos.managers.PropertiesCacheManager;
 import dev.laarryy.atropos.managers.PunishmentManagerManager;
 import dev.laarryy.atropos.models.guilds.Blacklist;
-import dev.laarryy.atropos.models.guilds.DiscordServer;
-import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.services.CacheMaintainer;
 import dev.laarryy.atropos.services.ScheduledTaskDoer;
 import dev.laarryy.atropos.storage.DatabaseLoader;
 import dev.laarryy.atropos.utils.AddServerToDB;
+import discord4j.common.util.Snowflake;
 import discord4j.core.GatewayDiscordClient;
 import discord4j.core.event.domain.lifecycle.ReadyEvent;
 import discord4j.core.object.entity.User;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import reactor.bool.BooleanUtils;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.util.List;
+import java.util.Collection;
+
+import static dev.laarryy.atropos.jooq.Tables.SERVERS;
+import static dev.laarryy.atropos.storage.DatabaseLoader.sqlContext;
 
 public class Atropos {
 
@@ -62,45 +66,47 @@ public class Atropos {
 
         logger.debug("Connected!");
 
-        // Connect to DB
+        // Connect to DB, if something goes wrong it'll end up in an erred mono
+        final Mono<Void> databaseConnectivityTest =
+                Mono.fromDirect(sqlContext.selectOne())
+                        .doOnSubscribe(s -> logger.debug("Connecting to Database..."))
+                        .doOnSuccess(i -> logger.info("Connected to Database!"))
+                        .then();
 
-        logger.debug("Connecting to Database...");
-
-        DatabaseLoader.use(() -> {
-        }); // opens a connection
-
-        logger.info("Connected to Database!");
-
-        LoadingCache<Long, DiscordServerProperties> cache = PropertiesCacheManager.getManager().getPropertiesCache();
-        LoadingCache<Long, List<Blacklist>> blacklistCache = BlacklistCacheManager.getManager().getBlacklistCache();
+        AsyncLoadingCache<Snowflake, ServerPropertiesRecord> serverPropertiesCache = PropertiesCacheManager.getManager().getPropertiesCache();
+        AsyncLoadingCache<Snowflake, Collection<Blacklist>> blacklistCache = BlacklistCacheManager.getManager().getBlacklistCache();
 
         CommandManager commandManager = new CommandManager();
         Mono<Void> commandRegistration = commandManager.registerCommands(client)
-                .doFinally(signalType -> logger.info("Commands Registered"));
+                .doAfterTerminate(() -> logger.info("Commands Registered"));
 
         ListenerManager listenerManager = new ListenerManager();
         Mono<Void> listenerRegistration = listenerManager.registerListeners(client)
-                .doFinally(signalType -> logger.info("Listeners Registered"));
+                .doAfterTerminate(() -> logger.info("Listeners Registered"));
 
         PunishmentManager punishmentManager = PunishmentManagerManager.getManager().getPunishmentManager();
 
         Mono<Void> scheduledTaskDoer = new ScheduledTaskDoer().startTasks(client);
 
-        Mono<Void> startCacheRefresh = new CacheMaintainer().startCacheRefresh(cache).then();
+        Mono<Void> startCacheRefresh = new CacheMaintainer().startCacheRefresh(serverPropertiesCache).then();
 
         // Register all guilds and users in them to database
 
         Mono<Void> addServersToDB = Flux.from(client.getGuilds())
-                .filter(guild -> DatabaseLoader.use(() -> DiscordServer.findFirst("server_id = ?", guild.getId().asLong()) == null))
-                .flatMap(guild -> {
-                    AddServerToDB addServerToDB1 = new AddServerToDB();
-                    return addServerToDB1.addServerToDatabase(guild);
-                })
-                .doFinally(signalType -> logger.info("Servers Added to Database."))
+                .filterWhen(guild ->
+                        Mono.fromDirect(sqlContext.selectOne()
+                                        .from(SERVERS)
+                                        .where(SERVERS.SERVER_ID.eq(guild.getId())))
+                                .hasElement()
+                                .transform(BooleanUtils::not)
+                )
+                .flatMap(AddServerToDB::addServerToDatabase)
+                .doAfterTerminate(() -> logger.info("Servers Added to Database."))
                 .then();
 
         Mono.when(
                         ready,
+                        databaseConnectivityTest,
                         commandRegistration,
                         listenerRegistration,
                         scheduledTaskDoer,
@@ -111,8 +117,9 @@ public class Atropos {
                     logger.error("-- Error in Bot --");
                     logger.error("stinky", throwable);
                 })
-                .subscribe();
-
-        client.onDisconnect().doFinally(s -> DatabaseLoader.shutdown()).block();
+                .takeUntilOther(client.onDisconnect())
+                .onErrorResume(error -> DatabaseLoader.shutdown().then(Mono.error(error)))
+                .then(DatabaseLoader.shutdown())
+                .block();
     }
 }

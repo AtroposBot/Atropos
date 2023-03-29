@@ -1,79 +1,36 @@
 package dev.laarryy.atropos.storage;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
 import dev.laarryy.atropos.config.ConfigManager;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.javalite.activejdbc.Base;
-import org.javalite.activejdbc.DB;
-import org.javalite.activejdbc.LazyList;
+import io.r2dbc.pool.ConnectionPool;
+import io.r2dbc.pool.ConnectionPoolConfiguration;
+import org.jooq.DSLContext;
+import org.jooq.impl.DSL;
+import org.mariadb.r2dbc.MariadbConnectionConfiguration;
+import org.mariadb.r2dbc.MariadbConnectionFactory;
 import reactor.core.publisher.Mono;
-
-import java.util.function.Supplier;
-
 
 public class DatabaseLoader {
 
-    private static final Logger logger = LogManager.getLogger(DatabaseLoader.class);
-
-    private static final HikariConfig config = new HikariConfig();
-    private static final HikariDataSource ds;
+    private static final ConnectionPool pool;
+    public static final DSLContext sqlContext;
 
     static {
-        config.setJdbcUrl(ConfigManager.getAddress());
-        config.setUsername(ConfigManager.getUsername());
-        config.setPassword(ConfigManager.getPassword());
-        config.addDataSourceProperty("cachePrepStmts", "true");
-        config.addDataSourceProperty("prepStmtCacheSize", "250");
-        config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-        config.addDataSourceProperty("autoReconnect", true);
-        ds = new HikariDataSource(config);
+        pool = new ConnectionPool(
+                ConnectionPoolConfiguration.builder()
+                        .connectionFactory(new MariadbConnectionFactory(
+                                MariadbConnectionConfiguration.builder()
+                                        .host(ConfigManager.getAddress())
+                                        .username(ConfigManager.getUsername())
+                                        .password(ConfigManager.getPassword())
+                                        .build()
+                        ))
+                        .build()
+        );
+
+        sqlContext = DSL.using(pool);
     }
 
-    public static Usage use() {
-        return new Usage(Base.open(ds));
-    }
-
-    public static void use(final Runnable action) {
-        try (final var db = Base.open(ds)) {
-            action.run();
-        } catch (Exception e) {
-            logger.error("SQL Error: ", e);
-        }
-    }
-
-    public static <T> T use(final Supplier<? extends T> action) {
-        try (final var db = Base.open(ds)) {
-
-            T t = action.get();
-
-            if (t instanceof LazyList<?> l) {
-                l.isEmpty();
-            }
-
-            return t;
-        } catch (Exception e) {
-            logger.error("SQL Error: ", e);
-            return null;
-        }
-    }
-
-    public static void shutdown() {
-        ds.close();
-    }
-
-    public static final class Usage implements AutoCloseable {
-
-        private final DB db;
-
-        private Usage(final DB db) {
-            this.db = db;
-        }
-
-        @Override
-        public void close() {
-            this.db.close();
-        }
+    public static Mono<Void> shutdown() {
+        return pool.close();
     }
 }
