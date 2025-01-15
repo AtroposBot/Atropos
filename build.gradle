@@ -3,6 +3,7 @@ plugins {
     id 'application'
     id 'com.github.johnrengelman.shadow' version '8.1.1'
     id "org.checkerframework" version "0.5.17"
+    id("org.jooq.jooq-codegen-gradle") version "3.19.17"
 }
 
 mainClassName = 'dev.laarryy.atropos.Atropos'
@@ -70,3 +71,9 @@ tasks {
         jvmArgs("-Xms100M -Xmx1G")
     }
 }
+
+tasks.named("compileJava") {
+    dependsOn(tasks.named("jooqCodegen"))
+}
+
+

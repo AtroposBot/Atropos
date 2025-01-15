@@ -86,7 +86,7 @@ public class PunishmentManager {
                 logger.info("3");
 
                 Snowflake guildIdSnowflake = guild.getId();
-                return Mono.from(sqlContext.selectFrom(Servers.SERVERS).where(Servers.SERVERS.SERVER_ID.equal(guildIdSnowflake)))
+                return Mono.from(sqlContext.selectFrom(Servers.SERVERS).where(Servers.SERVERS.SERVER_ID.eq(guildIdSnowflake)))
                         .flatMap(discordServer -> {
                             int serverId;
 
@@ -159,13 +159,27 @@ public class PunishmentManager {
                                                                                         .then();
                                                                             }
                                                                             return Mono.from(addUsertoDB)
-                                                                                    .then(Mono.from(sqlContext.insertInto(PUNISHMENTS)
+                                                                                    .then(Mono.fromDirect(sqlContext.insertInto(PUNISHMENTS)
                                                                                             .set(PUNISHMENTS.USER_ID_PUNISHER, select(USERS.ID).from(USERS).where(USERS.USER_ID_SNOWFLAKE.eq(Snowflake.of(punishingUserIdSnowflake))))
                                                                                             .set(PUNISHMENTS.NAME_PUNISHER, punisherUser.getUsername())
                                                                                             .set(PUNISHMENTS.USER_ID_PUNISHED, select(USERS.ID).from(USERS).where(USERS.USER_ID_SNOWFLAKE.eq(Snowflake.of(punishedUserIdLong))))
                                                                                             .set(PUNISHMENTS.NAME_PUNISHED, punishedUser.getUsername())
                                                                                             .set(PUNISHMENTS.SERVER_ID, serverId)
-                                                                                    ).then());
+                                                                                            .set(PUNISHMENTS.PUNISHMENT_TYPE, request.name())
+                                                                                            .set(PUNISHMENTS.PERMANENT, true)
+                                                                                            .set(PUNISHMENTS.PUNISHMENT_MESSAGE, reason)
+                                                                                            .set(PUNISHMENTS.END_DATE_PASSED, false))
+                                                                                    ).then(Mono.fromDirect(sqlContext
+                                                                                            .select(PUNISHMENTS.BATCH_ID)
+                                                                                            .from(PUNISHMENTS)
+                                                                                            .where(PUNISHMENTS.BATCH_ID.isNotNull())
+                                                                                            .orderBy(PUNISHMENTS.BATCH_ID.desc())
+                                                                                            .limit(1))
+                                                                                    ).flatMap(result -> {
+                                                                                        return Mono.fromDirect(sqlContext.update(PUNISHMENTS)
+                                                                                                //todo set the batch id as last batch +1
+                                                                                                )
+                                                                                    });
                                                                         });
                                                             })));
 
