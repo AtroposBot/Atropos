@@ -19,7 +19,7 @@ def caffeineVersion = '3.0.4'
 def guavaVersion = '31.0.1-jre'
 def reactorBom = '2022.0.4'
 def r2dbcBom = 'Borca-SR2'
-def jooqVersion = '3.17.8'
+def jooqVersion = '3.19.17'
 
 repositories {
     mavenCentral()
