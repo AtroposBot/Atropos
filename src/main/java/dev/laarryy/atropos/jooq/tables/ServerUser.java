@@ -7,14 +7,15 @@ package dev.laarryy.atropos.jooq.tables;
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Keys;
 import dev.laarryy.atropos.jooq.tables.records.ServerUserRecord;
-import dev.laarryy.atropos.jooq.tables.Servers.ServersPath;
-import dev.laarryy.atropos.jooq.tables.Users.UsersPath;
+import jooq.tables.Servers.ServersPath;
+import jooq.tables.Users.UsersPath;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -59,7 +60,7 @@ public class ServerUser extends TableImpl<ServerUserRecord> {
     /**
      * The column <code>atropos.server_user.date</code>.
      */
-    public final TableField<ServerUserRecord, Long> DATE = createField(DSL.name("date"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+    public final TableField<ServerUserRecord, Instant> DATE = createField(DSL.name("date"), SQLDataType.INSTANT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INSTANT)), this, "");
 
     private ServerUser(Name alias, Table<ServerUserRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

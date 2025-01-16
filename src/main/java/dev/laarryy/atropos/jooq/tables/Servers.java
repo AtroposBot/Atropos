@@ -7,19 +7,21 @@ package dev.laarryy.atropos.jooq.tables;
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Keys;
 import dev.laarryy.atropos.jooq.tables.records.ServersRecord;
-import dev.laarryy.atropos.jooq.tables.Punishments.PunishmentsPath;
-import dev.laarryy.atropos.jooq.tables.ServerBlacklist.ServerBlacklistPath;
-import dev.laarryy.atropos.jooq.tables.ServerCommandUses.ServerCommandUsesPath;
-import dev.laarryy.atropos.jooq.tables.ServerMessages.ServerMessagesPath;
-import dev.laarryy.atropos.jooq.tables.ServerProperties.ServerPropertiesPath;
-import dev.laarryy.atropos.jooq.tables.ServerRolePermissions.ServerRolePermissionsPath;
-import dev.laarryy.atropos.jooq.tables.ServerUser.ServerUserPath;
+import dev.laarryy.atropos.utils.converters.SnowflakeToLongConverter;
+import jooq.tables.Punishments.PunishmentsPath;
+import jooq.tables.ServerBlacklist.ServerBlacklistPath;
+import jooq.tables.ServerCommandUses.ServerCommandUsesPath;
+import jooq.tables.ServerMessages.ServerMessagesPath;
+import jooq.tables.ServerProperties.ServerPropertiesPath;
+import jooq.tables.ServerRolePermissions.ServerRolePermissionsPath;
+import jooq.tables.ServerUser.ServerUserPath;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -54,12 +56,12 @@ public class Servers extends TableImpl<ServersRecord> {
     /**
      * The column <code>atropos.servers.date</code>.
      */
-    public final TableField<ServersRecord, Long> DATE = createField(DSL.name("date"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+    public final TableField<ServersRecord, Instant> DATE = createField(DSL.name("date"), SQLDataType.INSTANT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INSTANT)), this, "");
 
     /**
-     * The column <code>atropos.servers.server_id</code>.
+     * The column <code>atropos.servers.server_id_snowflake</code>.
      */
-    public final TableField<ServersRecord, Long> SERVER_ID = createField(DSL.name("server_id"), SQLDataType.BIGINT.nullable(false), this, "");
+    public final TableField<ServersRecord, Long> SERVER_ID_SNOWFLAKE = createField(DSL.name("server_id_snowflake"), SQLDataType.BIGINT.nullable(false), this, "", new SnowflakeToLongConverter());
 
     private Servers(Name alias, Table<ServersRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

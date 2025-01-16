@@ -1,5 +1,6 @@
 import org.jooq.codegen.GenerationTool
 import org.jooq.meta.jaxb.Database
+import org.jooq.meta.jaxb.ForcedType
 import org.jooq.meta.jaxb.Generator
 import org.jooq.meta.jaxb.Jdbc
 import org.jooq.meta.jaxb.Target
@@ -29,8 +30,8 @@ ext {
     schema = 'atropos'
     driver = 'com.mysql.cj.jdbc.Driver'
     jooqDbImpl = 'org.jooq.meta.mariadb.MariaDBDatabase'
-    packageName = 'jooq2'
-    genpath = new File("${projectDir}/build/generated-src/jooq/main")
+    packageName = 'dev.laarryy.atropos.jooq'
+    genpath = new File("${projectDir}/build/generated-src/main/java")
 }
 
 sourceSets.configureEach { ext.purpose = null }
@@ -58,6 +59,24 @@ tasks.register('generateCode') {
                             .withIncludes(".*")
                             .withExcludes("")
                             .withInputSchema(schema)
+                            .withForcedTypes(
+                                    new ForcedType()
+                                    .withUserType("discord4j.common.util.Snowflake")
+                                    .withConverter("dev.laarryy.atropos.utils.converters.LongToSnowflakeConverter")
+                                    .withGenericConverter(false)
+                                    .withIncludeExpression(".*snowflake"),
+                                    new ForcedType()
+                                    .withUserType("java.util.regex.Pattern")
+                                    .withConverter("dev.laarryy.atropos.utils.converters.StringToPatternConverter")
+                                    .withIncludeExpression(".*regex.*"),
+                                    new ForcedType()
+                                    .withUserType("java.lang.Boolean")
+                                    .withConverter("dev.laarryy.atropos.utils.converters.ByteToBooleanConverter")
+                                    .withIncludeExpression(".*permanent|.*automatic|.*did_dm|.*end_date_passed|.*automatic_end|.*success|.*deleted|.*stop_joins|.*anti_scam|.*dehoist"),
+                                    new ForcedType()
+                                    .withName("INSTANT")
+                                    .withIncludeExpression(".*date")
+                            )
                     )
                     .withTarget(new Target()
                             .withPackageName(packageName)

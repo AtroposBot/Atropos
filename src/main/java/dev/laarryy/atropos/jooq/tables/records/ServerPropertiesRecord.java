@@ -172,15 +172,15 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
     /**
      * Setter for <code>atropos.server_properties.stop_joins</code>.
      */
-    public void setStopJoins(Byte value) {
+    public void setStopJoins(Boolean value) {
         set(10, value);
     }
 
     /**
      * Getter for <code>atropos.server_properties.stop_joins</code>.
      */
-    public Byte getStopJoins() {
-        return (Byte) get(10);
+    public Boolean getStopJoins() {
+        return (Boolean) get(10);
     }
 
     /**
@@ -258,29 +258,29 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
     /**
      * Setter for <code>atropos.server_properties.anti_scam</code>.
      */
-    public void setAntiScam(Byte value) {
+    public void setAntiScam(Boolean value) {
         set(16, value);
     }
 
     /**
      * Getter for <code>atropos.server_properties.anti_scam</code>.
      */
-    public Byte getAntiScam() {
-        return (Byte) get(16);
+    public Boolean getAntiScam() {
+        return (Boolean) get(16);
     }
 
     /**
      * Setter for <code>atropos.server_properties.dehoist</code>.
      */
-    public void setDehoist(Byte value) {
+    public void setDehoist(Boolean value) {
         set(17, value);
     }
 
     /**
      * Getter for <code>atropos.server_properties.dehoist</code>.
      */
-    public Byte getDehoist() {
-        return (Byte) get(17);
+    public Boolean getDehoist() {
+        return (Boolean) get(17);
     }
 
     // -------------------------------------------------------------------------
@@ -306,7 +306,7 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
     /**
      * Create a detached, initialised ServerPropertiesRecord
      */
-    public ServerPropertiesRecord(Integer id, Integer serverId, Long serverIdSnowflake, String serverName, Long memberCountOnBotJoin, Long mutedRoleIdSnowflake, Long memberLogChannelSnowflake, Long messageLogChannelSnowflake, Long guildLogChannelSnowflake, Long punishmentLogChannelSnowflake, Byte stopJoins, Long modmailChannelSnowflake, Integer messagesToWarn, Integer warnsToMute, Integer pingsToWarn, Integer joinsToAntiraid, Byte antiScam, Byte dehoist) {
+    public ServerPropertiesRecord(Integer id, Integer serverId, Long serverIdSnowflake, String serverName, Long memberCountOnBotJoin, Long mutedRoleIdSnowflake, Long memberLogChannelSnowflake, Long messageLogChannelSnowflake, Long guildLogChannelSnowflake, Long punishmentLogChannelSnowflake, Boolean stopJoins, Long modmailChannelSnowflake, Integer messagesToWarn, Integer warnsToMute, Integer pingsToWarn, Integer joinsToAntiraid, Boolean antiScam, Boolean dehoist) {
         super(ServerProperties.SERVER_PROPERTIES);
 
         setId(id);

@@ -10,11 +10,8 @@ import dev.laarryy.atropos.exceptions.NoPermissionsException;
 import dev.laarryy.atropos.exceptions.NoUserException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.jooq.tables.Servers;
-import dev.laarryy.atropos.jooq.tables.Users;
-import dev.laarryy.atropos.jooq.tables.records.ServersRecord;
 import dev.laarryy.atropos.listeners.logging.LoggingListener;
 import dev.laarryy.atropos.managers.LoggingListenerManager;
-import dev.laarryy.atropos.models.guilds.DiscordServer;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.models.users.DiscordUser;
 import dev.laarryy.atropos.models.users.Punishment;
@@ -60,6 +57,21 @@ public class PunishmentManager {
     PermissionChecker permissionChecker = new PermissionChecker();
     LoggingListener loggingListener = LoggingListenerManager.getManager().getLoggingListener();
 
+
+    /*
+    A description of what doPunishment does:
+    1. Get interaction->guild, check that guild =! null (else reply "This must be done in a guild")
+    2. Check user's permission else return Mono.error(NoPermissionException)
+    3. Use event->guild to query DB for the row/info Record of the server it's happening in
+        1. Return NullServerException if server id is null in the db
+    4. Handle forcebans with only ID (user maybe not in guild)
+        1. if option "id" is present, and it has a value, get it as a String idInput (it may be multiple IDs)
+        2. If option "reason" is present, set it as String reason, else set it as "Mass API Banned by Staff"
+        3. Get the largest batch_id from punishments table in database, add 1, set it as int batchId
+        4. Split the idInput string with regex " ", convert to Long (return NFE if can't), remove 0s and flatMap into single Long punishedUserId objects
+        For each Long punishedUserId:
+            1. use guild.getMemberById(Snowflake.of(Long)) to get guild Member objects
+     */
     public Mono<Void> doPunishment(ApplicationCommandRequest request, ChatInputInteractionEvent event) {
         return event.getInteraction().getGuild().flatMap(guild -> {
             logger.info("1");
@@ -86,7 +98,7 @@ public class PunishmentManager {
                 logger.info("3");
 
                 Snowflake guildIdSnowflake = guild.getId();
-                return Mono.from(sqlContext.selectFrom(Servers.SERVERS).where(Servers.SERVERS.SERVER_ID.eq(guildIdSnowflake)))
+                return Mono.from(sqlContext.selectFrom(Servers.SERVERS).where(Servers.SERVERS.SERVER_ID.eq(guildIdSnowflake.asLong())))
                         .flatMap(discordServer -> {
                             int serverId;
 
@@ -126,10 +138,12 @@ public class PunishmentManager {
 
                                             logger.info("4.3");
 
+                                            Member punishingMember = event.getInteraction().getMember().get();
+
                                             // Ensure nobody is trying to forceban their boss or a bot or someone that doesn't exist
                                             return guild.getMemberById(Snowflake.of(punishedUserIdLong))
                                                     .filter(Objects::nonNull)
-                                                    .flatMap(punishedMember -> checkIfPunisherHasHighestRole(event.getInteraction().getMember().get(), punishedMember, guild, event)
+                                                    .flatMap(punishedMember -> checkIfPunisherHasHighestRole(punishingMember, punishedMember, guild, event)
                                                             .flatMap(aBoolean1 -> {
 
                                                                 logger.info("4.4");
@@ -148,14 +162,14 @@ public class PunishmentManager {
                                                                 return Mono.from(sqlContext
                                                                                 .selectFrom(USERS)
                                                                                 .where(USERS.USER_ID_SNOWFLAKE
-                                                                                        .equal(Snowflake.of(punishedUserIdLong))))
+                                                                                        .equal(punishedUserIdLong)))
                                                                         .flatMap(punishedUserRecord -> {
                                                                             Mono<Void> addUsertoDB = Mono.empty();
                                                                             if (punishedUserRecord == null) {
                                                                                 addUsertoDB = Mono.from(
                                                                                                 sqlContext.insertInto(USERS)
-                                                                                                        .set(USERS.USER_ID_SNOWFLAKE, Snowflake.of(punishedUserIdLong))
-                                                                                                        .set(USERS.DATE, Instant.now()))
+                                                                                                        .set(USERS.USER_ID_SNOWFLAKE, punishedUserIdLong)
+                                                                                                        .set(USERS.DATE, Instant.now().toEpochMilli()))
                                                                                         .then();
                                                                             }
                                                                             return Mono.from(addUsertoDB)
@@ -178,7 +192,7 @@ public class PunishmentManager {
                                                                                     ).flatMap(result -> {
                                                                                         return Mono.fromDirect(sqlContext.update(PUNISHMENTS)
                                                                                                 //todo set the batch id as last batch +1
-                                                                                                )
+                                                                                        )
                                                                                     });
                                                                         });
                                                             })));
@@ -213,7 +227,7 @@ public class PunishmentManager {
                             }).
                             then(Notifier.notifyPunisherForcebanComplete(event, "```\n" + idInput.replaceAll(" ", "\n") + "\n ```"))
                                     .then(AuditLogger.addCommandToDB(event, true));
-                        }
+
                 return Mono.empty();
             });
 
@@ -370,8 +384,9 @@ public class PunishmentManager {
                 return Mono.error(new NoUserException("No User"));
             }
         });
-    });
+    };
 }
+
 
 public Mono<Void> carryOutPunishment(Guild guild, Punishment punishment, DiscordUser punished, int messageDeleteDays, String punishmentReason, ChatInputInteractionEvent event) {
 
@@ -676,4 +691,4 @@ public Mono<Boolean> checkIfPunisherHasHighestRole(Member punisher, Member punis
                 }));
             }));
 }
-}
+

@@ -7,7 +7,7 @@ package dev.laarryy.atropos.jooq.tables;
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Keys;
 import dev.laarryy.atropos.jooq.tables.records.PermissionsRecord;
-import dev.laarryy.atropos.jooq.tables.ServerRolePermissions.ServerRolePermissionsPath;
+import jooq.tables.ServerRolePermissions.ServerRolePermissionsPath;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;

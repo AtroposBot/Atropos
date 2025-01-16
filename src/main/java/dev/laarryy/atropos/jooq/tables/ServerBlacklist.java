@@ -8,7 +8,8 @@ import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Indexes;
 import dev.laarryy.atropos.jooq.Keys;
 import dev.laarryy.atropos.jooq.tables.records.ServerBlacklistRecord;
-import dev.laarryy.atropos.jooq.tables.Servers.ServersPath;
+import dev.laarryy.atropos.utils.converters.StringToPatternConverter;
+import jooq.tables.Servers.ServersPath;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
@@ -18,6 +19,7 @@ import org.jooq.impl.TableImpl;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.regex.Pattern;
 
 
 /**
@@ -54,7 +56,7 @@ public class ServerBlacklist extends TableImpl<ServerBlacklistRecord> {
     /**
      * The column <code>atropos.server_blacklist.regex_trigger</code>.
      */
-    public final TableField<ServerBlacklistRecord, String> REGEX_TRIGGER = createField(DSL.name("regex_trigger"), SQLDataType.VARCHAR(255).nullable(false), this, "");
+    public final TableField<ServerBlacklistRecord, Pattern> REGEX_TRIGGER = createField(DSL.name("regex_trigger"), SQLDataType.VARCHAR(255).nullable(false), this, "", new StringToPatternConverter());
 
     /**
      * The column <code>atropos.server_blacklist.type</code>.

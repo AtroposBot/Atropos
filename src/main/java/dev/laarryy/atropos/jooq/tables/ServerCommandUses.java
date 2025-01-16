@@ -7,14 +7,15 @@ package dev.laarryy.atropos.jooq.tables;
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Keys;
 import dev.laarryy.atropos.jooq.tables.records.ServerCommandUsesRecord;
-import dev.laarryy.atropos.jooq.tables.Servers.ServersPath;
-import dev.laarryy.atropos.jooq.tables.Users.UsersPath;
+import jooq.tables.Servers.ServersPath;
+import jooq.tables.Users.UsersPath;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -64,12 +65,12 @@ public class ServerCommandUses extends TableImpl<ServerCommandUsesRecord> {
     /**
      * The column <code>atropos.server_command_uses.date</code>.
      */
-    public final TableField<ServerCommandUsesRecord, Long> DATE = createField(DSL.name("date"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "");
+    public final TableField<ServerCommandUsesRecord, Instant> DATE = createField(DSL.name("date"), SQLDataType.INSTANT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.INSTANT)), this, "");
 
     /**
      * The column <code>atropos.server_command_uses.success</code>.
      */
-    public final TableField<ServerCommandUsesRecord, Byte> SUCCESS = createField(DSL.name("success"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.TINYINT)), this, "");
+    public final TableField<ServerCommandUsesRecord, Boolean> SUCCESS = createField(DSL.name("success"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.BOOLEAN)), this, "");
 
     private ServerCommandUses(Name alias, Table<ServerCommandUsesRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

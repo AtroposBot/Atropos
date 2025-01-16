@@ -7,16 +7,20 @@ package dev.laarryy.atropos.jooq.tables;
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Keys;
 import dev.laarryy.atropos.jooq.tables.records.UsersRecord;
+import dev.laarryy.atropos.utils.converters.LongToSnowflakeConverter;
+import dev.laarryy.atropos.utils.converters.SnowflakeToLongConverter;
 import dev.laarryy.atropos.jooq.tables.Punishments.PunishmentsPath;
 import dev.laarryy.atropos.jooq.tables.ServerCommandUses.ServerCommandUsesPath;
 import dev.laarryy.atropos.jooq.tables.ServerMessages.ServerMessagesPath;
 import dev.laarryy.atropos.jooq.tables.ServerUser.ServerUserPath;
+import discord4j.common.util.Snowflake;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -51,12 +55,12 @@ public class Users extends TableImpl<UsersRecord> {
     /**
      * The column <code>atropos.users.user_id_snowflake</code>.
      */
-    public final TableField<UsersRecord, Long> USER_ID_SNOWFLAKE = createField(DSL.name("user_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+    public final TableField<UsersRecord, Long> USER_ID_SNOWFLAKE = createField(DSL.name("user_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column <code>atropos.users.date</code>.
      */
-    public final TableField<UsersRecord, Long> DATE = createField(DSL.name("date"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+    public final TableField<UsersRecord, Instant> DATE = createField(DSL.name("date"), SQLDataType.INSTANT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INSTANT)), this, "");
 
     private Users(Name alias, Table<UsersRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

@@ -10,8 +10,6 @@ import discord4j.core.shard.ShardingStrategy;
 import discord4j.gateway.intent.IntentSet;
 import discord4j.rest.util.AllowedMentions;
 
-import java.time.Duration;
-
 public class ClientManager {
     private static ClientManager instance;
     private final GatewayDiscordClient gateway;

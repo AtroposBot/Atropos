@@ -8,14 +8,15 @@ import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Indexes;
 import dev.laarryy.atropos.jooq.Keys;
 import dev.laarryy.atropos.jooq.tables.records.PunishmentsRecord;
-import dev.laarryy.atropos.jooq.tables.Servers.ServersPath;
-import dev.laarryy.atropos.jooq.tables.Users.UsersPath;
+import jooq.tables.Servers.ServersPath;
+import jooq.tables.Users.UsersPath;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
 import org.jooq.impl.SQLDataType;
 import org.jooq.impl.TableImpl;
 
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -80,7 +81,7 @@ public class Punishments extends TableImpl<PunishmentsRecord> {
     /**
      * The column <code>atropos.punishments.punishment_date</code>.
      */
-    public final TableField<PunishmentsRecord, Long> PUNISHMENT_DATE = createField(DSL.name("punishment_date"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "");
+    public final TableField<PunishmentsRecord, Instant> PUNISHMENT_DATE = createField(DSL.name("punishment_date"), SQLDataType.INSTANT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INSTANT)), this, "");
 
     /**
      * The column <code>atropos.punishments.punishment_message</code>.
@@ -90,17 +91,17 @@ public class Punishments extends TableImpl<PunishmentsRecord> {
     /**
      * The column <code>atropos.punishments.permanent</code>.
      */
-    public final TableField<PunishmentsRecord, Byte> PERMANENT = createField(DSL.name("permanent"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.TINYINT)), this, "");
+    public final TableField<PunishmentsRecord, Boolean> PERMANENT = createField(DSL.name("permanent"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.BOOLEAN)), this, "");
 
     /**
      * The column <code>atropos.punishments.automatic</code>.
      */
-    public final TableField<PunishmentsRecord, Byte> AUTOMATIC = createField(DSL.name("automatic"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.TINYINT)), this, "");
+    public final TableField<PunishmentsRecord, Boolean> AUTOMATIC = createField(DSL.name("automatic"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BOOLEAN)), this, "");
 
     /**
      * The column <code>atropos.punishments.punishment_end_date</code>.
      */
-    public final TableField<PunishmentsRecord, Long> PUNISHMENT_END_DATE = createField(DSL.name("punishment_end_date"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "");
+    public final TableField<PunishmentsRecord, Instant> PUNISHMENT_END_DATE = createField(DSL.name("punishment_end_date"), SQLDataType.INSTANT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.INSTANT)), this, "");
 
     /**
      * The column <code>atropos.punishments.punishment_end_reason</code>.
@@ -110,12 +111,12 @@ public class Punishments extends TableImpl<PunishmentsRecord> {
     /**
      * The column <code>atropos.punishments.did_dm</code>.
      */
-    public final TableField<PunishmentsRecord, Byte> DID_DM = createField(DSL.name("did_dm"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.TINYINT)), this, "");
+    public final TableField<PunishmentsRecord, Boolean> DID_DM = createField(DSL.name("did_dm"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BOOLEAN)), this, "");
 
     /**
      * The column <code>atropos.punishments.end_date_passed</code>.
      */
-    public final TableField<PunishmentsRecord, Byte> END_DATE_PASSED = createField(DSL.name("end_date_passed"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.TINYINT)), this, "");
+    public final TableField<PunishmentsRecord, Boolean> END_DATE_PASSED = createField(DSL.name("end_date_passed"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BOOLEAN)), this, "");
 
     /**
      * The column <code>atropos.punishments.punishment_ender</code>.
@@ -130,7 +131,7 @@ public class Punishments extends TableImpl<PunishmentsRecord> {
     /**
      * The column <code>atropos.punishments.automatic_end</code>.
      */
-    public final TableField<PunishmentsRecord, Byte> AUTOMATIC_END = createField(DSL.name("automatic_end"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.TINYINT)), this, "");
+    public final TableField<PunishmentsRecord, Boolean> AUTOMATIC_END = createField(DSL.name("automatic_end"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BOOLEAN)), this, "");
 
     /**
      * The column <code>atropos.punishments.batch_id</code>.

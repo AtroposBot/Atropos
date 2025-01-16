@@ -6,7 +6,6 @@ import dev.laarryy.atropos.exceptions.MalformedInputException;
 import dev.laarryy.atropos.exceptions.NullServerException;
 import dev.laarryy.atropos.models.guilds.DiscordServerProperties;
 import dev.laarryy.atropos.storage.DatabaseLoader;
-import dev.laarryy.atropos.utils.AddServerToDB;
 import dev.laarryy.atropos.utils.Notifier;
 import dev.laarryy.atropos.utils.PermissionChecker;
 import discord4j.common.util.Snowflake;

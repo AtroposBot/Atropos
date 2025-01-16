@@ -39,7 +39,7 @@ public class Keys {
     public static final UniqueKey<ServerUserRecord> KEY_SERVER_USER_ID = Internal.createUniqueKey(ServerUser.SERVER_USER, DSL.name("KEY_server_user_id"), new TableField[] { ServerUser.SERVER_USER.ID }, true);
     public static final UniqueKey<ServerUserRecord> KEY_SERVER_USER_PRIMARY = Internal.createUniqueKey(ServerUser.SERVER_USER, DSL.name("KEY_server_user_PRIMARY"), new TableField[] { ServerUser.SERVER_USER.ID }, true);
     public static final UniqueKey<ServersRecord> KEY_SERVERS_PRIMARY = Internal.createUniqueKey(Servers.SERVERS, DSL.name("KEY_servers_PRIMARY"), new TableField[] { Servers.SERVERS.ID }, true);
-    public static final UniqueKey<ServersRecord> KEY_SERVERS_SERVERS_SERVER_ID_UINDEX = Internal.createUniqueKey(Servers.SERVERS, DSL.name("KEY_servers_servers_server_id_uindex"), new TableField[] { Servers.SERVERS.SERVER_ID }, true);
+    public static final UniqueKey<ServersRecord> KEY_SERVERS_SERVERS_SERVER_ID_UINDEX = Internal.createUniqueKey(Servers.SERVERS, DSL.name("KEY_servers_servers_server_id_uindex"), new TableField[] { Servers.SERVERS.SERVER_ID_SNOWFLAKE }, true);
     public static final UniqueKey<UsersRecord> KEY_USERS_ID_UNIQUE = Internal.createUniqueKey(Users.USERS, DSL.name("KEY_users_id_UNIQUE"), new TableField[] { Users.USERS.ID }, true);
     public static final UniqueKey<UsersRecord> KEY_USERS_PRIMARY = Internal.createUniqueKey(Users.USERS, DSL.name("KEY_users_PRIMARY"), new TableField[] { Users.USERS.ID }, true);
     public static final UniqueKey<UsersRecord> KEY_USERS_USER_ID_UNIQUE = Internal.createUniqueKey(Users.USERS, DSL.name("KEY_users_user_id_UNIQUE"), new TableField[] { Users.USERS.USER_ID_SNOWFLAKE }, true);
