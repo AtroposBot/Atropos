@@ -43,7 +43,6 @@ public class Atropos {
         }
 
         // Load Config
-
         ConfigManager manager = new ConfigManager();
         manager.loadDatabaseConfig();
 
