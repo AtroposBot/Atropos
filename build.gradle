@@ -1,3 +1,20 @@
+buildscript {
+
+    repositories {
+        mavenCentral()
+        maven {
+            url = 'https://mvnrepository.com/artifact/'
+        }
+    }
+
+    dependencies {
+        classpath group: 'org.jooq', name: 'jooq', version: '3.19.17'
+        classpath group: 'org.jooq', name: 'jooq-meta', version: '3.19.17'
+        classpath group: 'org.jooq', name: 'jooq-codegen', version: '3.19.17'
+        classpath group: 'com.mysql', name: 'mysql-connector-j', version: '9.1.0'
+    }
+}
+
 plugins {
     id 'java'
     id 'application'
@@ -51,6 +68,8 @@ dependencies {
     implementation 'io.r2dbc:r2dbc-pool'
     implementation 'org.mariadb:r2dbc-mariadb'
     implementation "org.jooq:jooq:$jooqVersion"
+    implementation("org.jooq:jooq-meta:$jooqVersion")
+    implementation("org.jooq:jooq-codegen:$jooqVersion")
 }
 
 shadowJar {
@@ -72,8 +91,11 @@ tasks {
     }
 }
 
-tasks.named("compileJava") {
-    dependsOn(tasks.named("jooqCodegen"))
-}
+apply from: 'jooq.gradle'
+
+
+
+
+
 
 

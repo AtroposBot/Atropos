@@ -1,0 +1,73 @@
+import org.jooq.codegen.GenerationTool
+import org.jooq.meta.jaxb.Database
+import org.jooq.meta.jaxb.Generator
+import org.jooq.meta.jaxb.Jdbc
+import org.jooq.meta.jaxb.Target
+
+buildscript {
+
+    repositories {
+        mavenCentral()
+        maven {
+            url = 'https://mvnrepository.com/artifact/'
+        }
+    }
+
+    dependencies {
+        classpath group: 'org.jooq', name: 'jooq', version: '3.19.17'
+        classpath group: 'org.jooq', name: 'jooq-meta', version: '3.19.17'
+        classpath group: 'org.jooq', name: 'jooq-codegen', version: '3.19.17'
+        classpath group: 'com.mysql', name: 'mysql-connector-j', version: '9.1.0'
+    }
+}
+
+// enter connection info below for codegen
+ext {
+    url = 'nowhere'
+    user = 'nada'
+    password = 'nope'
+    schema = 'nothing'
+    driver = 'com.mysql.cj.jdbc.Driver'
+    jooqDbImpl = 'org.jooq.meta.mariadb.MariaDBDatabase'
+    packageName = 'jooq2'
+    genpath = new File("${projectDir}/build/generated-src/jooq/main")
+}
+
+sourceSets.configureEach { ext.purpose = null }
+
+sourceSets.main.java.srcDirs += genpath.toString()
+
+tasks.register('generateCode') {
+
+    group = 'Custom'
+    description = 'Generate class files for database tables!'
+    if (!genpath.exists()) {
+        genpath.mkdirs()
+    }
+
+    org.jooq.meta.jaxb.Configuration configuration = new org.jooq.meta.jaxb.Configuration()
+            .withJdbc(new Jdbc()
+                    .withDriver(driver)
+                    .withUrl(url)
+                    .withUser(user)
+                    .withPassword(password)
+            )
+            .withGenerator(new Generator()
+                    .withDatabase(new Database()
+                            .withName(jooqDbImpl)
+                            .withIncludes(".*")
+                            .withExcludes("")
+                            .withInputSchema(schema)
+                    )
+                    .withTarget(new Target()
+                            .withPackageName(packageName)
+                            .withDirectory(genpath.toString())
+                    )
+            );
+
+    GenerationTool.generate(configuration);
+}
+
+tasks.register('deleteGeneratedCode') {
+    delete genpath
+}
