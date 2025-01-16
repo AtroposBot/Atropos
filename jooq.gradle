@@ -21,12 +21,12 @@ buildscript {
     }
 }
 
-// enter connection info below for codegen
+// enter conn info below for codegen
 ext {
-    url = 'nowhere'
-    user = 'nada'
-    password = 'nope'
-    schema = 'nothing'
+    url = 'jdbc:mysql://localhost/atropos'
+    user = 'bot'
+    password = 'password1'
+    schema = 'atropos'
     driver = 'com.mysql.cj.jdbc.Driver'
     jooqDbImpl = 'org.jooq.meta.mariadb.MariaDBDatabase'
     packageName = 'jooq2'
@@ -68,6 +68,7 @@ tasks.register('generateCode') {
     GenerationTool.generate(configuration);
 }
 
+/*
 tasks.register('deleteGeneratedCode') {
     delete genpath
-}
+}*/

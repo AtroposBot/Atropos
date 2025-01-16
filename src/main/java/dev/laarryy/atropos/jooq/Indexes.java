@@ -8,13 +8,15 @@ import dev.laarryy.atropos.jooq.tables.Punishments;
 import dev.laarryy.atropos.jooq.tables.ServerBlacklist;
 import dev.laarryy.atropos.jooq.tables.ServerProperties;
 import dev.laarryy.atropos.jooq.tables.ServerRolePermissions;
-
 import org.jooq.Index;
 import org.jooq.OrderField;
 import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 
 
+/**
+ * A class modelling indexes of tables in atropos.
+ */
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Indexes {
 

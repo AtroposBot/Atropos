@@ -4,27 +4,8 @@
 package dev.laarryy.atropos.jooq;
 
 
-import dev.laarryy.atropos.jooq.tables.Permissions;
-import dev.laarryy.atropos.jooq.tables.Punishments;
-import dev.laarryy.atropos.jooq.tables.ServerBlacklist;
-import dev.laarryy.atropos.jooq.tables.ServerCommandUses;
-import dev.laarryy.atropos.jooq.tables.ServerMessages;
-import dev.laarryy.atropos.jooq.tables.ServerProperties;
-import dev.laarryy.atropos.jooq.tables.ServerRolePermissions;
-import dev.laarryy.atropos.jooq.tables.ServerUser;
-import dev.laarryy.atropos.jooq.tables.Servers;
-import dev.laarryy.atropos.jooq.tables.Users;
-import dev.laarryy.atropos.jooq.tables.records.PermissionsRecord;
-import dev.laarryy.atropos.jooq.tables.records.PunishmentsRecord;
-import dev.laarryy.atropos.jooq.tables.records.ServerBlacklistRecord;
-import dev.laarryy.atropos.jooq.tables.records.ServerCommandUsesRecord;
-import dev.laarryy.atropos.jooq.tables.records.ServerMessagesRecord;
-import dev.laarryy.atropos.jooq.tables.records.ServerPropertiesRecord;
-import dev.laarryy.atropos.jooq.tables.records.ServerRolePermissionsRecord;
-import dev.laarryy.atropos.jooq.tables.records.ServerUserRecord;
-import dev.laarryy.atropos.jooq.tables.records.ServersRecord;
-import dev.laarryy.atropos.jooq.tables.records.UsersRecord;
-
+import dev.laarryy.atropos.jooq.tables.*;
+import dev.laarryy.atropos.jooq.tables.records.*;
 import org.jooq.ForeignKey;
 import org.jooq.TableField;
 import org.jooq.UniqueKey;
@@ -32,6 +13,10 @@ import org.jooq.impl.DSL;
 import org.jooq.impl.Internal;
 
 
+/**
+ * A class modelling foreign key relationships and constraints of tables in
+ * atropos.
+ */
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Keys {
 

@@ -4,38 +4,62 @@
 package dev.laarryy.atropos.jooq;
 
 
-import dev.laarryy.atropos.jooq.tables.Permissions;
-import dev.laarryy.atropos.jooq.tables.Punishments;
-import dev.laarryy.atropos.jooq.tables.ServerBlacklist;
-import dev.laarryy.atropos.jooq.tables.ServerCommandUses;
-import dev.laarryy.atropos.jooq.tables.ServerMessages;
-import dev.laarryy.atropos.jooq.tables.ServerProperties;
-import dev.laarryy.atropos.jooq.tables.ServerRolePermissions;
-import dev.laarryy.atropos.jooq.tables.ServerUser;
-import dev.laarryy.atropos.jooq.tables.Servers;
-import dev.laarryy.atropos.jooq.tables.Users;
+import dev.laarryy.atropos.jooq.tables.*;
 
 
+/**
+ * Convenience access to all tables in atropos.
+ */
 @SuppressWarnings({ "all", "unchecked", "rawtypes" })
 public class Tables {
 
+    /**
+     * The table <code>atropos.permissions</code>.
+     */
     public static final Permissions PERMISSIONS = Permissions.PERMISSIONS;
 
+    /**
+     * The table <code>atropos.punishments</code>.
+     */
     public static final Punishments PUNISHMENTS = Punishments.PUNISHMENTS;
 
+    /**
+     * The table <code>atropos.server_blacklist</code>.
+     */
     public static final ServerBlacklist SERVER_BLACKLIST = ServerBlacklist.SERVER_BLACKLIST;
 
+    /**
+     * The table <code>atropos.server_command_uses</code>.
+     */
     public static final ServerCommandUses SERVER_COMMAND_USES = ServerCommandUses.SERVER_COMMAND_USES;
 
+    /**
+     * The table <code>atropos.server_messages</code>.
+     */
     public static final ServerMessages SERVER_MESSAGES = ServerMessages.SERVER_MESSAGES;
 
+    /**
+     * The table <code>atropos.server_properties</code>.
+     */
     public static final ServerProperties SERVER_PROPERTIES = ServerProperties.SERVER_PROPERTIES;
 
+    /**
+     * The table <code>atropos.server_role_permissions</code>.
+     */
     public static final ServerRolePermissions SERVER_ROLE_PERMISSIONS = ServerRolePermissions.SERVER_ROLE_PERMISSIONS;
 
+    /**
+     * The table <code>atropos.server_user</code>.
+     */
     public static final ServerUser SERVER_USER = ServerUser.SERVER_USER;
 
+    /**
+     * The table <code>atropos.servers</code>.
+     */
     public static final Servers SERVERS = Servers.SERVERS;
 
+    /**
+     * The table <code>atropos.users</code>.
+     */
     public static final Users USERS = Users.USERS;
 }
