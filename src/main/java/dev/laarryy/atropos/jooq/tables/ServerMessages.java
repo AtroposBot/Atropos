@@ -6,10 +6,12 @@ package dev.laarryy.atropos.jooq.tables;
 
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Keys;
+import dev.laarryy.atropos.jooq.tables.Servers.ServersPath;
+import dev.laarryy.atropos.jooq.tables.Users.UsersPath;
 import dev.laarryy.atropos.jooq.tables.records.ServerMessagesRecord;
-import dev.laarryy.atropos.utils.converters.SnowflakeToLongConverter;
-import jooq.tables.Servers.ServersPath;
-import jooq.tables.Users.UsersPath;
+import dev.laarryy.atropos.utils.converters.ByteToBooleanConverter;
+import dev.laarryy.atropos.utils.converters.LongToSnowflakeConverter;
+import discord4j.common.util.Snowflake;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
@@ -51,7 +53,7 @@ public class ServerMessages extends TableImpl<ServerMessagesRecord> {
     /**
      * The column <code>atropos.server_messages.message_id_snowflake</code>.
      */
-    public final TableField<ServerMessagesRecord, Long> MESSAGE_ID_SNOWFLAKE = createField(DSL.name("message_id_snowflake"), SQLDataType.BIGINT.nullable(false), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerMessagesRecord, Snowflake> MESSAGE_ID_SNOWFLAKE = createField(DSL.name("message_id_snowflake"), SQLDataType.BIGINT.nullable(false), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column <code>atropos.server_messages.server_id</code>.
@@ -61,7 +63,7 @@ public class ServerMessages extends TableImpl<ServerMessagesRecord> {
     /**
      * The column <code>atropos.server_messages.server_id_snowflake</code>.
      */
-    public final TableField<ServerMessagesRecord, Long> SERVER_ID_SNOWFLAKE = createField(DSL.name("server_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerMessagesRecord, Snowflake> SERVER_ID_SNOWFLAKE = createField(DSL.name("server_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column <code>atropos.server_messages.user_id</code>.
@@ -71,7 +73,7 @@ public class ServerMessages extends TableImpl<ServerMessagesRecord> {
     /**
      * The column <code>atropos.server_messages.user_id_snowflake</code>.
      */
-    public final TableField<ServerMessagesRecord, Long> USER_ID_SNOWFLAKE = createField(DSL.name("user_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerMessagesRecord, Snowflake> USER_ID_SNOWFLAKE = createField(DSL.name("user_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column <code>atropos.server_messages.date</code>.
@@ -86,7 +88,7 @@ public class ServerMessages extends TableImpl<ServerMessagesRecord> {
     /**
      * The column <code>atropos.server_messages.deleted</code>.
      */
-    public final TableField<ServerMessagesRecord, Boolean> DELETED = createField(DSL.name("deleted"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BOOLEAN)), this, "");
+    public final TableField<ServerMessagesRecord, Boolean> DELETED = createField(DSL.name("deleted"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.TINYINT)), this, "", new ByteToBooleanConverter());
 
     /**
      * The column <code>atropos.server_messages.message_data</code>.

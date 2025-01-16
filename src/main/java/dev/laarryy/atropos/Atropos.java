@@ -96,7 +96,7 @@ public class Atropos {
                 .filterWhen(guild ->
                         Mono.fromDirect(sqlContext.selectOne()
                                         .from(SERVERS)
-                                        .where(SERVERS.SERVER_ID.eq(guild.getId())))
+                                        .where(SERVERS.SERVER_ID_SNOWFLAKE.eq(guild.getId())))
                                 .hasElement()
                                 .transform(BooleanUtils::not)
                 )

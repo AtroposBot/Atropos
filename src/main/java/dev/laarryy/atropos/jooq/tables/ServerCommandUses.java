@@ -6,9 +6,10 @@ package dev.laarryy.atropos.jooq.tables;
 
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Keys;
+import dev.laarryy.atropos.jooq.tables.Servers.ServersPath;
+import dev.laarryy.atropos.jooq.tables.Users.UsersPath;
 import dev.laarryy.atropos.jooq.tables.records.ServerCommandUsesRecord;
-import jooq.tables.Servers.ServersPath;
-import jooq.tables.Users.UsersPath;
+import dev.laarryy.atropos.utils.converters.ByteToBooleanConverter;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
@@ -70,7 +71,7 @@ public class ServerCommandUses extends TableImpl<ServerCommandUsesRecord> {
     /**
      * The column <code>atropos.server_command_uses.success</code>.
      */
-    public final TableField<ServerCommandUsesRecord, Boolean> SUCCESS = createField(DSL.name("success"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.BOOLEAN)), this, "");
+    public final TableField<ServerCommandUsesRecord, Boolean> SUCCESS = createField(DSL.name("success"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.TINYINT)), this, "", new ByteToBooleanConverter());
 
     private ServerCommandUses(Name alias, Table<ServerCommandUsesRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

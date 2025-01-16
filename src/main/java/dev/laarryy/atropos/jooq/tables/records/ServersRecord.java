@@ -5,6 +5,7 @@ package dev.laarryy.atropos.jooq.tables.records;
 
 
 import dev.laarryy.atropos.jooq.tables.Servers;
+import discord4j.common.util.Snowflake;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 
@@ -50,15 +51,15 @@ public class ServersRecord extends UpdatableRecordImpl<ServersRecord> {
     /**
      * Setter for <code>atropos.servers.server_id_snowflake</code>.
      */
-    public void setServerIdSnowflake(Long value) {
+    public void setServerIdSnowflake(Snowflake value) {
         set(2, value);
     }
 
     /**
      * Getter for <code>atropos.servers.server_id_snowflake</code>.
      */
-    public Long getServerIdSnowflake() {
-        return (Long) get(2);
+    public Snowflake getServerIdSnowflake() {
+        return (Snowflake) get(2);
     }
 
     // -------------------------------------------------------------------------
@@ -84,7 +85,7 @@ public class ServersRecord extends UpdatableRecordImpl<ServersRecord> {
     /**
      * Create a detached, initialised ServersRecord
      */
-    public ServersRecord(Integer id, Instant date, Long serverIdSnowflake) {
+    public ServersRecord(Integer id, Instant date, Snowflake serverIdSnowflake) {
         super(Servers.SERVERS);
 
         setId(id);

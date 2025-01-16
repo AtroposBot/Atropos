@@ -5,6 +5,7 @@ package dev.laarryy.atropos.jooq.tables.records;
 
 
 import dev.laarryy.atropos.jooq.tables.Users;
+import discord4j.common.util.Snowflake;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 
@@ -36,15 +37,15 @@ public class UsersRecord extends UpdatableRecordImpl<UsersRecord> {
     /**
      * Setter for <code>atropos.users.user_id_snowflake</code>.
      */
-    public void setUserIdSnowflake(Long value) {
+    public void setUserIdSnowflake(Snowflake value) {
         set(1, value);
     }
 
     /**
      * Getter for <code>atropos.users.user_id_snowflake</code>.
      */
-    public Long getUserIdSnowflake() {
-        return (Long) get(1);
+    public Snowflake getUserIdSnowflake() {
+        return (Snowflake) get(1);
     }
 
     /**
@@ -84,7 +85,7 @@ public class UsersRecord extends UpdatableRecordImpl<UsersRecord> {
     /**
      * Create a detached, initialised UsersRecord
      */
-    public UsersRecord(Integer id, Long userIdSnowflake, Instant date) {
+    public UsersRecord(Integer id, Snowflake userIdSnowflake, Instant date) {
         super(Users.USERS);
 
         setId(id);

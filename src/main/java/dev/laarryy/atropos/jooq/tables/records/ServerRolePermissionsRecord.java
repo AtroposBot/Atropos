@@ -5,6 +5,7 @@ package dev.laarryy.atropos.jooq.tables.records;
 
 
 import dev.laarryy.atropos.jooq.tables.ServerRolePermissions;
+import discord4j.common.util.Snowflake;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 
@@ -63,7 +64,7 @@ public class ServerRolePermissionsRecord extends UpdatableRecordImpl<ServerRoleP
      * Setter for
      * <code>atropos.server_role_permissions.role_id_snowflake</code>.
      */
-    public void setRoleIdSnowflake(Long value) {
+    public void setRoleIdSnowflake(Snowflake value) {
         set(3, value);
     }
 
@@ -71,8 +72,8 @@ public class ServerRolePermissionsRecord extends UpdatableRecordImpl<ServerRoleP
      * Getter for
      * <code>atropos.server_role_permissions.role_id_snowflake</code>.
      */
-    public Long getRoleIdSnowflake() {
-        return (Long) get(3);
+    public Snowflake getRoleIdSnowflake() {
+        return (Snowflake) get(3);
     }
 
     // -------------------------------------------------------------------------
@@ -98,7 +99,7 @@ public class ServerRolePermissionsRecord extends UpdatableRecordImpl<ServerRoleP
     /**
      * Create a detached, initialised ServerRolePermissionsRecord
      */
-    public ServerRolePermissionsRecord(Integer id, Integer serverId, Integer permissionId, Long roleIdSnowflake) {
+    public ServerRolePermissionsRecord(Integer id, Integer serverId, Integer permissionId, Snowflake roleIdSnowflake) {
         super(ServerRolePermissions.SERVER_ROLE_PERMISSIONS);
 
         setId(id);

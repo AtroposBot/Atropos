@@ -7,10 +7,11 @@ package dev.laarryy.atropos.jooq.tables;
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Indexes;
 import dev.laarryy.atropos.jooq.Keys;
+import dev.laarryy.atropos.jooq.tables.Permissions.PermissionsPath;
+import dev.laarryy.atropos.jooq.tables.Servers.ServersPath;
 import dev.laarryy.atropos.jooq.tables.records.ServerRolePermissionsRecord;
-import dev.laarryy.atropos.utils.converters.SnowflakeToLongConverter;
-import jooq.tables.Permissions.PermissionsPath;
-import jooq.tables.Servers.ServersPath;
+import dev.laarryy.atropos.utils.converters.LongToSnowflakeConverter;
+import discord4j.common.util.Snowflake;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
@@ -62,7 +63,7 @@ public class ServerRolePermissions extends TableImpl<ServerRolePermissionsRecord
      * The column
      * <code>atropos.server_role_permissions.role_id_snowflake</code>.
      */
-    public final TableField<ServerRolePermissionsRecord, Long> ROLE_ID_SNOWFLAKE = createField(DSL.name("role_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerRolePermissionsRecord, Snowflake> ROLE_ID_SNOWFLAKE = createField(DSL.name("role_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     private ServerRolePermissions(Name alias, Table<ServerRolePermissionsRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

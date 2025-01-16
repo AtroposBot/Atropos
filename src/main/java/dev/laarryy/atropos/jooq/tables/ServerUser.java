@@ -6,9 +6,9 @@ package dev.laarryy.atropos.jooq.tables;
 
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Keys;
+import dev.laarryy.atropos.jooq.tables.Servers.ServersPath;
+import dev.laarryy.atropos.jooq.tables.Users.UsersPath;
 import dev.laarryy.atropos.jooq.tables.records.ServerUserRecord;
-import jooq.tables.Servers.ServersPath;
-import jooq.tables.Users.UsersPath;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;

@@ -7,9 +7,11 @@ package dev.laarryy.atropos.jooq.tables;
 import dev.laarryy.atropos.jooq.Atropos;
 import dev.laarryy.atropos.jooq.Indexes;
 import dev.laarryy.atropos.jooq.Keys;
+import dev.laarryy.atropos.jooq.tables.Servers.ServersPath;
 import dev.laarryy.atropos.jooq.tables.records.ServerPropertiesRecord;
-import dev.laarryy.atropos.utils.converters.SnowflakeToLongConverter;
-import jooq.tables.Servers.ServersPath;
+import dev.laarryy.atropos.utils.converters.ByteToBooleanConverter;
+import dev.laarryy.atropos.utils.converters.LongToSnowflakeConverter;
+import discord4j.common.util.Snowflake;
 import org.jooq.Record;
 import org.jooq.*;
 import org.jooq.impl.DSL;
@@ -55,7 +57,7 @@ public class ServerProperties extends TableImpl<ServerPropertiesRecord> {
     /**
      * The column <code>atropos.server_properties.server_id_snowflake</code>.
      */
-    public final TableField<ServerPropertiesRecord, Long> SERVER_ID_SNOWFLAKE = createField(DSL.name("server_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerPropertiesRecord, Snowflake> SERVER_ID_SNOWFLAKE = createField(DSL.name("server_id_snowflake"), SQLDataType.BIGINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column <code>atropos.server_properties.server_name</code>.
@@ -72,42 +74,42 @@ public class ServerProperties extends TableImpl<ServerPropertiesRecord> {
      * The column
      * <code>atropos.server_properties.muted_role_id_snowflake</code>.
      */
-    public final TableField<ServerPropertiesRecord, Long> MUTED_ROLE_ID_SNOWFLAKE = createField(DSL.name("muted_role_id_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerPropertiesRecord, Snowflake> MUTED_ROLE_ID_SNOWFLAKE = createField(DSL.name("muted_role_id_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column
      * <code>atropos.server_properties.member_log_channel_snowflake</code>.
      */
-    public final TableField<ServerPropertiesRecord, Long> MEMBER_LOG_CHANNEL_SNOWFLAKE = createField(DSL.name("member_log_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerPropertiesRecord, Snowflake> MEMBER_LOG_CHANNEL_SNOWFLAKE = createField(DSL.name("member_log_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column
      * <code>atropos.server_properties.message_log_channel_snowflake</code>.
      */
-    public final TableField<ServerPropertiesRecord, Long> MESSAGE_LOG_CHANNEL_SNOWFLAKE = createField(DSL.name("message_log_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerPropertiesRecord, Snowflake> MESSAGE_LOG_CHANNEL_SNOWFLAKE = createField(DSL.name("message_log_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column
      * <code>atropos.server_properties.guild_log_channel_snowflake</code>.
      */
-    public final TableField<ServerPropertiesRecord, Long> GUILD_LOG_CHANNEL_SNOWFLAKE = createField(DSL.name("guild_log_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerPropertiesRecord, Snowflake> GUILD_LOG_CHANNEL_SNOWFLAKE = createField(DSL.name("guild_log_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column
      * <code>atropos.server_properties.punishment_log_channel_snowflake</code>.
      */
-    public final TableField<ServerPropertiesRecord, Long> PUNISHMENT_LOG_CHANNEL_SNOWFLAKE = createField(DSL.name("punishment_log_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerPropertiesRecord, Snowflake> PUNISHMENT_LOG_CHANNEL_SNOWFLAKE = createField(DSL.name("punishment_log_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column <code>atropos.server_properties.stop_joins</code>.
      */
-    public final TableField<ServerPropertiesRecord, Boolean> STOP_JOINS = createField(DSL.name("stop_joins"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.BOOLEAN)), this, "");
+    public final TableField<ServerPropertiesRecord, Boolean> STOP_JOINS = createField(DSL.name("stop_joins"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.TINYINT)), this, "", new ByteToBooleanConverter());
 
     /**
      * The column
      * <code>atropos.server_properties.modmail_channel_snowflake</code>.
      */
-    public final TableField<ServerPropertiesRecord, Long> MODMAIL_CHANNEL_SNOWFLAKE = createField(DSL.name("modmail_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new SnowflakeToLongConverter());
+    public final TableField<ServerPropertiesRecord, Snowflake> MODMAIL_CHANNEL_SNOWFLAKE = createField(DSL.name("modmail_channel_snowflake"), SQLDataType.BIGINT.defaultValue(DSL.field(DSL.raw("NULL"), SQLDataType.BIGINT)), this, "", new LongToSnowflakeConverter());
 
     /**
      * The column <code>atropos.server_properties.messages_to_warn</code>.
@@ -132,12 +134,12 @@ public class ServerProperties extends TableImpl<ServerPropertiesRecord> {
     /**
      * The column <code>atropos.server_properties.anti_scam</code>.
      */
-    public final TableField<ServerPropertiesRecord, Boolean> ANTI_SCAM = createField(DSL.name("anti_scam"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.BOOLEAN)), this, "");
+    public final TableField<ServerPropertiesRecord, Boolean> ANTI_SCAM = createField(DSL.name("anti_scam"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.TINYINT)), this, "", new ByteToBooleanConverter());
 
     /**
      * The column <code>atropos.server_properties.dehoist</code>.
      */
-    public final TableField<ServerPropertiesRecord, Boolean> DEHOIST = createField(DSL.name("dehoist"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.BOOLEAN)), this, "");
+    public final TableField<ServerPropertiesRecord, Boolean> DEHOIST = createField(DSL.name("dehoist"), SQLDataType.TINYINT.nullable(false).defaultValue(DSL.field(DSL.raw("1"), SQLDataType.TINYINT)), this, "", new ByteToBooleanConverter());
 
     private ServerProperties(Name alias, Table<ServerPropertiesRecord> aliased) {
         this(alias, aliased, (Field<?>[]) null, null);

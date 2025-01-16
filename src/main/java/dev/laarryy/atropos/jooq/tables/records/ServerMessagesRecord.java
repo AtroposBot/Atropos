@@ -5,6 +5,7 @@ package dev.laarryy.atropos.jooq.tables.records;
 
 
 import dev.laarryy.atropos.jooq.tables.ServerMessages;
+import discord4j.common.util.Snowflake;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 
@@ -36,15 +37,15 @@ public class ServerMessagesRecord extends UpdatableRecordImpl<ServerMessagesReco
     /**
      * Setter for <code>atropos.server_messages.message_id_snowflake</code>.
      */
-    public void setMessageIdSnowflake(Long value) {
+    public void setMessageIdSnowflake(Snowflake value) {
         set(1, value);
     }
 
     /**
      * Getter for <code>atropos.server_messages.message_id_snowflake</code>.
      */
-    public Long getMessageIdSnowflake() {
-        return (Long) get(1);
+    public Snowflake getMessageIdSnowflake() {
+        return (Snowflake) get(1);
     }
 
     /**
@@ -64,15 +65,15 @@ public class ServerMessagesRecord extends UpdatableRecordImpl<ServerMessagesReco
     /**
      * Setter for <code>atropos.server_messages.server_id_snowflake</code>.
      */
-    public void setServerIdSnowflake(Long value) {
+    public void setServerIdSnowflake(Snowflake value) {
         set(3, value);
     }
 
     /**
      * Getter for <code>atropos.server_messages.server_id_snowflake</code>.
      */
-    public Long getServerIdSnowflake() {
-        return (Long) get(3);
+    public Snowflake getServerIdSnowflake() {
+        return (Snowflake) get(3);
     }
 
     /**
@@ -92,15 +93,15 @@ public class ServerMessagesRecord extends UpdatableRecordImpl<ServerMessagesReco
     /**
      * Setter for <code>atropos.server_messages.user_id_snowflake</code>.
      */
-    public void setUserIdSnowflake(Long value) {
+    public void setUserIdSnowflake(Snowflake value) {
         set(5, value);
     }
 
     /**
      * Getter for <code>atropos.server_messages.user_id_snowflake</code>.
      */
-    public Long getUserIdSnowflake() {
-        return (Long) get(5);
+    public Snowflake getUserIdSnowflake() {
+        return (Snowflake) get(5);
     }
 
     /**
@@ -182,7 +183,7 @@ public class ServerMessagesRecord extends UpdatableRecordImpl<ServerMessagesReco
     /**
      * Create a detached, initialised ServerMessagesRecord
      */
-    public ServerMessagesRecord(Integer id, Long messageIdSnowflake, Integer serverId, Long serverIdSnowflake, Integer userId, Long userIdSnowflake, Instant date, String content, Boolean deleted, String messageData) {
+    public ServerMessagesRecord(Integer id, Snowflake messageIdSnowflake, Integer serverId, Snowflake serverIdSnowflake, Integer userId, Snowflake userIdSnowflake, Instant date, String content, Boolean deleted, String messageData) {
         super(ServerMessages.SERVER_MESSAGES);
 
         setId(id);

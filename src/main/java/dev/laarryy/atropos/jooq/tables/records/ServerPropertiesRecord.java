@@ -5,6 +5,7 @@ package dev.laarryy.atropos.jooq.tables.records;
 
 
 import dev.laarryy.atropos.jooq.tables.ServerProperties;
+import discord4j.common.util.Snowflake;
 import org.jooq.Record1;
 import org.jooq.impl.UpdatableRecordImpl;
 
@@ -48,15 +49,15 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
     /**
      * Setter for <code>atropos.server_properties.server_id_snowflake</code>.
      */
-    public void setServerIdSnowflake(Long value) {
+    public void setServerIdSnowflake(Snowflake value) {
         set(2, value);
     }
 
     /**
      * Getter for <code>atropos.server_properties.server_id_snowflake</code>.
      */
-    public Long getServerIdSnowflake() {
-        return (Long) get(2);
+    public Snowflake getServerIdSnowflake() {
+        return (Snowflake) get(2);
     }
 
     /**
@@ -93,7 +94,7 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
      * Setter for
      * <code>atropos.server_properties.muted_role_id_snowflake</code>.
      */
-    public void setMutedRoleIdSnowflake(Long value) {
+    public void setMutedRoleIdSnowflake(Snowflake value) {
         set(5, value);
     }
 
@@ -101,15 +102,15 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
      * Getter for
      * <code>atropos.server_properties.muted_role_id_snowflake</code>.
      */
-    public Long getMutedRoleIdSnowflake() {
-        return (Long) get(5);
+    public Snowflake getMutedRoleIdSnowflake() {
+        return (Snowflake) get(5);
     }
 
     /**
      * Setter for
      * <code>atropos.server_properties.member_log_channel_snowflake</code>.
      */
-    public void setMemberLogChannelSnowflake(Long value) {
+    public void setMemberLogChannelSnowflake(Snowflake value) {
         set(6, value);
     }
 
@@ -117,15 +118,15 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
      * Getter for
      * <code>atropos.server_properties.member_log_channel_snowflake</code>.
      */
-    public Long getMemberLogChannelSnowflake() {
-        return (Long) get(6);
+    public Snowflake getMemberLogChannelSnowflake() {
+        return (Snowflake) get(6);
     }
 
     /**
      * Setter for
      * <code>atropos.server_properties.message_log_channel_snowflake</code>.
      */
-    public void setMessageLogChannelSnowflake(Long value) {
+    public void setMessageLogChannelSnowflake(Snowflake value) {
         set(7, value);
     }
 
@@ -133,15 +134,15 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
      * Getter for
      * <code>atropos.server_properties.message_log_channel_snowflake</code>.
      */
-    public Long getMessageLogChannelSnowflake() {
-        return (Long) get(7);
+    public Snowflake getMessageLogChannelSnowflake() {
+        return (Snowflake) get(7);
     }
 
     /**
      * Setter for
      * <code>atropos.server_properties.guild_log_channel_snowflake</code>.
      */
-    public void setGuildLogChannelSnowflake(Long value) {
+    public void setGuildLogChannelSnowflake(Snowflake value) {
         set(8, value);
     }
 
@@ -149,15 +150,15 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
      * Getter for
      * <code>atropos.server_properties.guild_log_channel_snowflake</code>.
      */
-    public Long getGuildLogChannelSnowflake() {
-        return (Long) get(8);
+    public Snowflake getGuildLogChannelSnowflake() {
+        return (Snowflake) get(8);
     }
 
     /**
      * Setter for
      * <code>atropos.server_properties.punishment_log_channel_snowflake</code>.
      */
-    public void setPunishmentLogChannelSnowflake(Long value) {
+    public void setPunishmentLogChannelSnowflake(Snowflake value) {
         set(9, value);
     }
 
@@ -165,8 +166,8 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
      * Getter for
      * <code>atropos.server_properties.punishment_log_channel_snowflake</code>.
      */
-    public Long getPunishmentLogChannelSnowflake() {
-        return (Long) get(9);
+    public Snowflake getPunishmentLogChannelSnowflake() {
+        return (Snowflake) get(9);
     }
 
     /**
@@ -187,7 +188,7 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
      * Setter for
      * <code>atropos.server_properties.modmail_channel_snowflake</code>.
      */
-    public void setModmailChannelSnowflake(Long value) {
+    public void setModmailChannelSnowflake(Snowflake value) {
         set(11, value);
     }
 
@@ -195,8 +196,8 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
      * Getter for
      * <code>atropos.server_properties.modmail_channel_snowflake</code>.
      */
-    public Long getModmailChannelSnowflake() {
-        return (Long) get(11);
+    public Snowflake getModmailChannelSnowflake() {
+        return (Snowflake) get(11);
     }
 
     /**
@@ -306,7 +307,7 @@ public class ServerPropertiesRecord extends UpdatableRecordImpl<ServerProperties
     /**
      * Create a detached, initialised ServerPropertiesRecord
      */
-    public ServerPropertiesRecord(Integer id, Integer serverId, Long serverIdSnowflake, String serverName, Long memberCountOnBotJoin, Long mutedRoleIdSnowflake, Long memberLogChannelSnowflake, Long messageLogChannelSnowflake, Long guildLogChannelSnowflake, Long punishmentLogChannelSnowflake, Boolean stopJoins, Long modmailChannelSnowflake, Integer messagesToWarn, Integer warnsToMute, Integer pingsToWarn, Integer joinsToAntiraid, Boolean antiScam, Boolean dehoist) {
+    public ServerPropertiesRecord(Integer id, Integer serverId, Snowflake serverIdSnowflake, String serverName, Long memberCountOnBotJoin, Snowflake mutedRoleIdSnowflake, Snowflake memberLogChannelSnowflake, Snowflake messageLogChannelSnowflake, Snowflake guildLogChannelSnowflake, Snowflake punishmentLogChannelSnowflake, Boolean stopJoins, Snowflake modmailChannelSnowflake, Integer messagesToWarn, Integer warnsToMute, Integer pingsToWarn, Integer joinsToAntiraid, Boolean antiScam, Boolean dehoist) {
         super(ServerProperties.SERVER_PROPERTIES);
 
         setId(id);
