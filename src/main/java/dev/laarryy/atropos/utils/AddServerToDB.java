@@ -22,7 +22,7 @@ public final class AddServerToDB {
 
     public static Mono<Void> addServerToDatabase(Guild guild) {
         return Mono.fromDirect(sqlContext.insertInto(SERVERS)
-                        .set(SERVERS.SERVER_ID, guild.getId())
+                        .set(SERVERS.SERVER_ID_SNOWFLAKE, guild.getId())
                         .set(SERVERS.DATE, Instant.now())
                         .onDuplicateKeyIgnore()
                         .returning())
@@ -75,7 +75,7 @@ public final class AddServerToDB {
                                 .switchIfEmpty(Mono.fromDirect(
                                         sqlContext.insertInto(SERVER_USER)
                                                 .set(SERVER_USER.USER_ID, user.getId())
-                                                .set(SERVER_USER.SERVER_ID, select(SERVERS.ID).from(SERVERS).where(SERVERS.SERVER_ID.eq(guild.getId())))
+                                                .set(SERVER_USER.SERVER_ID, select(SERVERS.ID).from(SERVERS).where(SERVERS.SERVER_ID_SNOWFLAKE.eq(guild.getId())))
                                                 .set(SERVER_USER.DATE, Instant.now())
                                 ))
                 )

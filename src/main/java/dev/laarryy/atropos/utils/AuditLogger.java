@@ -54,7 +54,7 @@ public final class AuditLogger {
 
     private static Mono<Void> addCommandToDB(final Snowflake serverSnowflake, final Snowflake userSnowflake, final String commandContent, final boolean success) {
         return Mono.fromDirect(sqlContext.insertInto(SERVER_COMMAND_USES)
-                        .set(SERVER_COMMAND_USES.SERVER_ID, select(SERVERS.ID).from(SERVERS).where(SERVERS.SERVER_ID.eq(serverSnowflake)))
+                        .set(SERVER_COMMAND_USES.SERVER_ID, select(SERVERS.ID).from(SERVERS).where(SERVERS.SERVER_ID_SNOWFLAKE.eq(serverSnowflake)))
                         .set(SERVER_COMMAND_USES.COMMAND_USER_ID, select(USERS.ID).from(USERS).where(USERS.USER_ID_SNOWFLAKE.eq(userSnowflake)))
                         .set(SERVER_COMMAND_USES.COMMAND_CONTENTS, commandContent)
                         .set(SERVER_COMMAND_USES.DATE, Instant.now())

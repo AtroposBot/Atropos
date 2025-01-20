@@ -51,7 +51,7 @@ public final class PermissionChecker {
                         return Mono.fromDirect(sqlContext.selectOne()
                                         .from(SERVER_ROLE_PERMISSIONS)
                                         .where(SERVER_ROLE_PERMISSIONS.ROLE_ID_SNOWFLAKE.eq(role.getId()))
-                                        .and(SERVER_ROLE_PERMISSIONS.SERVER_ID.in(select(SERVERS.ID).from(SERVERS).where(SERVERS.SERVER_ID.eq(serverSnowflake))))
+                                        .and(SERVER_ROLE_PERMISSIONS.SERVER_ID.in(select(SERVERS.ID).from(SERVERS).where(SERVERS.SERVER_ID_SNOWFLAKE.eq(serverSnowflake))))
                                         .and(SERVER_ROLE_PERMISSIONS.PERMISSION_ID.in(select(PERMISSIONS.ID).from(PERMISSIONS).where(PERMISSIONS.PERMISSION.eq(requestName)))
                                                 .or(SERVER_ROLE_PERMISSIONS.PERMISSION_ID.eq(69))))
                                 .hasElement();
